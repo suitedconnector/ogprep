@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "description": "Arizona well depth statistics by county, used for the fallback (non-parcel) estimates in the Cost to Livable calculator.",
+    "source": "Arizona Department of Water Resources — Wells55 registry",
+    "service": "https://services1.arcgis.com/Ezk9fcjSUkeadg6u/arcgis/rest/services/Wells_55/FeatureServer/0",
+    "query_filter": "WELL_DEPTH > 20 AND WELL_DEPTH < 3000",
+    "fields": {
+      "n": "count of wells with a usable recorded depth",
+      "avg": "mean well depth, feet",
+      "sd": "standard deviation of well depth, feet",
+      "max": "deepest well on record, feet",
+      "wl": "mean static water level, feet"
+    },
+    "caveats": [
+      "This is a hosted extract (University of Arizona GIS), not the full ADWR registry.",
+      "The complete Wells55 registry holds roughly 200,000 records; this subset has ~8,900 with usable depths.",
+      "Counties with small n (Greenlee n=6, Apache n=27, Graham n=32, La Paz n=33, Yuma n=43) are weak signals.",
+      "County averages are a poor guide for any specific parcel. Use the live GWSI radius lookup instead."
+    ],
+    "retrieved": "2026-08-07"
+  },
+  "counties": {
+    "Apache":     { "n": 27,   "avg": 494,  "sd": 279, "max": 1028, "wl": 270 },
+    "Cochise":    { "n": 662,  "avg": 464,  "sd": 245, "max": 1500, "wl": 149 },
+    "Coconino":   { "n": 74,   "avg": 1253, "sd": 562, "max": 2508, "wl": 712 },
+    "Gila":       { "n": 131,  "avg": 426,  "sd": 298, "max": 1150, "wl": 112 },
+    "Graham":     { "n": 32,   "avg": 232,  "sd": 184, "max": 950,  "wl": 58  },
+    "Greenlee":   { "n": 6,    "avg": 128,  "sd": 79,  "max": 260,  "wl": 47  },
+    "La Paz":     { "n": 33,   "avg": 787,  "sd": 330, "max": 1340, "wl": 337 },
+    "Maricopa":   { "n": 3384, "avg": 720,  "sd": 447, "max": 2986, "wl": 219 },
+    "Mohave":     { "n": 111,  "avg": 587,  "sd": 404, "max": 1630, "wl": 298 },
+    "Navajo":     { "n": 143,  "avg": 485,  "sd": 267, "max": 1370, "wl": 217 },
+    "Pima":       { "n": 1758, "avg": 513,  "sd": 311, "max": 2786, "wl": 194 },
+    "Pinal":      { "n": 1874, "avg": 883,  "sd": 402, "max": 2823, "wl": 313 },
+    "Santa Cruz": { "n": 225,  "avg": 212,  "sd": 196, "max": 1200, "wl": 54  },
+    "Yavapai":    { "n": 392,  "avg": 475,  "sd": 302, "max": 1700, "wl": 148 },
+    "Yuma":       { "n": 43,   "avg": 292,  "sd": 149, "max": 657,  "wl": 96  }
+  }
+}

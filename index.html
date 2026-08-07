@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arizona Cost-to-Livable Calculator — What That Cheap Land Really Costs</title>
+<style>
+  :root{
+    --bg:#12140f; --panel:#1b1e17; --panel2:#232720; --line:#333a2c;
+    --ink:#eef0e6; --muted:#a3ab93; --accent:#c8a24a; --accent2:#7fa650;
+    --warn:#d3742f; --bad:#c1502e; --good:#7fa650; --info:#5b8fb9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:28px}
+  .kicker{color:var(--accent);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:700}
+  h1{margin:10px 0 8px;font-size:clamp(26px,4vw,40px);line-height:1.15;letter-spacing:-.02em}
+  .sub{color:var(--muted);max-width:62ch;margin:0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .card h2{margin:0 0 14px;font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
+  select,input[type=number],input[type=email],input[type=text]{width:100%;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:15px}
+  select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:104px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);
+    border-radius:9px;padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--accent);color:#1a1a12;border-color:var(--accent)}
+  .stat{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px}
+  .stat:last-child{border-bottom:0}
+  .stat span:first-child{color:var(--muted)}
+  .stat b{font-variant-numeric:tabular-nums;font-weight:700}
+  .headline{background:linear-gradient(160deg,#232720,#1b1e17);border:1px solid var(--accent);
+    border-radius:14px;padding:26px;margin:24px 0}
+  .big{font-size:clamp(34px,6vw,54px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+  .range{color:var(--muted);font-size:14px;margin-top:8px}
+  .bar{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:18px 0 8px;border:1px solid var(--line)}
+  .bar div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#14160f;white-space:nowrap}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+  .verdict{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:14.5px;line-height:1.5}
+  .v-good{background:rgba(127,166,80,.14);border:1px solid var(--good)}
+  .v-warn{background:rgba(211,116,47,.14);border:1px solid var(--warn)}
+  .v-bad{background:rgba(193,80,46,.16);border:1px solid var(--bad)}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .cta{background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:24px;margin-top:28px}
+  .cta .fields{display:grid;grid-template-columns:1fr 1.2fr 1.4fr;gap:12px;margin-top:14px}
+  @media(max-width:700px){.cta .fields{grid-template-columns:1fr}}
+  .cta label{margin-top:0}
+  .cta button{background:var(--accent);color:#1a1a12;border:0;border-radius:9px;padding:12px 22px;
+    font-weight:800;font-size:15px;cursor:pointer;margin-top:16px}
+  footer{margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  footer a{color:var(--accent)}
+  .note{font-size:12.5px;color:var(--muted);margin-top:10px}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:99px;
+    padding:3px 10px;font-size:11.5px;color:var(--muted);margin-right:6px;margin-bottom:4px}
+  .lookup{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+  @media(max-width:600px){.lookup{grid-template-columns:1fr}}
+  .lookup button{background:var(--info);color:#0d1218;border:0;border-radius:9px;padding:11px 18px;
+    font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+  .lookup button:disabled{opacity:.55;cursor:default}
+  .banner{margin-top:12px;padding:11px 13px;border-radius:9px;font-size:13.5px;line-height:1.5}
+  .b-local{background:rgba(91,143,185,.15);border:1px solid var(--info)}
+  .b-thin{background:rgba(211,116,47,.14);border:1px solid var(--warn)}
+  .b-err{background:rgba(193,80,46,.16);border:1px solid var(--bad)}
+  .wells{max-height:210px;overflow:auto;margin-top:10px}
+  .src{font-size:11.5px;color:var(--muted);margin-top:6px}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+    padding:2px 7px;border-radius:99px;margin-top:5px;cursor:help}
+  .t-parcel{background:rgba(91,143,185,.22);color:#9cc6e6;border:1px solid var(--info)}
+  .t-county{background:rgba(200,162,74,.18);color:#e0c485;border:1px solid var(--accent)}
+  .t-typical{background:rgba(211,116,47,.18);color:#e6a877;border:1px solid var(--warn)}
+  .t-you{background:rgba(163,171,147,.16);color:var(--muted);border:1px solid var(--line)}
+  .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:9px;
+    padding:12px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
+  .keymap{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Off Grid Land — Arizona</div>
+  <h1>That $8,000 parcel isn't $8,000.</h1>
+  <p class="sub">Land is priced per acre. You pay <strong>cost to livable</strong> — water, waste, and power.
+  Start with the county picture, then drop in coordinates and this pulls the <strong>actual wells drilled near
+  that spot</strong> from Arizona's groundwater records. County averages are often wildly off for a specific parcel.</p>
+  <p class="sub" style="margin-top:10px;font-size:14px">
+  <strong style="color:var(--warn)">Honest about what this is:</strong> only the water estimate is currently
+  built from your location. Septic, power and access use published statewide ranges and don't yet respond to your
+  parcel. Every line is tagged so you can see which is which.</p>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <h2>Your parcel</h2>
+
+    <label for="county">County</label>
+    <select id="county"></select>
+
+    <label for="price">Land price (what you'd pay)</label>
+    <input type="number" id="price" value="8000" min="0" step="500">
+
+    <label>Water plan</label>
+    <div class="seg" id="waterSeg">
+      <button data-v="well" aria-pressed="true">Drill a well</button>
+      <button data-v="haul" aria-pressed="false">Cistern + hauling</button>
+    </div>
+
+    <label>Wastewater</label>
+    <div class="seg" id="septicSeg">
+      <button data-v="conv" aria-pressed="true">Conventional septic</button>
+      <button data-v="alt" aria-pressed="false">Alternative / ATU</button>
+      <button data-v="none" aria-pressed="false">Composting</button>
+    </div>
+
+    <label>Power</label>
+    <div class="seg" id="powerSeg">
+      <button data-v="solar" aria-pressed="true">Off-grid solar</button>
+      <button data-v="grid" aria-pressed="false">Grid at road</button>
+      <button data-v="none" aria-pressed="false">Skip for now</button>
+    </div>
+
+    <label for="years">Years to compare (hauling adds up)</label>
+    <input type="number" id="years" value="10" min="1" max="30">
+  </div>
+
+  <div class="card">
+    <h2 id="statsTitle">What the well records say</h2>
+    <div id="wellStats"></div>
+    <div class="note" id="confNote"></div>
+
+    <label for="coords">Check a specific spot — paste coordinates</label>
+    <div class="lookup">
+      <input type="text" id="coords" placeholder="35.2140, -114.2230" autocomplete="off">
+      <button id="goBtn" type="button">Look up wells</button>
+    </div>
+    <div class="note">In Google Maps, right-click the parcel and click the coordinates to copy them.</div>
+
+    <label for="radius">Search radius</label>
+    <select id="radius">
+      <option value="805">½ mile</option>
+      <option value="1609">1 mile</option>
+      <option value="3220" selected>2 miles</option>
+      <option value="8047">5 miles</option>
+    </select>
+
+    <div id="lookupMsg"></div>
+    <div class="wells" id="wellList"></div>
+  </div>
+</div>
+
+<div class="headline">
+  <div style="color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em;font-weight:700">
+    Estimated cost to livable</div>
+  <div class="big" id="total">—</div>
+  <div class="range" id="totalRange"></div>
+
+  <div class="bar" id="bar"></div>
+  <div class="legend">
+    <span><i style="background:#c8a24a"></i>Land</span>
+    <span><i style="background:#5b8fb9"></i>Water</span>
+    <span><i style="background:#7fa650"></i>Wastewater</span>
+    <span><i style="background:#b98bc9"></i>Power</span>
+    <span><i style="background:#8a8f7d"></i>Access &amp; site</span>
+  </div>
+
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<div class="card">
+  <h2>Line items</h2>
+  <div class="keymap">
+    <span class="tag t-parcel">parcel data</span>
+    <span class="tag t-county">county data</span>
+    <span class="tag t-typical">typical range</span>
+    <span class="tag t-you">you</span>
+  </div>
+  <table>
+    <thead><tr><th>Item</th><th class="n">Low</th><th class="n">Likely</th><th class="n">High</th></tr></thead>
+    <tbody id="lines"></tbody>
+  </table>
+  <div class="note" id="assumptions"></div>
+</div>
+
+<div class="cta">
+  <div style="font-size:19px;font-weight:800;margin-bottom:4px">Want this run on a specific parcel?</div>
+  <div style="color:var(--muted);font-size:14.5px">Give us the county and APN and we'll pull the wells within a half
+  mile of it — actual depths, actual yields, not a county average.</div>
+  <form id="leadForm">
+    <div class="fields">
+      <div><label for="leadCounty">County</label>
+        <select id="leadCounty" name="county" required></select></div>
+      <div><label for="leadApn">Parcel number (APN)</label>
+        <input type="text" id="leadApn" name="apn" placeholder="e.g. 226-31-004" required></div>
+      <div><label for="leadEmail">Email</label>
+        <input type="email" id="leadEmail" name="email" placeholder="you@email.com" required></div>
+    </div>
+    <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"
+           style="position:absolute;left:-9999px" aria-hidden="true">
+    <button type="submit" id="leadBtn">Send me the parcel report</button>
+    <div class="note">No APN handy? Paste a listing link or the nearest cross streets instead.</div>
+    <div id="leadErr"></div>
+  </form>
+  <div id="thanks" style="display:none;margin-top:14px;padding:12px 14px;border-radius:9px;
+    background:rgba(127,166,80,.14);border:1px solid var(--accent2);font-weight:600">
+    Got it — we'll pull the well records for that parcel and email you the report.</div>
+</div>
+
+<footer>
+  <span class="pill">County data: ADWR Wells55 registry</span>
+  <span class="pill">Local lookup: ADWR GWSI (live)</span>
+  <span class="pill">Costs: 2026 published AZ ranges</span>
+  <p>Well depths, static water levels and record counts come from the Arizona Department of Water Resources —
+  the Wells55 registry for county summaries, and the Groundwater Site Inventory for the live radius lookup.
+  Cost ranges reflect published 2026 Arizona figures: drilling $25–75/ft depending on formation, complete well systems
+  $20,000–50,000 installed, conventional septic $7,500–15,000, alternative/ATU systems $20,000–40,000,
+  cisterns $8,000–20,000 installed, and hauled water $200–350 per 1,000 gallons.</p>
+  <p><strong>This is an estimate, not a bid.</strong> Drilling outcomes vary with local geology and luck —
+  neighbouring wells can differ by hundreds of feet, and a nearby record is not a promise about your parcel.
+  Get a quote from a licensed driller and confirm septic requirements with the county before you buy.</p>
+</footer>
+
+</div>
+
+<script>
+/* Lead capture endpoint. Replace if you move to a different form service. */
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/xaewqnwk";
+
+const GWSI="https://services.arcgis.com/C34zQ7veRS0V1t04/arcgis/rest/services/GWSI_Sites_2024/FeatureServer/0/query";
+
+const COUNTIES = {
+  "Apache":     {n:27,   avg:494,  sd:279, max:1028, wl:270},
+  "Cochise":    {n:662,  avg:464,  sd:245, max:1500, wl:149},
+  "Coconino":   {n:74,   avg:1253, sd:562, max:2508, wl:712},
+  "Gila":       {n:131,  avg:426,  sd:298, max:1150, wl:112},
+  "Graham":     {n:32,   avg:232,  sd:184, max:950,  wl:58},
+  "Greenlee":   {n:6,    avg:128,  sd:79,  max:260,  wl:47},
+  "La Paz":     {n:33,   avg:787,  sd:330, max:1340, wl:337},
+  "Maricopa":   {n:3384, avg:720,  sd:447, max:2986, wl:219},
+  "Mohave":     {n:111,  avg:587,  sd:404, max:1630, wl:298},
+  "Navajo":     {n:143,  avg:485,  sd:267, max:1370, wl:217},
+  "Pima":       {n:1758, avg:513,  sd:311, max:2786, wl:194},
+  "Pinal":      {n:1874, avg:883,  sd:402, max:2823, wl:313},
+  "Santa Cruz": {n:225,  avg:212,  sd:196, max:1200, wl:54},
+  "Yavapai":    {n:392,  avg:475,  sd:302, max:1700, wl:148},
+  "Yuma":       {n:43,   avg:292,  sd:149, max:657,  wl:96}
+};
+
+const C = {
+  drillFtLow:25, drillFtMid:45, drillFtHigh:75,
+  wellKitLow:8000, wellKitMid:11000, wellKitHigh:15000,
+  cisternLow:8000, cisternMid:13000, cisternHigh:20000,
+  haulYrLow:3000, haulYrMid:4500, haulYrHigh:6500,
+  septicConv:[7500,11000,15000],
+  septicAlt:[20000,28000,40000],
+  septicNone:[1500,3500,6000],
+  solar:[12000,22000,35000],
+  grid:[8000,20000,45000],
+  powerNone:[0,0,0],
+  site:[4000,9000,16000]
+};
+
+let state={county:"Mohave",water:"well",septic:"conv",power:"solar",local:null};
+
+const $=id=>document.getElementById(id);
+const money=v=>"$"+Math.round(v).toLocaleString();
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const sdev=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)*(v-m))));};
+const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const i=Math.floor(s.length/2);
+  return s.length%2?s[i]:(s[i-1]+s[i])/2;};
+
+const sel=$("county"), leadSel=$("leadCounty");
+Object.keys(COUNTIES).forEach(k=>{
+  const o=document.createElement("option");o.value=k;o.textContent=k;
+  if(k===state.county)o.selected=true;sel.appendChild(o);
+  const o2=document.createElement("option");o2.value=k;o2.textContent=k;
+  if(k===state.county)o2.selected=true;leadSel.appendChild(o2);
+});
+
+function seg(id,key){
+  $(id).addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    [...$(id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+    state[key]=b.dataset.v;render();
+  });
+}
+seg("waterSeg","water");seg("septicSeg","septic");seg("powerSeg","power");
+sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;$("lookupMsg").innerHTML="";
+  $("wellList").innerHTML="";render();});
+$("price").addEventListener("input",render);
+$("years").addEventListener("input",render);
+
+$("goBtn").addEventListener("click",lookup);
+$("coords").addEventListener("keydown",e=>{if(e.key==="Enter")lookup();});
+$("radius").addEventListener("change",()=>{if($("coords").value.trim())lookup();});
+
+async function lookup(){
+  const raw=$("coords").value.trim();
+  const m=raw.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
+  const msg=$("lookupMsg"), list=$("wellList");
+  if(!m){msg.innerHTML='<div class="banner b-err">Paste coordinates as <strong>latitude, longitude</strong> — e.g. 35.2140, -114.2230</div>';return;}
+  let lat=parseFloat(m[1]), lng=parseFloat(m[2]);
+  if(Math.abs(lat)>90&&Math.abs(lng)<=90){const t=lat;lat=lng;lng=t;}
+  if(lat<31||lat>37.1||lng<-115||lng>-108.9){
+    msg.innerHTML='<div class="banner b-err">That point is outside Arizona. This tool only has Arizona records.</div>';return;}
+
+  const dist=$("radius").value;
+  const btn=$("goBtn");btn.disabled=true;btn.textContent="Looking…";
+  msg.innerHTML='<div class="banner b-local">Querying Arizona groundwater records…</div>';
+  const url=GWSI+"?geometry="+lng+"%2C"+lat+"&geometryType=esriGeometryPoint&inSR=4326&distance="+dist+
+    "&units=esriSRUnit_Meter&spatialRel=esriSpatialRelIntersects&outFields=SITE_ID%2CWELL_DEPTH%2CWL_DTW%2C"+
+    "DRILL_DATE_TEXT%2CWATER_USE&returnGeometry=false&resultRecordCount=400&f=json";
+  try{
+    const r=await fetch(url);
+    const j=await r.json();
+    if(j.error) throw new Error(j.error.message||"query failed");
+    const recs=(j.features||[]).map(f=>f.attributes);
+    const depths=recs.map(a=>a.WELL_DEPTH).filter(v=>v>0);
+    const dtw=recs.map(a=>a.WL_DTW).filter(v=>v>0);
+    const miles=(dist/1609.34).toFixed(dist<1000?1:0);
+
+    if(depths.length<3){
+      state.local=null;
+      msg.innerHTML='<div class="banner b-thin"><strong>Only '+depths.length+
+        ' well record'+(depths.length===1?'':'s')+' with a depth within '+miles+
+        ' miles.</strong> Not enough to say anything useful about this spot — try a wider radius. '+
+        'Falling back to the county picture, which may be a poor guide here.</div>';
+      list.innerHTML="";
+    }else{
+      state.local={n:depths.length,total:recs.length,avg:mean(depths),sd:sdev(depths),
+        min:Math.min(...depths),max:Math.max(...depths),dtw:median(dtw),miles:miles,lat:lat,lng:lng};
+      const cAvg=COUNTIES[state.county].avg;
+      const ratio=state.local.avg/cAvg;
+      let cmp="";
+      if(ratio>1.35) cmp=" — about <strong>"+ratio.toFixed(1)+"× deeper</strong> than the "+state.county+
+        " county average of "+cAvg+" ft. The county number would badly understate your cost here.";
+      else if(ratio<0.7) cmp=" — noticeably <strong>shallower</strong> than the "+state.county+
+        " county average of "+cAvg+" ft. Better than the county picture suggests.";
+      else cmp=" — broadly in line with the "+state.county+" county average of "+cAvg+" ft.";
+      msg.innerHTML='<div class="banner b-local"><strong>'+depths.length+' wells with recorded depth within '+
+        miles+' miles</strong>'+cmp+'</div>';
+
+      const rows=recs.filter(a=>a.WELL_DEPTH>0).sort((a,b)=>b.WELL_DEPTH-a.WELL_DEPTH).slice(0,40).map(a=>
+        "<tr><td>"+(a.WATER_USE||"—")+"</td><td>"+((a.DRILL_DATE_TEXT||"").slice(0,4)||"—")+
+        "</td><td class='n'>"+a.WELL_DEPTH.toLocaleString()+" ft</td><td class='n'>"+
+        (a.WL_DTW>0?Math.round(a.WL_DTW).toLocaleString()+" ft":"—")+"</td></tr>").join("");
+      list.innerHTML="<table><thead><tr><th>Use</th><th>Drilled</th><th class='n'>Depth</th>"+
+        "<th class='n'>To water</th></tr></thead><tbody>"+rows+"</tbody></table>"+
+        "<div class='src'>Source: ADWR Groundwater Site Inventory, queried live.</div>";
+    }
+  }catch(err){
+    state.local=null;
+    msg.innerHTML='<div class="banner b-err">Could not reach the ADWR groundwater service ('+
+      String(err.message||err)+'). Showing county figures instead.</div>';
+  }
+  btn.disabled=false;btn.textContent="Look up wells";
+  render();
+}
+
+function render(){
+  const cty=COUNTIES[state.county];
+  const L=state.local;
+  const usingLocal=!!L;
+  const src = usingLocal ? L : cty;
+
+  const price=Math.max(0,+$("price").value||0);
+  const years=Math.max(1,+$("years").value||10);
+
+  const dLow=Math.max(60,Math.round(src.avg-0.7*src.sd));
+  const dMid=Math.round(src.avg);
+  const dHigh=Math.round(src.avg+src.sd);
+
+  $("statsTitle").textContent = usingLocal
+    ? "Wells within "+L.miles+" miles of your point"
+    : "What the county records say";
+
+  $("wellStats").innerHTML = usingLocal ? `
+    <div class="stat"><span>Wells with recorded depth</span><b>${L.n}</b></div>
+    <div class="stat"><span>Average depth nearby</span><b>${Math.round(L.avg).toLocaleString()} ft</b></div>
+    <div class="stat"><span>Shallowest / deepest</span><b>${L.min.toLocaleString()} – ${L.max.toLocaleString()} ft</b></div>
+    <div class="stat"><span>Median depth to water</span><b>${L.dtw?Math.round(L.dtw).toLocaleString()+" ft":"no data"}</b></div>
+    <div class="stat"><span>County average, for contrast</span><b>${cty.avg} ft</b></div>` : `
+    <div class="stat"><span>Wells on record</span><b>${cty.n.toLocaleString()}</b></div>
+    <div class="stat"><span>Average depth drilled</span><b>${cty.avg} ft</b></div>
+    <div class="stat"><span>Typical range (±1 sd)</span><b>${dLow}–${dHigh} ft</b></div>
+    <div class="stat"><span>Deepest on record</span><b>${cty.max.toLocaleString()} ft</b></div>
+    <div class="stat"><span>Average static water level</span><b>${cty.wl} ft</b></div>`;
+
+  const spread=src.sd/src.avg;
+  $("confNote").textContent = usingLocal
+    ? (L.n<6 ? "A handful of nearby records — directional, not definitive."
+             : spread>0.5 ? "Nearby wells vary a lot. Budget nearer the deep end."
+             : "Nearby wells are consistent, which makes this a reasonably firm planning number.")
+    : (cty.n<40 ? "Only "+cty.n+" usable records in this county — a weak signal, not a forecast."
+       : spread>0.6 ? "Depths vary enormously across this county. Check your actual spot above."
+       : "Depths here are relatively consistent across the county.");
+
+  let wLow,wMid,wHigh,wLabel,wDetail;
+  if(state.water==="well"){
+    wLow  = dLow*C.drillFtLow   + C.wellKitLow;
+    wMid  = dMid*C.drillFtMid   + C.wellKitMid;
+    wHigh = dHigh*C.drillFtHigh + C.wellKitHigh;
+    wLabel="Well (drilling + pump, casing, tank)";
+    wDetail=dLow+"–"+dHigh+" ft at $"+C.drillFtLow+"–"+C.drillFtHigh+"/ft, based on "+
+      (usingLocal?"wells within "+L.miles+" miles":"the county average");
+  }else{
+    wLow  = C.cisternLow  + C.haulYrLow*years;
+    wMid  = C.cisternMid  + C.haulYrMid*years;
+    wHigh = C.cisternHigh + C.haulYrHigh*years;
+    wLabel="Cistern + "+years+" yr of hauled water";
+    wDetail="$"+C.haulYrLow.toLocaleString()+"–"+C.haulYrHigh.toLocaleString()+"/yr delivered";
+  }
+
+  const sArr = state.septic==="conv"?C.septicConv:state.septic==="alt"?C.septicAlt:C.septicNone;
+  const pArr = state.power==="solar"?C.solar:state.power==="grid"?C.grid:C.powerNone;
+
+  const lows =[price,wLow ,sArr[0],pArr[0],C.site[0]];
+  const mids =[price,wMid ,sArr[1],pArr[1],C.site[1]];
+  const highs=[price,wHigh,sArr[2],pArr[2],C.site[2]];
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  const tLow=sum(lows),tMid=sum(mids),tHigh=sum(highs);
+
+  $("total").textContent=money(tMid);
+  $("totalRange").textContent="Range "+money(tLow)+" – "+money(tHigh)+
+    " · land is "+(price/tMid*100).toFixed(0)+"% of it"+(usingLocal?" · based on nearby wells":"");
+
+  const cols=["#c8a24a","#5b8fb9","#7fa650","#b98bc9","#8a8f7d"];
+  $("bar").innerHTML=mids.map((v,i)=>{
+    const pct=v/tMid*100;
+    return '<div style="width:'+pct+'%;background:'+cols[i]+'">'+(pct>8?pct.toFixed(0)+"%":"")+'</div>';
+  }).join("");
+
+  const mult=tMid/Math.max(price,1);
+  const v=$("verdict");
+  if(price===0){
+    v.className="verdict v-warn";
+    v.innerHTML="Enter what you'd pay for the land to see the ratio.";
+  }else if(mult>=6){
+    v.className="verdict v-bad";
+    v.innerHTML="<strong>Getting to livable costs about "+mult.toFixed(1)+"× the price of the land.</strong> "+
+      "A cheap parcel here isn't a bargain — the land is a rounding error next to the development bill. "+
+      "Price the well before you make the offer, not after.";
+  }else if(mult>=2.5){
+    v.className="verdict v-warn";
+    v.innerHTML="<strong>Development runs about "+mult.toFixed(1)+"× the land price.</strong> "+
+      "Normal for rural Arizona, but only if you budgeted for it. Most buyers don't.";
+  }else{
+    v.className="verdict v-good";
+    v.innerHTML="<strong>Development is about "+mult.toFixed(1)+"× the land price.</strong> "+
+      "A comparatively easy site — the land, not the infrastructure, is the main cost here.";
+  }
+
+  const TAG={
+    you:'<span class="tag t-you" title="A number you entered">you</span>',
+    parcel:'<span class="tag t-parcel" title="Derived from well records near your coordinates">parcel data</span>',
+    county:'<span class="tag t-county" title="Derived from county-wide well records">county data</span>',
+    typical:'<span class="tag t-typical" title="Published statewide range — does NOT vary by location">typical range</span>'
+  };
+  const waterTag = state.water==="haul" ? TAG.typical : (usingLocal?TAG.parcel:TAG.county);
+
+  const rows=[
+    ["Land", TAG.you],
+    ["Water — "+wLabel, waterTag],
+    [state.septic==="conv"?"Conventional septic":state.septic==="alt"?"Alternative / ATU system":"Composting toilet + greywater", TAG.typical],
+    [state.power==="solar"?"Off-grid solar + storage":state.power==="grid"?"Grid extension from road":"Power — skipped", TAG.typical],
+    ["Access, driveway, pad, permits", TAG.typical]
+  ];
+  $("lines").innerHTML=rows.map((r,i)=>
+    "<tr><td>"+r[0]+"<br>"+r[1]+"</td><td class='n'>"+money(lows[i])+"</td><td class='n'><b>"+money(mids[i])+
+    "</b></td><td class='n'>"+money(highs[i])+"</td></tr>").join("")+
+   "<tr><td><strong>Total</strong></td><td class='n'>"+money(tLow)+"</td><td class='n'><b>"+money(tMid)+
+   "</b></td><td class='n'>"+money(tHigh)+"</td></tr>";
+
+  const derived = (state.water==="well");
+  $("assumptions").innerHTML=
+    "<div class='honesty'><strong>Read this before you trust the total.</strong> "+
+    (derived
+      ? "Only the <em>water</em> line reflects your actual location — it's built from "+
+        (usingLocal?"the wells within "+L.miles+" miles of the point you entered":"county well records")+". "
+      : "No line here currently reflects your specific location — hauling costs are a statewide range. ")+
+    "Septic, power and access are <em>published statewide ranges</em>. They do not change when you change county "+
+    "or coordinates, and they can be badly wrong for a particular parcel — septic alone swings from about $7,500 "+
+    "to $40,000 depending on soil, which this tool does not yet measure. Treat those three as placeholders for a "+
+    "real quote, not as estimates for your land.</div>"+
+    "<p style='margin-top:10px'>Water assumption: "+wDetail+
+    ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
+}
+
+$("leadForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if($("leadForm").querySelector('[name=_gotcha]').value) return;  // bot
+
+  const L=state.local;
+  const lead={
+    email:$("leadEmail").value.trim(),
+    county:$("leadCounty").value,
+    apn:$("leadApn").value.trim(),
+    _subject:"Parcel water report request — "+$("leadCounty").value+" — "+$("leadApn").value.trim(),
+    viewing_county:state.county,
+    land_price:+$("price").value||0,
+    water_plan:state.water==="well"?"drill a well":"cistern + hauling",
+    septic_plan:state.septic,
+    power_plan:state.power,
+    looked_up_point:L?L.lat+", "+L.lng:"(none)",
+    nearby_wells:L?L.n:"",
+    nearby_avg_depth_ft:L?Math.round(L.avg):"",
+    submitted_at:new Date().toISOString()
+  };
+
+  const btn=$("leadBtn"), err=$("leadErr");
+  err.innerHTML="";
+
+  btn.disabled=true; btn.textContent="Sending…";
+  try{
+    const r=await fetch(FORMSPREE_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify(lead)
+    });
+    if(r.ok){
+      $("leadForm").style.display="none";
+      $("thanks").style.display="block";
+    }else{
+      const j=await r.json().catch(()=>({}));
+      const m=(j.errors&&j.errors.map(x=>x.message).join(", "))||("Server returned "+r.status);
+      throw new Error(m);
+    }
+  }catch(ex){
+    console.error("LEAD send failed",ex,lead);
+    err.innerHTML='<div class="banner b-err">Couldn\'t send that — '+
+      String(ex.message||ex)+'. Email us directly and we\'ll pull the records by hand.</div>';
+    btn.disabled=false; btn.textContent="Send me the parcel report";
+  }
+});
+
+render();
+</script>
+</body>
+</html>
