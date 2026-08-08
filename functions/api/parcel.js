@@ -133,11 +133,26 @@ async function esri(base, params) {
   } finally { clearTimeout(t); }
 }
 
-// Bounding-box centre of an esri polygon. Good enough to seed a radius search.
+/**
+ * Centre point of any esri geometry. Counties publish parcels as polygons,
+ * points or occasionally polylines — Yavapai's districts layer is points —
+ * so handle all of them rather than assuming rings.
+ */
 function bboxCentre(geom) {
-  if (!geom || !geom.rings || !geom.rings.length) return null;
+  if (!geom) return null;
+
+  // Point geometry: already a coordinate.
+  if (isFinite(geom.x) && isFinite(geom.y)) {
+    return { lon: +geom.x, lat: +geom.y };
+  }
+
+  const vertexSets = geom.rings || geom.paths || (geom.points ? [geom.points] : null);
+  if (!vertexSets || !vertexSets.length) return null;
+
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const ring of geom.rings) for (const [x, y] of ring) {
+  for (const set of vertexSets) for (const v of set) {
+    const x = +v[0], y = +v[1];
+    if (!isFinite(x) || !isFinite(y)) continue;
     if (x < minX) minX = x; if (x > maxX) maxX = x;
     if (y < minY) minY = y; if (y > maxY) maxY = y;
   }
