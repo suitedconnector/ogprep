@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Arizona Cost-to-Livable Calculator — What That Cheap Land Really Costs</title>
+<title>Build Off Grid — Cost to Livable Calculator | Arizona Land</title>
+<meta name="description" content="What will it really cost to make that Arizona parcel livable? Water, septic, power and access — priced from actual well records and USDA soil data for your coordinates, not national averages.">
+<meta property="og:title" content="Build Off Grid — Cost to Livable Calculator">
+<meta property="og:description" content="That $8,000 parcel isn't $8,000. See what water, septic, power and access actually cost on your Arizona land.">
+<meta property="og:type" content="website">
 <style>
   :root{
     --bg:#12140f; --panel:#1b1e17; --panel2:#232720; --line:#333a2c;
@@ -81,13 +85,16 @@
   .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:9px;
     padding:12px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
   .keymap{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+  .soilbox{margin-top:10px;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.55;
+    background:rgba(91,143,185,.13);border:1px solid var(--info)}
+  .soilbox .src{display:block;margin-top:6px}
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <div class="kicker">Off Grid Land — Arizona</div>
+  <div class="kicker">Build Off Grid · Cost to Livable Calculator · Arizona</div>
   <h1>That $8,000 parcel isn't $8,000.</h1>
   <p class="sub">Land is priced per acre. You pay <strong>cost to livable</strong> — water, waste, and power.
   Start with the county picture, then drop in coordinates and this pulls the <strong>actual wells drilled near
@@ -217,7 +224,17 @@
 <footer>
   <span class="pill">County data: ADWR Wells55 registry</span>
   <span class="pill">Local lookup: ADWR GWSI (live)</span>
+  <span class="pill">Soil: USDA-NRCS SSURGO (live)</span>
   <span class="pill">Costs: 2026 published AZ ranges</span>
+  <p><strong>Septic suitability</strong> comes from the Soil Survey Geographic Database (SSURGO), compiled by the
+  National Cooperative Soil Survey over roughly a century of field mapping and laboratory analysis, at scales from
+  1:12,000 to 1:63,360. We query the standard engineering interpretation
+  &ldquo;Septic Tank Absorption Fields,&rdquo; which rates a soil <em>not limited</em>, <em>somewhat limited</em> or
+  <em>very limited</em> for a conventional absorption field. Citation: Soil Survey Staff, Natural Resources
+  Conservation Service, United States Department of Agriculture. <em>Soil Survey Geographic (SSURGO) Database.</em>
+  Available online at <a href="https://sdmdataaccess.sc.egov.usda.gov">sdmdataaccess.sc.egov.usda.gov</a>.
+  It is a planning-scale interpretation, not a substitute for a site-specific percolation test — which your county
+  will require regardless.</p>
   <p>Well depths, static water levels and record counts come from the Arizona Department of Water Resources —
   the Wells55 registry for county summaries, and the Groundwater Site Inventory for the live radius lookup.
   Cost ranges reflect published 2026 Arizona figures: drilling $25–75/ft depending on formation, complete well systems
@@ -268,7 +285,22 @@ const C = {
   site:[4000,9000,16000]
 };
 
-let state={county:"Mohave",water:"well",septic:"conv",power:"solar",local:null};
+let state={county:"Mohave",water:"well",septic:"conv",power:"solar",local:null,soil:null,septicTouched:false};
+
+const SOIL_API="/api/soil";               // Cloudflare Pages Function
+const SOIL_LABEL={
+  not_limited:"Not limited",
+  somewhat_limited:"Somewhat limited",
+  very_limited:"Very limited",
+  unknown:"Not mapped"
+};
+// Soil rating → likely system and cost. Ranges are the published 2026 AZ figures.
+const SOIL_SEPTIC={
+  not_limited:      {mode:"conv", cost:[7500,11000,15000],  note:"Soils here rate <strong>not limited</strong> for a septic absorption field — a conventional system is the likely design."},
+  somewhat_limited: {mode:"conv", cost:[10000,16000,24000], note:"Soils here rate <strong>somewhat limited</strong>. A conventional system is usually still possible, but expect design constraints, a larger field, or engineering."},
+  very_limited:     {mode:"alt",  cost:[20000,28000,40000], note:"Soils here rate <strong>very limited</strong> for a conventional absorption field. Budget for an alternative or engineered system."},
+  unknown:          {mode:null,   cost:null,                note:"No soil survey coverage at this point, so septic falls back to a statewide range."}
+};
 
 const $=id=>document.getElementById(id);
 const money=v=>"$"+Math.round(v).toLocaleString();
@@ -293,6 +325,7 @@ function seg(id,key){
   });
 }
 seg("waterSeg","water");seg("septicSeg","septic");seg("powerSeg","power");
+$("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
 sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;$("lookupMsg").innerHTML="";
   $("wellList").innerHTML="";render();});
 $("price").addEventListener("input",render);
@@ -361,6 +394,20 @@ async function lookup(){
     msg.innerHTML='<div class="banner b-err">Could not reach the ADWR groundwater service ('+
       String(err.message||err)+'). Showing county figures instead.</div>';
   }
+  // Soil / septic suitability for the same point, via the Pages Function.
+  try{
+    const sr=await fetch(SOIL_API+"?lat="+lat+"&lon="+lng);
+    const sj=await sr.json();
+    if(sj.ok){
+      state.soil=sj;
+      const map=SOIL_SEPTIC[sj.rating]||SOIL_SEPTIC.unknown;
+      if(map.mode && !state.septicTouched && state.septic!=="none"){
+        state.septic=map.mode;
+        [...$("septicSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===map.mode));
+      }
+    }else{ state.soil=null; }
+  }catch(_){ state.soil=null; }
+
   btn.disabled=false;btn.textContent="Look up wells";
   render();
 }
@@ -419,7 +466,11 @@ function render(){
     wDetail="$"+C.haulYrLow.toLocaleString()+"–"+C.haulYrHigh.toLocaleString()+"/yr delivered";
   }
 
-  const sArr = state.septic==="conv"?C.septicConv:state.septic==="alt"?C.septicAlt:C.septicNone;
+  // Septic: derived from soil when we have it, otherwise the statewide range.
+  const soilMap = state.soil ? (SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown) : null;
+  const soilDrivesSeptic = !!(soilMap && soilMap.cost && state.septic!=="none" && !state.septicTouched);
+  const sArr = soilDrivesSeptic ? soilMap.cost
+    : (state.septic==="conv"?C.septicConv:state.septic==="alt"?C.septicAlt:C.septicNone);
   const pArr = state.power==="solar"?C.solar:state.power==="grid"?C.grid:C.powerNone;
 
   const lows =[price,wLow ,sArr[0],pArr[0],C.site[0]];
@@ -465,11 +516,18 @@ function render(){
     typical:'<span class="tag t-typical" title="Published statewide range — does NOT vary by location">typical range</span>'
   };
   const waterTag = state.water==="haul" ? TAG.typical : (usingLocal?TAG.parcel:TAG.county);
+  const septicTag = soilDrivesSeptic ? TAG.parcel : TAG.typical;
+  const septicName = (state.septic==="none")
+    ? "Composting toilet + greywater"
+    : (soilDrivesSeptic
+        ? (soilMap.mode==="alt"?"Alternative / ATU system":"Conventional septic")+
+          " — soil rated "+SOIL_LABEL[state.soil.rating].toLowerCase()
+        : (state.septic==="conv"?"Conventional septic":"Alternative / ATU system"));
 
   const rows=[
     ["Land", TAG.you],
     ["Water — "+wLabel, waterTag],
-    [state.septic==="conv"?"Conventional septic":state.septic==="alt"?"Alternative / ATU system":"Composting toilet + greywater", TAG.typical],
+    [septicName, septicTag],
     [state.power==="solar"?"Off-grid solar + storage":state.power==="grid"?"Grid extension from road":"Power — skipped", TAG.typical],
     ["Access, driveway, pad, permits", TAG.typical]
   ];
@@ -479,17 +537,25 @@ function render(){
    "<tr><td><strong>Total</strong></td><td class='n'>"+money(tLow)+"</td><td class='n'><b>"+money(tMid)+
    "</b></td><td class='n'>"+money(tHigh)+"</td></tr>";
 
-  const derived = (state.water==="well");
+  const parcelLines=[];
+  if(state.water==="well") parcelLines.push(usingLocal?"water (wells within "+L.miles+" miles)":"water (county well records)");
+  if(soilDrivesSeptic) parcelLines.push("septic (USDA soil survey at your point)");
+
   $("assumptions").innerHTML=
     "<div class='honesty'><strong>Read this before you trust the total.</strong> "+
-    (derived
-      ? "Only the <em>water</em> line reflects your actual location — it's built from "+
-        (usingLocal?"the wells within "+L.miles+" miles of the point you entered":"county well records")+". "
-      : "No line here currently reflects your specific location — hauling costs are a statewide range. ")+
-    "Septic, power and access are <em>published statewide ranges</em>. They do not change when you change county "+
-    "or coordinates, and they can be badly wrong for a particular parcel — septic alone swings from about $7,500 "+
-    "to $40,000 depending on soil, which this tool does not yet measure. Treat those three as placeholders for a "+
-    "real quote, not as estimates for your land.</div>"+
+    (parcelLines.length
+      ? "Built from your location: <em>"+parcelLines.join("</em> and <em>")+"</em>. "
+      : "No line here currently reflects your specific location. ")+
+    "The remaining lines — "+
+    (soilDrivesSeptic?"power and access":"septic, power and access")+
+    " — are <em>published statewide ranges</em> that do not change with your coordinates. "+
+    "Treat those as placeholders for a real quote, not estimates for your land.</div>"+
+    (state.soil ? "<div class='soilbox'>"+(SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown).note+
+      (state.soil.mapunit?" Soil map unit: <em>"+state.soil.mapunit+"</em>.":"")+
+      (state.soil.reasons&&state.soil.reasons.length
+        ? " Limiting features: "+state.soil.reasons.join(", ").toLowerCase()+"."
+        : "")+
+      " <span class='src'>Source: USDA-NRCS SSURGO, interpretation &ldquo;Septic Tank Absorption Fields.&rdquo;</span></div>" : "")+
     "<p style='margin-top:10px'>Water assumption: "+wDetail+
     ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
 }
