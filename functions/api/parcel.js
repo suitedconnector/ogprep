@@ -53,23 +53,38 @@ const COUNTIES = {
 
   yavapai: {
     name: "Yavapai",
-    url: "https://gis.yavapaiaz.gov/arcgis/rest/services/Parcels/MapServer/0/query",
+    // The districts-by-parcel layer. Same parcel geometry as Parcels/MapServer/0
+    // but pre-joined to fire, flood, sanitary and water district assignments —
+    // the pass/fail factors a dollar figure can't express.
+    url: "https://gis.yavapaiaz.gov/arcgis/rest/services/Districts/FeatureServer/15/query",
     apnField: "PARLABEL",
     apnAltField: "PARNUMASR",
     addrField: "SITUS_ADD_DOR",
-    fields: "PARLABEL,PARNUMASR,SITUS_ADD_DOR,ACRE_DEED,ZONING,NAME,SUBNAME",
+    fields: "PARLABEL,PARNUMASR,SITUS_ADD_DOR,ACRE_DEED,ACRE_CALC,ZONING,NAME,SUBNAME," +
+            "FIREDIST,SANDIST,WATRDIST,FLD_ZONE,In_Flood,UrbRur,INC_MUNI,PostalCommunity",
     // No coordinate columns — derive a point from the polygon's bounding box.
     needsGeometry: true,
     map: a => ({
       apn: a.PARLABEL || a.PARNUMASR,
       address: (a.SITUS_ADD_DOR || "").trim() || null,
       owner: a.NAME || null,
-      acres: a.ACRE_DEED != null && +a.ACRE_DEED > 0 ? +a.ACRE_DEED : null,
+      acres: (a.ACRE_DEED != null && +a.ACRE_DEED > 0) ? +a.ACRE_DEED
+           : (a.ACRE_CALC != null && +a.ACRE_CALC > 0) ? +a.ACRE_CALC : null,
       use: a.SUBNAME || null,
       zoning: a.ZONING || null,
       landValue: null,
       improvementValue: null,
-      improved: null           // unknown from this layer
+      improved: null,          // unknown from this layer
+      districts: {
+        fire: clean(a.FIREDIST),
+        sanitary: clean(a.SANDIST),
+        water: clean(a.WATRDIST),
+        floodZone: clean(a.FLD_ZONE),
+        inFlood: a.In_Flood != null ? String(a.In_Flood) : null,
+        setting: clean(a.UrbRur),
+        municipality: clean(a.INC_MUNI),
+        community: clean(a.PostalCommunity)
+      }
     }),
     // Yavapai publishes building footprints — a more direct development signal
     // than assessed value.
@@ -84,6 +99,13 @@ const COUNTIES = {
       })
     }
   }
+};
+
+// Assessors use a variety of placeholders for "no value".
+const clean = v => {
+  const s = String(v == null ? "" : v).trim();
+  if (!s || /^(none|n\/?a|null|unknown|0)$/i.test(s)) return null;
+  return s;
 };
 
 const json = (body, status = 200) =>

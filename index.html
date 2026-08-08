@@ -112,6 +112,13 @@
     border-radius:8px;padding:9px 11px;font-size:13.5px;font-weight:700;cursor:pointer}
   .matchbtn:hover{border-color:var(--accent)}
   .matchbtn span{display:block;font-weight:500;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .gates{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09)}
+  .gateshdr{font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:8px}
+  .gate{padding:8px 10px;border-radius:7px;margin-bottom:6px;font-size:13px;border-left:3px solid}
+  .g-ok{background:rgba(127,166,80,.11);border-color:var(--good)}
+  .g-warn{background:rgba(211,116,47,.13);border-color:var(--warn)}
+  .gatenote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -542,7 +549,29 @@ function parcelHtml(p){
          (p.improved?money(p.improvementValue)+" (built on)":"none — vacant")+"</b></div>"
       :"")+
     dens+
+    districtHtml(p)+
     "<div class='src'>Source: "+p.source.publisher+".</div></div>";
+}
+
+// Pass/fail factors — the things a dollar figure can't express.
+function districtHtml(p){
+  const d=p.districts; if(!d) return "";
+  const flags=[];
+  if(d.fire) flags.push(["ok","Fire district",d.fire,"Inside a fire district, which insurers require."]);
+  else flags.push(["warn","Fire district","none on record","No fire district means insurance may be expensive or unavailable. Verify before you commit."]);
+  if(d.sanitary) flags.push(["ok","Sanitary district",d.sanitary,"A sewer connection may be possible here — check before budgeting for septic."]);
+  if(d.water) flags.push(["ok","Water district",d.water,"A water district serves this area, so a well may not be your only option."]);
+  if(d.floodZone && !/^(x|area of minimal)/i.test(d.floodZone))
+    flags.push(["warn","FEMA flood zone",d.floodZone,"Mapped flood zone. Expect insurance requirements and possible build restrictions."]);
+  else if(d.floodZone) flags.push(["ok","FEMA flood zone",d.floodZone,"Minimal flood hazard."]);
+  if(d.zoningNote) flags.push(["ok","Zoning",d.zoningNote,""]);
+  if(!flags.length) return "";
+  return "<div class='gates'><div class='gateshdr'>Gates &amp; districts</div>"+
+    flags.map(f=>"<div class='gate g-"+f[0]+"'><div><b>"+f[1]+"</b> · "+f[2]+"</div>"+
+      (f[3]?"<div class='gatenote'>"+f[3]+"</div>":"")+"</div>").join("")+
+    (d.setting||d.community?"<div class='soilrow'><span>Setting</span><b>"+
+      [d.community,d.setting,d.municipality].filter(Boolean).join(" · ")+"</b></div>":"")+
+    "</div>";
 }
 
 function soilProfileHtml(s){
