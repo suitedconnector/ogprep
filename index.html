@@ -558,6 +558,7 @@ function districtHtml(p){
   const d=p.districts; if(!d) return "";
   const flags=[];
   if(d.fire) flags.push(["ok","Fire district",d.fire,"Inside a fire district, which insurers require."]);
+  else if(d.municipality) flags.push(["ok","Fire service","city of "+d.municipality,"Inside an incorporated city, so municipal fire service applies — county fire districts aren't recorded for these parcels."]);
   else flags.push(["warn","Fire district","none on record","No fire district means insurance may be expensive or unavailable. Verify before you commit."]);
   if(d.sanitary) flags.push(["ok","Sanitary district",d.sanitary,"A sewer connection may be possible here — check before budgeting for septic."]);
   if(d.water) flags.push(["ok","Water district",d.water,"A water district serves this area, so a well may not be your only option."]);

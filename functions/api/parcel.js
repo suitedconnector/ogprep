@@ -108,15 +108,22 @@ const clean = v => {
   return s;
 };
 
-const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), {
+/**
+ * Only cache responses that are actually useful. A 200 carrying null
+ * coordinates is a failed lookup wearing a success code — caching it for a week
+ * means a deploy can't fix it, which is exactly the trap this hit once already.
+ */
+const json = (body, status = 200) => {
+  const useful = status === 200 && (body.multiple || (body.ok && body.lat != null && body.lon != null));
+  return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Cache-Control": status === 200 ? `public, max-age=${CACHE_SECONDS}` : "no-store"
+      "Cache-Control": useful ? `public, max-age=${CACHE_SECONDS}` : "no-store"
     }
   });
+};
 
 async function esri(base, params) {
   const u = new URL(base);
