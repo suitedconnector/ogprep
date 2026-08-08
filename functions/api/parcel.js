@@ -1,33 +1,90 @@
 /**
- * Cloudflare Pages Function — /api/parcel?apn=306-32-007J
- *                             /api/parcel?lat=..&lon=..   (reverse: point → parcel)
+ * Cloudflare Pages Function — parcel lookup
  *
- * Looks up an Arizona parcel and returns its coordinates plus context:
- *   - the parcel itself (size, use, land and improvement value)
- *   - how many neighbouring parcels within a half mile are improved
+ *   /api/parcel?apn=306-32-007J&county=mohave
+ *   /api/parcel?address=5413%20W%20Brook%20Dr&county=mohave
+ *   /api/parcel?lat=35.2140&lon=-114.2230           (point → parcel, county auto-detected)
  *
- * That neighbour count is the useful signal. On rural land with no municipal
- * sewer, an improved parcel means somebody obtained a septic permit and a water
- * source at that spot. It is observed evidence, not a modelled interpretation.
+ * Returns the parcel's coordinates plus context, including how developed the
+ * surrounding area is. On rural land with no municipal sewer, a developed
+ * neighbouring parcel means somebody obtained a septic permit and a water
+ * source there — observed evidence rather than a modelled interpretation.
  *
- * Currently Mohave County only — each Arizona county runs its own GIS with its
- * own schema. Add counties to COUNTIES below as they are mapped.
+ * Each Arizona county runs its own GIS with its own schema, so counties are
+ * added as adapters below.
  */
+
+const NEIGHBOUR_RADIUS_M = 805;   // half a mile
+const TIMEOUT_MS = 15000;
+const CACHE_SECONDS = 60 * 60 * 24 * 7;
 
 const COUNTIES = {
   mohave: {
     name: "Mohave",
     url: "https://mcgis.mohave.gov/arcgis/rest/services/Mohave/MapServer/38/query",
     apnField: "PARCEL",
+    addrField: "SITE_ADDRESS",
     fields: "PARCEL,SITE_ADDRESS,PARCEL_SIZE,IMPVALUE,LANDVALUE,PROPUSE,OWNER,LATITUDE,LONGITUDE",
-    // APNs look like 306-32-007J
-    apnPattern: /^\d{3}-\d{2}-\d{3}[A-Z]?$/i
+    // Assessor publishes a point per parcel — no geometry maths needed.
+    point: a => ({ lat: parseFloat(a.LATITUDE), lon: parseFloat(a.LONGITUDE) }),
+    map: a => ({
+      apn: a.PARCEL,
+      address: (a.SITE_ADDRESS || "").trim() || null,
+      owner: a.OWNER || null,
+      acres: a.PARCEL_SIZE != null ? +a.PARCEL_SIZE : null,
+      use: a.PROPUSE || null,
+      zoning: null,
+      landValue: a.LANDVALUE != null ? Math.round(+a.LANDVALUE) : null,
+      improvementValue: a.IMPVALUE != null ? Math.round(+a.IMPVALUE) : null,
+      improved: +a.IMPVALUE > 0
+    }),
+    // Development density from assessor improvement values.
+    neighbours: {
+      kind: "improved_parcels",
+      url: "https://mcgis.mohave.gov/arcgis/rest/services/Mohave/MapServer/38/query",
+      fields: "PARCEL,IMPVALUE",
+      count: rows => ({
+        total: rows.length,
+        hits: rows.filter(r => +r.IMPVALUE > 0).length,
+        label: "parcels within half a mile have improvements"
+      })
+    }
+  },
+
+  yavapai: {
+    name: "Yavapai",
+    url: "https://gis.yavapaiaz.gov/arcgis/rest/services/Parcels/MapServer/0/query",
+    apnField: "PARLABEL",
+    apnAltField: "PARNUMASR",
+    addrField: "SITUS_ADD_DOR",
+    fields: "PARLABEL,PARNUMASR,SITUS_ADD_DOR,ACRE_DEED,ZONING,NAME,SUBNAME",
+    // No coordinate columns — derive a point from the polygon's bounding box.
+    needsGeometry: true,
+    map: a => ({
+      apn: a.PARLABEL || a.PARNUMASR,
+      address: (a.SITUS_ADD_DOR || "").trim() || null,
+      owner: a.NAME || null,
+      acres: a.ACRE_DEED != null && +a.ACRE_DEED > 0 ? +a.ACRE_DEED : null,
+      use: a.SUBNAME || null,
+      zoning: a.ZONING || null,
+      landValue: null,
+      improvementValue: null,
+      improved: null           // unknown from this layer
+    }),
+    // Yavapai publishes building footprints — a more direct development signal
+    // than assessed value.
+    neighbours: {
+      kind: "buildings",
+      url: "https://gis.yavapaiaz.gov/ArcGIS/rest/services/Property/MapServer/5/query",
+      fields: "OBJECTID",
+      count: rows => ({
+        total: null,
+        hits: rows.length,
+        label: "buildings mapped within half a mile"
+      })
+    }
   }
 };
-
-const NEIGHBOUR_RADIUS_M = 805;   // half a mile
-const TIMEOUT_MS = 15000;
-const CACHE_SECONDS = 60 * 60 * 24 * 7;   // parcel data changes slowly
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -39,7 +96,7 @@ const json = (body, status = 200) =>
     }
   });
 
-async function esriQuery(base, params) {
+async function esri(base, params) {
   const u = new URL(base);
   Object.entries({ f: "json", returnGeometry: "false", ...params })
     .forEach(([k, v]) => u.searchParams.set(k, v));
@@ -50,20 +107,44 @@ async function esriQuery(base, params) {
     if (!r.ok) throw new Error("GIS returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.error.message || "GIS query failed");
-    return (j.features || []).map(f => f.attributes);
-  } finally {
-    clearTimeout(t);
+    return j.features || [];
+  } finally { clearTimeout(t); }
+}
+
+// Bounding-box centre of an esri polygon. Good enough to seed a radius search.
+function bboxCentre(geom) {
+  if (!geom || !geom.rings || !geom.rings.length) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const ring of geom.rings) for (const [x, y] of ring) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
   }
+  if (!isFinite(minX)) return null;
+  return { lon: (minX + maxX) / 2, lat: (minY + maxY) / 2 };
 }
 
 function normaliseApn(raw) {
   const s = String(raw || "").trim().toUpperCase();
-  // Accept 30632007J or 306 32 007J and re-hyphenate.
   const bare = s.replace(/[^0-9A-Z]/g, "");
   if (/^\d{8}[A-Z]?$/.test(bare)) {
     return bare.slice(0, 3) + "-" + bare.slice(3, 5) + "-" + bare.slice(5);
   }
   return s;
+}
+const bareApn = raw => String(raw || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+
+async function fetchParcel(cfg, where) {
+  const params = { where, outFields: cfg.fields, resultRecordCount: 12 };
+  if (cfg.needsGeometry) { params.returnGeometry = "true"; params.outSR = "4326"; }
+  return esri(cfg.url, params);
+}
+
+function pointOf(cfg, feat) {
+  if (cfg.point) {
+    const p = cfg.point(feat.attributes);
+    return (isFinite(p.lat) && isFinite(p.lon)) ? p : null;
+  }
+  return bboxCentre(feat.geometry);
 }
 
 export async function onRequestGet({ request }) {
@@ -72,140 +153,106 @@ export async function onRequestGet({ request }) {
   const rawAddr = url.searchParams.get("address");
   const lat = parseFloat(url.searchParams.get("lat"));
   const lon = parseFloat(url.searchParams.get("lon"));
-  const countyKey = (url.searchParams.get("county") || "mohave").toLowerCase();
+  const wantCounty = (url.searchParams.get("county") || "").toLowerCase();
 
-  const cfg = COUNTIES[countyKey];
-  if (!cfg) {
-    return json({
-      ok: false,
-      error: `Parcel lookup is not available for that county yet. Supported: ${Object.keys(COUNTIES).join(", ")}.`,
-      supported: Object.keys(COUNTIES)
-    }, 400);
-  }
-
-  if (!rawApn && !rawAddr && !(isFinite(lat) && isFinite(lon))) {
+  const hasPoint = isFinite(lat) && isFinite(lon);
+  if (!rawApn && !rawAddr && !hasPoint) {
     return json({ ok: false, error: "Provide apn, address, or lat and lon." }, 400);
   }
 
-  try {
-    let parcel = null;
+  // Which counties to try. With a point we can search all of them.
+  let keys;
+  if (wantCounty && COUNTIES[wantCounty]) keys = [wantCounty];
+  else if (hasPoint) keys = Object.keys(COUNTIES);
+  else keys = Object.keys(COUNTIES);
 
-    if (rawAddr) {
-      // Match on the assessor's site address. Rural parcels often have none,
-      // so an empty result here is common and not an error worth alarming over.
-      const term = String(rawAddr).trim().toUpperCase().replace(/'/g, "''");
-      const rows = await esriQuery(cfg.url, {
-        where: `UPPER(SITE_ADDRESS) LIKE '%${term}%'`,
-        outFields: cfg.fields,
-        resultRecordCount: 12
-      });
-      const withAddr = rows.filter(r => (r.SITE_ADDRESS || "").trim());
-      if (!withAddr.length) {
-        return json({
-          ok: false, notFound: true,
-          error: `No parcel in ${cfg.name} County with an address matching “${rawAddr}”. ` +
-                 `Many rural parcels have no assessor address — try the parcel number instead.`
-        }, 404);
-      }
-      if (withAddr.length > 1) {
-        return json({
-          ok: true, multiple: true, county: cfg.name,
-          matches: withAddr.slice(0, 12).map(r => ({
-            apn: r.PARCEL,
-            address: (r.SITE_ADDRESS || "").trim(),
-            acres: r.PARCEL_SIZE != null ? +r.PARCEL_SIZE : null,
-            improved: +r.IMPVALUE > 0
-          }))
-        });
-      }
-      parcel = withAddr[0];
-    } else if (rawApn) {
-      const apn = normaliseApn(rawApn);
-      let rows = await esriQuery(cfg.url, {
-        where: `${cfg.apnField}='${apn.replace(/'/g, "''")}'`,
-        outFields: cfg.fields,
-        resultRecordCount: 5
-      });
-      // Fall back to a prefix match — people drop trailing letters.
-      if (!rows.length) {
-        rows = await esriQuery(cfg.url, {
-          where: `${cfg.apnField} LIKE '${apn.replace(/'/g, "''")}%'`,
-          outFields: cfg.fields,
-          resultRecordCount: 5
-        });
-      }
-      if (!rows.length) {
-        return json({
-          ok: false, notFound: true,
-          error: `No parcel matching ${apn} in ${cfg.name} County. Check the APN, or use coordinates instead.`
-        }, 404);
-      }
-      parcel = rows[0];
-    } else {
-      const rows = await esriQuery(cfg.url, {
-        geometry: `${lon},${lat}`,
-        geometryType: "esriGeometryPoint",
-        inSR: "4326",
-        spatialRel: "esriSpatialRelIntersects",
-        outFields: cfg.fields,
-        resultRecordCount: 1
-      });
-      if (!rows.length) {
-        return json({ ok: false, notFound: true, error: "No parcel found at that point." }, 404);
-      }
-      parcel = rows[0];
-    }
+  const errors = [];
 
-    const plat = parseFloat(parcel.LATITUDE);
-    const plon = parseFloat(parcel.LONGITUDE);
-    const hasPoint = isFinite(plat) && isFinite(plon);
+  for (const key of keys) {
+    const cfg = COUNTIES[key];
+    try {
+      let feat = null;
 
-    // Neighbour development density around the parcel centroid.
-    let neighbours = null;
-    if (hasPoint) {
-      try {
-        const near = await esriQuery(cfg.url, {
-          geometry: `${plon},${plat}`,
-          geometryType: "esriGeometryPoint",
-          inSR: "4326",
-          distance: String(NEIGHBOUR_RADIUS_M),
-          units: "esriSRUnit_Meter",
-          spatialRel: "esriSpatialRelIntersects",
-          outFields: "PARCEL,IMPVALUE,PARCEL_SIZE",
-          resultRecordCount: 400
-        });
-        const usable = near.filter(p => p.PARCEL !== parcel.PARCEL);
-        const improved = usable.filter(p => +p.IMPVALUE > 0);
-        neighbours = {
-          radiusMiles: 0.5,
-          total: usable.length,
-          improved: improved.length,
-          share: usable.length ? Math.round((improved.length / usable.length) * 100) : null
+      if (hasPoint) {
+        const params = {
+          geometry: `${lon},${lat}`, geometryType: "esriGeometryPoint", inSR: "4326",
+          spatialRel: "esriSpatialRelIntersects", outFields: cfg.fields, resultRecordCount: 1
         };
-      } catch (_) { neighbours = null; }
-    }
+        if (cfg.needsGeometry) { params.returnGeometry = "true"; params.outSR = "4326"; }
+        feat = (await esri(cfg.url, params))[0] || null;
 
-    return json({
-      ok: true,
-      county: cfg.name,
-      apn: parcel.PARCEL,
-      address: parcel.SITE_ADDRESS || null,
-      owner: parcel.OWNER || null,
-      acres: parcel.PARCEL_SIZE != null ? +parcel.PARCEL_SIZE : null,
-      use: parcel.PROPUSE || null,
-      landValue: parcel.LANDVALUE != null ? Math.round(+parcel.LANDVALUE) : null,
-      improvementValue: parcel.IMPVALUE != null ? Math.round(+parcel.IMPVALUE) : null,
-      improved: +parcel.IMPVALUE > 0,
-      lat: hasPoint ? plat : null,
-      lon: hasPoint ? plon : null,
-      neighbours,
-      source: {
-        dataset: `${cfg.name} County Tax Parcel data`,
-        publisher: `${cfg.name} County Assessor / GIS`,
-        service: cfg.url.replace(/\/query$/, "")
+      } else if (rawAddr) {
+        const term = String(rawAddr).trim().toUpperCase().replace(/'/g, "''");
+        const rows = await fetchParcel(cfg, `UPPER(${cfg.addrField}) LIKE '%${term}%'`);
+        const withAddr = rows.filter(r => (r.attributes[cfg.addrField] || "").trim());
+        if (withAddr.length > 1) {
+          return json({
+            ok: true, multiple: true, county: cfg.name,
+            matches: withAddr.slice(0, 12).map(r => {
+              const m = cfg.map(r.attributes);
+              return { apn: m.apn, address: m.address, acres: m.acres, improved: m.improved };
+            })
+          });
+        }
+        feat = withAddr[0] || null;
+
+      } else {
+        const apn = normaliseApn(rawApn);
+        const esc = apn.replace(/'/g, "''");
+        let rows = await fetchParcel(cfg, `${cfg.apnField}='${esc}'`);
+        if (!rows.length && cfg.apnAltField) {
+          rows = await fetchParcel(cfg, `${cfg.apnAltField}='${bareApn(rawApn)}'`);
+        }
+        if (!rows.length) rows = await fetchParcel(cfg, `${cfg.apnField} LIKE '${esc}%'`);
+        feat = rows[0] || null;
       }
-    });
-  } catch (e) {
-    return json({ ok: false, error: "Parcel service unavailable: " + (e.message || e) }, 502);
+
+      if (!feat) continue;
+
+      const pt = pointOf(cfg, feat);
+      const base = cfg.map(feat.attributes);
+
+      let neighbours = null;
+      if (pt && cfg.neighbours) {
+        try {
+          const rows = await esri(cfg.neighbours.url, {
+            geometry: `${pt.lon},${pt.lat}`, geometryType: "esriGeometryPoint", inSR: "4326",
+            distance: String(NEIGHBOUR_RADIUS_M), units: "esriSRUnit_Meter",
+            spatialRel: "esriSpatialRelIntersects",
+            outFields: cfg.neighbours.fields, resultRecordCount: 500
+          });
+          const c = cfg.neighbours.count(rows.map(r => r.attributes));
+          neighbours = {
+            kind: cfg.neighbours.kind, radiusMiles: 0.5,
+            total: c.total, hits: c.hits, label: c.label,
+            share: c.total ? Math.round((c.hits / c.total) * 100) : null
+          };
+        } catch (_) { neighbours = null; }
+      }
+
+      return json({
+        ok: true, county: cfg.name, ...base,
+        lat: pt ? pt.lat : null, lon: pt ? pt.lon : null,
+        neighbours,
+        source: {
+          dataset: `${cfg.name} County parcel data`,
+          publisher: `${cfg.name} County Assessor / GIS`,
+          service: cfg.url.replace(/\/query$/, "")
+        }
+      });
+    } catch (e) {
+      errors.push(`${cfg.name}: ${e.message || e}`);
+    }
   }
+
+  return json({
+    ok: false, notFound: true,
+    error: rawAddr
+      ? `No parcel with a matching address in ${keys.map(k => COUNTIES[k].name).join(" or ")} County. ` +
+        `Many rural parcels have no assessor address — try the parcel number.`
+      : `No parcel found in ${keys.map(k => COUNTIES[k].name).join(" or ")} County. ` +
+        `Check the number, or use coordinates.`,
+    supported: Object.values(COUNTIES).map(c => c.name),
+    detail: errors.length ? errors : undefined
+  }, 404);
 }

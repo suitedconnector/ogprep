@@ -178,7 +178,7 @@
       <input type="text" id="coords" placeholder="306-32-007J" autocomplete="off">
       <button id="goBtn" type="button">Look it up</button>
     </div>
-    <div class="note" id="modeHint">Mohave County parcel number, as shown on the assessor record or listing.</div>
+    <div class="note" id="modeHint">Parcel number for Mohave or Yavapai County. We'll search both.</div>
     <div id="parcelBox"></div>
 
     <label for="radius">Search radius</label>
@@ -369,8 +369,8 @@ const APN_RE=/^\s*\d{3}\s*-?\s*\d{2}\s*-?\s*\d{3}\s*[A-Za-z]?\s*$/;
 const COORD_RE=/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/;
 
 const MODES={
-  apn:     {ph:"306-32-007J", hint:"Mohave County parcel number, as shown on the assessor record or listing."},
-  address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
+  apn:     {ph:"306-32-007J  or  800-11-044T", hint:"Parcel number for Mohave or Yavapai County. We'll search both."},
+  address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it, in Mohave or Yavapai. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
   coords:  {ph:"35.2140, -114.2230", hint:"In Google Maps, right-click the parcel and click the coordinates to copy them. Works anywhere in Arizona."}
 };
 let mode="apn";
@@ -510,24 +510,37 @@ function parcelHtml(p){
   const money=v=>v==null?"—":"$"+v.toLocaleString();
   const n=p.neighbours;
   let dens="";
-  if(n && n.total>=5){
-    const verdict = n.share>=60
-      ? "Most parcels around this one are developed, which means septic systems and water supplies have been permitted and built here repeatedly."
-      : n.share>=25
-        ? "A fair number of nearby parcels are developed, so systems have been installed in this area."
-        : "Very few nearby parcels are developed. That may mean cost, access or permitting difficulty — worth asking why.";
-    dens="<div class='densbox'><div class='densnum'>"+n.improved+" of "+n.total+
-      "</div><div class='denslbl'>parcels within half a mile have improvements ("+n.share+"%)</div>"+
-      "<p style='margin:8px 0 0'>"+verdict+"</p></div>";
+  if(n && (n.total>=5 || (n.total==null && n.hits!=null))){
+    let big, verdict;
+    if(n.total!=null){
+      big=n.hits+" of "+n.total;
+      verdict = n.share>=60
+        ? "Most parcels around this one are developed, which means septic systems and water supplies have been permitted and built here repeatedly."
+        : n.share>=25
+          ? "A fair number of nearby parcels are developed, so systems have been installed in this area."
+          : "Very few nearby parcels are developed. That may mean cost, access or permitting difficulty — worth asking why.";
+    }else{
+      big=n.hits;
+      verdict = n.hits>=25
+        ? "Plenty of building nearby, so water and septic have clearly been solved in this area repeatedly."
+        : n.hits>=5
+          ? "Some building nearby — systems have been installed around here."
+          : "Almost nothing built nearby. Worth asking why before you assume it can be done cheaply.";
+    }
+    dens="<div class='densbox'><div class='densnum'>"+big+"</div><div class='denslbl'>"+n.label+
+      (n.share!=null?" ("+n.share+"%)":"")+"</div><p style='margin:8px 0 0'>"+verdict+"</p></div>";
   }
   return "<div class='parcelbox'>"+
     "<div class='soilname'>"+p.apn+(p.address?" · "+p.address:"")+"</div>"+
     "<div class='soilrow'><span>County</span><b>"+p.county+"</b></div>"+
     "<div class='soilrow'><span>Size</span><b>"+(p.acres!=null?p.acres+" acres":"—")+"</b></div>"+
-    (p.use?"<div class='soilrow'><span>Use code</span><b>"+p.use+"</b></div>":"")+
-    "<div class='soilrow'><span>Assessed land value</span><b>"+money(p.landValue)+"</b></div>"+
-    "<div class='soilrow'><span>Improvements</span><b>"+
-      (p.improved?money(p.improvementValue)+" (built on)":"none — vacant")+"</b></div>"+
+    (p.use?"<div class='soilrow'><span>Use / subdivision</span><b>"+p.use+"</b></div>":"")+
+    (p.zoning?"<div class='soilrow'><span>Zoning</span><b>"+p.zoning+"</b></div>":"")+
+    (p.landValue!=null?"<div class='soilrow'><span>Assessed land value</span><b>"+money(p.landValue)+"</b></div>":"")+
+    (p.improved!=null
+      ?"<div class='soilrow'><span>Improvements</span><b>"+
+         (p.improved?money(p.improvementValue)+" (built on)":"none — vacant")+"</b></div>"
+      :"")+
     dens+
     "<div class='src'>Source: "+p.source.publisher+".</div></div>";
 }
