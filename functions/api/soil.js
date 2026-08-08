@@ -107,6 +107,57 @@ export async function onRequestGet({ request }) {
     if (SEVERITY[g] > SEVERITY[worst]) worst = g;
   }
 
+  // Soil profile detail. Best-effort: if this query fails or times out we still
+  // return the rating, which is the part the cost model depends on.
+  let profile = null;
+  try {
+    const detailSql = `
+      SELECT TOP 3 co.compname, co.comppct_r, co.drainagecl, co.hydgrp, co.slope_r,
+             co.taxorder, co.taxclname,
+             (SELECT TOP 1 cr.reskind FROM corestrictions AS cr
+                WHERE cr.cokey = co.cokey ORDER BY cr.resdept_r) AS reskind,
+             (SELECT TOP 1 cr.resdept_r FROM corestrictions AS cr
+                WHERE cr.cokey = co.cokey ORDER BY cr.resdept_r) AS resdepth,
+             (SELECT TOP 1 ch.ksat_r FROM chorizon AS ch
+                WHERE ch.cokey = co.cokey AND ch.hzdept_r <= 50 ORDER BY ch.hzdept_r DESC) AS ksat,
+             (SELECT TOP 1 ch.hzdepb_r FROM chorizon AS ch
+                WHERE ch.cokey = co.cokey ORDER BY ch.hzdepb_r DESC) AS profiledepth
+      FROM mapunit AS mu
+      INNER JOIN component AS co ON co.mukey = mu.mukey
+      WHERE mu.mukey IN (SELECT * FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('${point}'))
+        AND co.majcompflag = 'Yes'
+      ORDER BY co.comppct_r DESC`;
+    const c3 = new AbortController();
+    const t3 = setTimeout(() => c3.abort(), 15000);
+    const d = await sdaQuery(detailSql, c3.signal);
+    clearTimeout(t3);
+    if (d.length) {
+      const seen = new Set();
+      profile = d.map(r => {
+        const ksat = parseFloat(r[9]);
+        return {
+          name: r[0],
+          percent: +r[1] || null,
+          drainage: r[2] || null,
+          hydgroup: r[3] || null,
+          slope: r[4] != null ? +r[4] : null,
+          order: r[5] || null,
+          taxclass: r[6] || null,
+          restriction: r[7] || null,
+          restrictionDepthIn: r[8] != null ? Math.round(+r[8] / 2.54) : null,
+          ksat: isFinite(ksat) ? ksat : null,
+          // Ksat (µm/s) → approximate percolation rate in minutes per inch.
+          percMinPerInch: isFinite(ksat) && ksat > 0 ? Math.round(25400 / (ksat * 60)) : null,
+          profileDepthIn: r[10] != null ? Math.round(+r[10] / 2.54) : null
+        };
+      }).filter(c => {
+        const k = c.name + "|" + c.percent;
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+    }
+  } catch (_) { profile = null; }
+
   // Only ask for the "why" when there is something to explain.
   let reasons = [];
   if (worst === "somewhat_limited" || worst === "very_limited") {
@@ -138,6 +189,7 @@ export async function onRequestGet({ request }) {
     class: components[0] ? components[0].class : null,
     mapunit: components[0] ? components[0].mapunit : null,
     components,
+    profile,
     reasons,
     source: SOURCE,
     cached: false

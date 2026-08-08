@@ -88,6 +88,30 @@
   .soilbox{margin-top:10px;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.55;
     background:rgba(91,143,185,.13);border:1px solid var(--info)}
   .soilbox .src{display:block;margin-top:6px}
+  .soildetails{margin-top:10px;border-top:1px solid rgba(255,255,255,.09);padding-top:8px}
+  .soildetails summary{cursor:pointer;font-weight:700;font-size:12.5px;color:var(--info);
+    text-transform:uppercase;letter-spacing:.09em;list-style:none}
+  .soildetails summary::-webkit-details-marker{display:none}
+  .soildetails summary::before{content:"▸ ";}
+  .soildetails[open] summary::before{content:"▾ ";}
+  .soilcomp{margin-top:10px;padding:10px 12px;background:rgba(0,0,0,.18);border-radius:8px}
+  .soilname{font-weight:800;font-size:13.5px;margin-bottom:6px}
+  .soilpct{font-weight:600;color:var(--muted);font-size:11.5px}
+  .soilrow{display:flex;justify-content:space-between;gap:12px;padding:4px 0;
+    border-bottom:1px dashed rgba(255,255,255,.07);font-size:12.5px}
+  .soilrow:last-child{border-bottom:0}
+  .soilrow span{color:var(--muted)}
+  .soilrow b{text-align:right}
+  .parcelbox{margin-top:12px;padding:14px;border-radius:10px;
+    background:rgba(200,162,74,.10);border:1px solid var(--accent)}
+  .densbox{margin-top:12px;padding:12px;border-radius:8px;background:rgba(0,0,0,.22);text-align:center;font-size:13px}
+  .densnum{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--accent2)}
+  .denslbl{font-size:12px;color:var(--muted);margin-top:2px}
+  .matchlist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .matchbtn{text-align:left;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:9px 11px;font-size:13.5px;font-weight:700;cursor:pointer}
+  .matchbtn:hover{border-color:var(--accent)}
+  .matchbtn span{display:block;font-weight:500;font-size:11.5px;color:var(--muted);margin-top:2px}
 </style>
 </head>
 <body>
@@ -144,12 +168,18 @@
     <div id="wellStats"></div>
     <div class="note" id="confNote"></div>
 
-    <label for="coords">Check a specific spot — paste coordinates</label>
-    <div class="lookup">
-      <input type="text" id="coords" placeholder="35.2140, -114.2230" autocomplete="off">
-      <button id="goBtn" type="button">Look up wells</button>
+    <label>Check a specific parcel — search by</label>
+    <div class="seg" id="modeSeg">
+      <button data-v="apn" aria-pressed="true">Parcel #</button>
+      <button data-v="address" aria-pressed="false">Address</button>
+      <button data-v="coords" aria-pressed="false">Coordinates</button>
     </div>
-    <div class="note">In Google Maps, right-click the parcel and click the coordinates to copy them.</div>
+    <div class="lookup" style="margin-top:10px">
+      <input type="text" id="coords" placeholder="306-32-007J" autocomplete="off">
+      <button id="goBtn" type="button">Look it up</button>
+    </div>
+    <div class="note" id="modeHint">Mohave County parcel number, as shown on the assessor record or listing.</div>
+    <div id="parcelBox"></div>
 
     <label for="radius">Search radius</label>
     <select id="radius">
@@ -285,7 +315,7 @@ const C = {
   site:[4000,9000,16000]
 };
 
-let state={county:"Mohave",water:"well",septic:"conv",power:"solar",local:null,soil:null,septicTouched:false};
+let state={county:"Mohave",water:"well",septic:"conv",power:"solar",local:null,soil:null,parcel:null,septicTouched:false};
 
 const SOIL_API="/api/soil";               // Cloudflare Pages Function
 const SOIL_LABEL={
@@ -335,11 +365,75 @@ $("goBtn").addEventListener("click",lookup);
 $("coords").addEventListener("keydown",e=>{if(e.key==="Enter")lookup();});
 $("radius").addEventListener("change",()=>{if($("coords").value.trim())lookup();});
 
+const APN_RE=/^\s*\d{3}\s*-?\s*\d{2}\s*-?\s*\d{3}\s*[A-Za-z]?\s*$/;
+const COORD_RE=/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/;
+
+const MODES={
+  apn:     {ph:"306-32-007J", hint:"Mohave County parcel number, as shown on the assessor record or listing."},
+  address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
+  coords:  {ph:"35.2140, -114.2230", hint:"In Google Maps, right-click the parcel and click the coordinates to copy them. Works anywhere in Arizona."}
+};
+let mode="apn";
+$("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  mode=b.dataset.v;
+  $("coords").placeholder=MODES[mode].ph;
+  $("modeHint").textContent=MODES[mode].hint;
+  $("coords").value=""; $("parcelBox").innerHTML="";
+});
+
+async function resolveParcel(qs,label){
+  const pbox=$("parcelBox");
+  pbox.innerHTML='<div class="banner b-local">Looking up '+label+'…</div>';
+  const pr=await fetch("/api/parcel?"+qs);
+  const pj=await pr.json();
+  if(pj.ok && pj.multiple){
+    pbox.innerHTML='<div class="banner b-local"><strong>'+pj.matches.length+' parcels match.</strong> Pick one:</div>'+
+      '<div class="matchlist">'+pj.matches.map(x=>
+        '<button type="button" class="matchbtn" data-apn="'+x.apn+'">'+x.address+
+        ' <span>'+x.apn+(x.acres?" · "+x.acres+" ac":"")+(x.improved?" · improved":" · vacant")+'</span></button>').join("")+'</div>';
+    [...pbox.querySelectorAll(".matchbtn")].forEach(b=>b.addEventListener("click",()=>{
+      mode="apn";
+      [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v==="apn"));
+      $("coords").value=b.dataset.apn; $("coords").placeholder=MODES.apn.ph; lookup();
+    }));
+    return null;
+  }
+  if(!pj.ok||pj.lat==null){
+    pbox.innerHTML='<div class="banner b-err">'+(pj.error||"Couldn't locate that parcel.")+'</div>';
+    return null;
+  }
+  state.parcel=pj;
+  pbox.innerHTML=parcelHtml(pj);
+  if(pj.county && [...sel.options].some(o=>o.value===pj.county)){ sel.value=pj.county; state.county=pj.county; }
+  return pj;
+}
+
 async function lookup(){
   const raw=$("coords").value.trim();
-  const m=raw.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
-  const msg=$("lookupMsg"), list=$("wellList");
-  if(!m){msg.innerHTML='<div class="banner b-err">Paste coordinates as <strong>latitude, longitude</strong> — e.g. 35.2140, -114.2230</div>';return;}
+  const msg=$("lookupMsg"), list=$("wellList"), pbox=$("parcelBox");
+  if(!raw){ msg.innerHTML='<div class="banner b-err">Enter something to look up.</div>'; return; }
+
+  let m=null;
+  // Respect the chosen mode, but stay forgiving if the input clearly isn't that type.
+  const looksApn=APN_RE.test(raw), looksCoords=COORD_RE.test(raw)&&/[.,]/.test(raw)&&!looksApn;
+
+  if(mode==="coords"||(looksCoords&&mode!=="address")){
+    state.parcel=null; pbox.innerHTML="";
+    m=raw.match(COORD_RE);
+  }else{
+    const qs = (mode==="address"&&!looksApn)
+      ? "address="+encodeURIComponent(raw)
+      : "apn="+encodeURIComponent(raw.replace(/\s/g,""));
+    let pj;
+    try{ pj=await resolveParcel(qs, mode==="address"?"“"+raw+"”":"parcel "+raw); }
+    catch(e){ pbox.innerHTML='<div class="banner b-err">Parcel lookup failed: '+(e.message||e)+'</div>'; return; }
+    if(!pj) return;
+    m=[null,String(pj.lat),String(pj.lon)];
+  }
+
+  if(!m){msg.innerHTML='<div class="banner b-err">Couldn\'t read that. Use a parcel number, a street address, or <strong>latitude, longitude</strong>.</div>';return;}
   let lat=parseFloat(m[1]), lng=parseFloat(m[2]);
   if(Math.abs(lat)>90&&Math.abs(lng)<=90){const t=lat;lat=lng;lng=t;}
   if(lat<31||lat>37.1||lng<-115||lng>-108.9){
@@ -410,6 +504,53 @@ async function lookup(){
 
   btn.disabled=false;btn.textContent="Look up wells";
   render();
+}
+
+function parcelHtml(p){
+  const money=v=>v==null?"—":"$"+v.toLocaleString();
+  const n=p.neighbours;
+  let dens="";
+  if(n && n.total>=5){
+    const verdict = n.share>=60
+      ? "Most parcels around this one are developed, which means septic systems and water supplies have been permitted and built here repeatedly."
+      : n.share>=25
+        ? "A fair number of nearby parcels are developed, so systems have been installed in this area."
+        : "Very few nearby parcels are developed. That may mean cost, access or permitting difficulty — worth asking why.";
+    dens="<div class='densbox'><div class='densnum'>"+n.improved+" of "+n.total+
+      "</div><div class='denslbl'>parcels within half a mile have improvements ("+n.share+"%)</div>"+
+      "<p style='margin:8px 0 0'>"+verdict+"</p></div>";
+  }
+  return "<div class='parcelbox'>"+
+    "<div class='soilname'>"+p.apn+(p.address?" · "+p.address:"")+"</div>"+
+    "<div class='soilrow'><span>County</span><b>"+p.county+"</b></div>"+
+    "<div class='soilrow'><span>Size</span><b>"+(p.acres!=null?p.acres+" acres":"—")+"</b></div>"+
+    (p.use?"<div class='soilrow'><span>Use code</span><b>"+p.use+"</b></div>":"")+
+    "<div class='soilrow'><span>Assessed land value</span><b>"+money(p.landValue)+"</b></div>"+
+    "<div class='soilrow'><span>Improvements</span><b>"+
+      (p.improved?money(p.improvementValue)+" (built on)":"none — vacant")+"</b></div>"+
+    dens+
+    "<div class='src'>Source: "+p.source.publisher+".</div></div>";
+}
+
+function soilProfileHtml(s){
+  const p = s && s.profile;
+  if(!p || !p.length) return "";
+  const rows = p.map(c=>{
+    const bits=[];
+    if(c.drainage) bits.push(["Drainage", c.drainage]);
+    if(c.hydgroup) bits.push(["Hydrologic group", c.hydgroup+" ("+({A:"fast infiltration",B:"moderate",C:"slow",D:"very slow"}[c.hydgroup[0]]||"—")+")"]);
+    if(c.percMinPerInch) bits.push(["Est. percolation", "~"+c.percMinPerInch+" min/inch"]);
+    if(c.slope!=null) bits.push(["Slope", c.slope+"%"]);
+    if(c.restriction) bits.push(["Restrictive layer", c.restriction+(c.restrictionDepthIn!=null?" at ~"+c.restrictionDepthIn+'"':"")]);
+    else if(c.profileDepthIn) bits.push(["Profile depth", "~"+c.profileDepthIn+'" to bedrock or deeper']);
+    if(c.taxclass) bits.push(["Classification", c.taxclass]);
+    return "<div class='soilcomp'><div class='soilname'>"+c.name+
+      (c.percent?" <span class='soilpct'>"+c.percent+"% of this map unit</span>":"")+"</div>"+
+      bits.map(b=>"<div class='soilrow'><span>"+b[0]+"</span><b>"+b[1]+"</b></div>").join("")+"</div>";
+  }).join("");
+  return "<details class='soildetails'><summary>Soil profile detail</summary>"+rows+
+    "<div class='src'>Percolation is estimated from saturated hydraulic conductivity (Ksat) and is a rough "+
+    "planning figure — it is not a perc test result. Your county will require an actual site evaluation.</div></details>";
 }
 
 function render(){
@@ -555,6 +696,7 @@ function render(){
       (state.soil.reasons&&state.soil.reasons.length
         ? " Limiting features: "+state.soil.reasons.join(", ").toLowerCase()+"."
         : "")+
+      soilProfileHtml(state.soil)+
       " <span class='src'>Source: USDA-NRCS SSURGO, interpretation &ldquo;Septic Tank Absorption Fields.&rdquo;</span></div>" : "")+
     "<p style='margin-top:10px'>Water assumption: "+wDetail+
     ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
@@ -575,6 +717,11 @@ $("leadForm").addEventListener("submit",async e=>{
     water_plan:state.water==="well"?"drill a well":"cistern + hauling",
     septic_plan:state.septic,
     power_plan:state.power,
+    resolved_parcel:state.parcel?(state.parcel.apn+" · "+(state.parcel.acres??"?")+" ac · "+
+      (state.parcel.improved?"improved":"vacant")):"(none)",
+    neighbours_improved:state.parcel&&state.parcel.neighbours
+      ?state.parcel.neighbours.improved+"/"+state.parcel.neighbours.total:"",
+    soil_rating:state.soil?state.soil.rating:"",
     looked_up_point:L?L.lat+", "+L.lng:"(none)",
     nearby_wells:L?L.n:"",
     nearby_avg_depth_ft:L?Math.round(L.avg):"",
