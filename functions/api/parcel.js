@@ -204,11 +204,35 @@ export async function onRequestGet({ request }) {
     return json({ ok: false, error: "Provide apn, address, or lat and lon." }, 400);
   }
 
-  // Which counties to try. With a point we can search all of them.
+  /**
+   * County selection.
+   *
+   * Arizona APNs share a book-map-parcel shape across counties, so the same
+   * number can exist in several of them. Searching every county for an APN
+   * therefore returns whichever county answers first — confidently, and
+   * possibly wrongly. If the caller names a county we honour it strictly:
+   * either we have an adapter for it, or we say so.
+   */
   let keys;
-  if (wantCounty && COUNTIES[wantCounty]) keys = [wantCounty];
-  else if (hasPoint) keys = Object.keys(COUNTIES);
-  else keys = Object.keys(COUNTIES);
+  if (wantCounty) {
+    if (!COUNTIES[wantCounty]) {
+      return json({
+        ok: false,
+        unsupportedCounty: true,
+        requested: wantCounty,
+        error: `Parcel lookup isn't available for that county yet — only ` +
+               `${Object.values(COUNTIES).map(c => c.name).join(" and ")}. ` +
+               `Use coordinates instead: well and soil data work anywhere in Arizona.`,
+        supported: Object.values(COUNTIES).map(c => c.name)
+      }, 400);
+    }
+    keys = [wantCounty];
+  } else if (hasPoint) {
+    // Geometry disambiguates, so trying every county is safe here.
+    keys = Object.keys(COUNTIES);
+  } else {
+    keys = Object.keys(COUNTIES);
+  }
 
   const errors = [];
 

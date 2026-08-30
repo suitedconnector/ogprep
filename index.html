@@ -288,7 +288,7 @@
 /* Lead capture endpoint. Replace if you move to a different form service. */
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/xaewqnwk";
 
-const GWSI="https://services.arcgis.com/C34zQ7veRS0V1t04/arcgis/rest/services/GWSI_Sites_2024/FeatureServer/0/query";
+const WELLS_API="/api/wells";   // Cloudflare Pages Function proxying ADWR GWSI
 
 const COUNTIES = {
   "Apache":     {n:27,   avg:494,  sd:279, max:1028, wl:270},
@@ -346,13 +346,35 @@ const sdev=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.ma
 const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const i=Math.floor(s.length/2);
   return s.length%2?s[i]:(s[i-1]+s[i])/2;};
 
+// Counties with a parcel/APN adapter. Everywhere else is coordinates-only.
+const APN_COUNTIES=["Mohave","Yavapai"];
+
 const sel=$("county"), leadSel=$("leadCounty");
 Object.keys(COUNTIES).forEach(k=>{
-  const o=document.createElement("option");o.value=k;o.textContent=k;
+  const supported=APN_COUNTIES.includes(k);
+  const o=document.createElement("option");o.value=k;
+  o.textContent=k+(supported?"":"  — coordinates only");
   if(k===state.county)o.selected=true;sel.appendChild(o);
   const o2=document.createElement("option");o2.value=k;o2.textContent=k;
   if(k===state.county)o2.selected=true;leadSel.appendChild(o2);
 });
+
+function syncModeAvailability(){
+  const supported=APN_COUNTIES.includes(state.county);
+  [...$("modeSeg").children].forEach(b=>{
+    const off = !supported && b.dataset.v!=="coords";
+    b.disabled=off; b.style.opacity=off?".4":"";
+    b.title=off?"Parcel and address search aren't available for "+state.county+" yet":"";
+  });
+  if(!supported && mode!=="coords"){
+    mode="coords";
+    [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v==="coords"));
+    $("coords").placeholder=MODES.coords.ph;
+    $("modeHint").textContent="Parcel search isn't available for "+state.county+
+      " yet — enter the parcel's GPS coordinates instead. Well and soil data work anywhere in Arizona. "+
+      "In Google Maps, right-click the parcel and click the coordinates that appear to copy them.";
+  }
+}
 
 function seg(id,key){
   $(id).addEventListener("click",e=>{
@@ -363,8 +385,9 @@ function seg(id,key){
 }
 seg("waterSeg","water");seg("septicSeg","septic");seg("powerSeg","power");
 $("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
-sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;$("lookupMsg").innerHTML="";
-  $("wellList").innerHTML="";render();});
+sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;state.parcel=null;state.soil=null;
+  $("lookupMsg").innerHTML=""; $("wellList").innerHTML=""; $("parcelBox").innerHTML="";
+  syncModeAvailability(); render();});
 $("price").addEventListener("input",render);
 $("years").addEventListener("input",render);
 
@@ -378,7 +401,7 @@ const COORD_RE=/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/;
 const MODES={
   apn:     {ph:"306-32-007J  or  800-11-044T", hint:"Parcel number for Mohave or Yavapai County. We'll search both."},
   address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it, in Mohave or Yavapai. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
-  coords:  {ph:"35.2140, -114.2230", hint:"In Google Maps, right-click the parcel and click the coordinates to copy them. Works anywhere in Arizona."}
+  coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Works anywhere in Arizona."}
 };
 let mode="apn";
 $("modeSeg").addEventListener("click",e=>{
@@ -408,7 +431,16 @@ async function resolveParcel(qs,label){
     return null;
   }
   if(!pj.ok||pj.lat==null){
-    pbox.innerHTML='<div class="banner b-err">'+(pj.error||"Couldn't locate that parcel.")+'</div>';
+    pbox.innerHTML='<div class="banner '+(pj.unsupportedCounty?"b-thin":"b-err")+'">'+
+      (pj.error||"Couldn't locate that parcel.")+'</div>';
+    return null;
+  }
+  // Guard against a cross-county match slipping through.
+  if(pj.county && pj.county.toLowerCase()!==state.county.toLowerCase()){
+    pbox.innerHTML='<div class="banner b-err"><strong>County mismatch.</strong> You selected '+
+      state.county+', but that parcel number resolved in '+pj.county+
+      '. Arizona parcel numbers repeat across counties — check which county the parcel is actually in.</div>';
+    state.parcel=null;
     return null;
   }
   state.parcel=pj;
@@ -430,9 +462,12 @@ async function lookup(){
     state.parcel=null; pbox.innerHTML="";
     m=raw.match(COORD_RE);
   }else{
-    const qs = (mode==="address"&&!looksApn)
+    // Always scope to the selected county. Arizona APNs repeat across counties,
+    // so an unscoped search can match the wrong one and look convincing.
+    const cKey = state.county.toLowerCase().replace(/[^a-z]/g,"");
+    const qs = ((mode==="address"&&!looksApn)
       ? "address="+encodeURIComponent(raw)
-      : "apn="+encodeURIComponent(raw.replace(/\s/g,""));
+      : "apn="+encodeURIComponent(raw.replace(/\s/g,"")))+"&county="+cKey;
     let pj;
     try{ pj=await resolveParcel(qs, mode==="address"?"“"+raw+"”":"parcel "+raw); }
     catch(e){ pbox.innerHTML='<div class="banner b-err">Parcel lookup failed: '+(e.message||e)+'</div>'; return; }
@@ -449,28 +484,26 @@ async function lookup(){
   const dist=$("radius").value;
   const btn=$("goBtn");btn.disabled=true;btn.textContent="Looking…";
   msg.innerHTML='<div class="banner b-local">Querying Arizona groundwater records…</div>';
-  const url=GWSI+"?geometry="+lng+"%2C"+lat+"&geometryType=esriGeometryPoint&inSR=4326&distance="+dist+
-    "&units=esriSRUnit_Meter&spatialRel=esriSpatialRelIntersects&outFields=SITE_ID%2CWELL_DEPTH%2CWL_DTW%2C"+
-    "DRILL_DATE_TEXT%2CWATER_USE&returnGeometry=false&resultRecordCount=400&f=json";
   try{
-    const r=await fetch(url);
+    // Routed through our own Function: ADWR does not allow cross-origin calls
+    // from the browser, and the proxy caches results at the edge.
+    const r=await fetch(WELLS_API+"?lat="+lat+"&lon="+lng+"&radius="+dist);
     const j=await r.json();
-    if(j.error) throw new Error(j.error.message||"query failed");
-    const recs=(j.features||[]).map(f=>f.attributes);
-    const depths=recs.map(a=>a.WELL_DEPTH).filter(v=>v>0);
-    const dtw=recs.map(a=>a.WL_DTW).filter(v=>v>0);
-    const miles=(dist/1609.34).toFixed(dist<1000?1:0);
+    if(!j.ok) throw new Error(j.error||"query failed");
+    const depths=j.wells.map(w=>w.depth);
+    const miles=j.radiusMiles;
 
-    if(depths.length<3){
+    if(j.withDepth<3){
       state.local=null;
-      msg.innerHTML='<div class="banner b-thin"><strong>Only '+depths.length+
-        ' well record'+(depths.length===1?'':'s')+' with a depth within '+miles+
+      msg.innerHTML='<div class="banner b-thin"><strong>Only '+j.withDepth+
+        ' well record'+(j.withDepth===1?'':'s')+' with a depth within '+miles+
         ' miles.</strong> Not enough to say anything useful about this spot — try a wider radius. '+
         'Falling back to the county picture, which may be a poor guide here.</div>';
       list.innerHTML="";
     }else{
-      state.local={n:depths.length,total:recs.length,avg:mean(depths),sd:sdev(depths),
-        min:Math.min(...depths),max:Math.max(...depths),dtw:median(dtw),miles:miles,lat:lat,lng:lng};
+      const s=j.stats;
+      state.local={n:j.withDepth,total:j.found,avg:s.avg,sd:s.sd,
+        min:s.min,max:s.max,dtw:s.medianDepthToWater,miles:miles,lat:lat,lng:lng};
       const cAvg=COUNTIES[state.county].avg;
       const ratio=state.local.avg/cAvg;
       let cmp="";
@@ -482,13 +515,13 @@ async function lookup(){
       msg.innerHTML='<div class="banner b-local"><strong>'+depths.length+' wells with recorded depth within '+
         miles+' miles</strong>'+cmp+'</div>';
 
-      const rows=recs.filter(a=>a.WELL_DEPTH>0).sort((a,b)=>b.WELL_DEPTH-a.WELL_DEPTH).slice(0,40).map(a=>
-        "<tr><td>"+(a.WATER_USE||"—")+"</td><td>"+((a.DRILL_DATE_TEXT||"").slice(0,4)||"—")+
-        "</td><td class='n'>"+a.WELL_DEPTH.toLocaleString()+" ft</td><td class='n'>"+
-        (a.WL_DTW>0?Math.round(a.WL_DTW).toLocaleString()+" ft":"—")+"</td></tr>").join("");
+      const rows=j.wells.slice(0,40).map(w=>
+        "<tr><td>"+(w.use||"—")+"</td><td>"+(w.drilled||"—")+
+        "</td><td class='n'>"+w.depth.toLocaleString()+" ft</td><td class='n'>"+
+        (w.depthToWater?Math.round(w.depthToWater).toLocaleString()+" ft":"—")+"</td></tr>").join("");
       list.innerHTML="<table><thead><tr><th>Use</th><th>Drilled</th><th class='n'>Depth</th>"+
         "<th class='n'>To water</th></tr></thead><tbody>"+rows+"</tbody></table>"+
-        "<div class='src'>Source: ADWR Groundwater Site Inventory, queried live.</div>";
+        "<div class='src'>Source: ADWR Groundwater Site Inventory"+(j.cached?" (cached)":", queried live")+".</div>";
     }
   }catch(err){
     state.local=null;
@@ -797,6 +830,7 @@ $("leadForm").addEventListener("submit",async e=>{
   }
 });
 
+syncModeAvailability();
 render();
 </script>
 </body>
