@@ -80,7 +80,16 @@
   .maphdr{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
     color:var(--muted);margin-bottom:8px}
   .wellmap{width:100%;height:auto;display:block;max-width:340px;margin:0 auto}
-  .wellmap circle[fill]:hover{stroke:#fff;stroke-width:2}
+  .welldot{cursor:pointer}
+  .welldot text{pointer-events:none;user-select:none}
+  .welldot:hover circle,.welldot:focus circle{stroke:#fff;stroke-width:2}
+  .welldot:focus{outline:none}
+  .welldot.sel circle{stroke:#fff;stroke-width:3}
+  td.wn{font-weight:800;color:var(--accent);width:2em}
+  .welldetail{margin-top:10px;padding:11px 13px;border-radius:8px;font-size:12.5px;
+    background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--muted)}
+  .welldetail .soilrow{font-size:12.5px}
+  .welldetail b{color:var(--ink)}
   .maplegend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
   .maplegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
   .mapgrad{flex:0 1 70px;height:7px;border-radius:4px;
@@ -553,13 +562,15 @@ async function lookup(){
       msg.innerHTML='<div class="banner b-local"><strong>'+depths.length+' wells with recorded depth within '+
         miles+' miles</strong>'+cmp+'</div>'+wide;
 
+      // Shared numbering so the map and the table refer to the same wells.
+      j.wells.forEach((w,i)=>{ w.n=i+1; });
       const rows=j.wells.slice(0,40).map(w=>
-        "<tr><td>"+(w.use||"—")+"</td><td>"+(w.drilled||"—")+
+        "<tr><td class='wn'>"+w.n+"</td><td>"+(w.use||"—")+"</td><td>"+(w.drilled||"—")+
         "</td><td class='n'>"+w.depth.toLocaleString()+" ft</td><td class='n'>"+
         (w.miles!=null?w.miles+" mi":"—")+"</td><td class='n'>"+
         (w.depthToWater?Math.round(w.depthToWater).toLocaleString()+" ft":"—")+"</td></tr>").join("");
       list.innerHTML=wellMapHtml(j,lat,lng)+
-        "<table><thead><tr><th>Use</th><th>Drilled</th><th class='n'>Depth</th>"+
+        "<table><thead><tr><th>#</th><th>Use</th><th>Drilled</th><th class='n'>Depth</th>"+
         "<th class='n'>Away</th><th class='n'>To water</th></tr></thead><tbody>"+rows+"</tbody></table>"+
         "<div class='src'>Source: ADWR Groundwater Site Inventory"+(j.cached?" (cached)":", queried live")+".</div>";
     }
@@ -619,17 +630,23 @@ function wellMapHtml(j,lat,lng){
     `<circle cx="${C}" cy="${C}" r="${(m/R)*usable}" fill="none" stroke="rgba(255,255,255,.13)" stroke-dasharray="3 4"/>`+
     `<text x="${C+2}" y="${C-(m/R)*usable+11}" font-size="9" fill="#8b917d">${m.toFixed(m<1?2:1)} mi</text>`).join("");
 
-  const dots=pts.map(w=>{
+  window.__wellPts=pts;   // for the click handler
+  const dots=pts.map((w,i)=>{
     const x=px(w), y=py(w);
     if(!isFinite(x)||!isFinite(y)) return "";
-    const label=`${w.depth.toLocaleString()} ft`+(w.drilled?` · drilled ${w.drilled}`:"")+
+    const label=`Well ${w.n} · ${w.depth.toLocaleString()} ft`+(w.drilled?` · drilled ${w.drilled}`:"")+
       (w.use?` · ${w.use}`:"")+(w.miles!=null?` · ${w.miles} mi away`:"");
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5" fill="${shade(w.depth)}" `+
-           `stroke="rgba(0,0,0,.45)" stroke-width="1"><title>${label}</title></circle>`;
+    return `<g class="welldot" data-i="${i}" tabindex="0" role="button" aria-label="${label}">`+
+             `<title>${label}</title>`+
+             `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="${shade(w.depth)}" `+
+               `stroke="rgba(0,0,0,.5)" stroke-width="1"/>`+
+             `<text x="${x.toFixed(1)}" y="${(y+3.2).toFixed(1)}" text-anchor="middle" `+
+               `font-size="9.5" font-weight="700" fill="#14160f">${w.n}</text>`+
+           `</g>`;
   }).join("");
 
   return `<div class="mapwrap">
-    <div class="maphdr">Wells within ${R} miles · hover a dot for detail</div>
+    <div class="maphdr">Wells within ${R} miles · numbered deepest first · tap for detail</div>
     <svg viewBox="0 0 ${S} ${S}" class="wellmap" role="img"
          aria-label="Scatter map of ${pts.length} wells around your point">
       ${rings}
@@ -643,8 +660,42 @@ function wellMapHtml(j,lat,lng){
       <span><i style="background:${shade(dmax)}"></i>${Math.round(dmax).toLocaleString()} ft</span>
       <span style="margin-left:auto"><i style="background:#c8a24a"></i>your point</span>
     </div>
+    <div id="welldetail" class="welldetail">Tap any dot to see that well's record.</div>
     <div class="src">${pts.length} of ${j.withDepth} wells have mapped coordinates. North is up.</div>
   </div>`;
+}
+
+// Delegated so it survives the map being re-rendered.
+document.addEventListener("click",e=>{
+  const dot=e.target.closest && e.target.closest(".welldot");
+  if(!dot) return;
+  showWell(+dot.dataset.i, dot);
+});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ") return;
+  const dot=e.target.closest && e.target.closest(".welldot");
+  if(!dot) return;
+  e.preventDefault(); showWell(+dot.dataset.i, dot);
+});
+
+function showWell(i,dot){
+  const w=(window.__wellPts||[])[i], box=$("welldetail");
+  if(!w||!box) return;
+  document.querySelectorAll(".welldot.sel").forEach(d=>d.classList.remove("sel"));
+  dot.classList.add("sel");
+  const row=(lbl,val)=>val==null||val===""?"":"<div class='soilrow'><span>"+lbl+"</span><b>"+val+"</b></div>";
+  const yield_ = w.depthToWater!=null ? (w.depth-w.depthToWater) : null;
+  box.innerHTML=
+    "<div class='soilname'>Well "+w.n+"</div>"+
+    row("Total depth", w.depth.toLocaleString()+" ft")+
+    row("Depth to water", w.depthToWater!=null?Math.round(w.depthToWater).toLocaleString()+" ft":"not recorded")+
+    row("Water column", yield_!=null&&yield_>0?Math.round(yield_).toLocaleString()+" ft of standing water":null)+
+    row("Distance from your point", w.miles!=null?w.miles+" mi":null)+
+    row("Drilled", w.drilled||"not recorded")+
+    row("Recorded use", w.use||"not recorded")+
+    row("Coordinates", w.lat.toFixed(5)+", "+w.lon.toFixed(5))+
+    "<div class='src'>ADWR record. Depth to water is the level when last measured, which may be decades ago — "+
+    "Arizona water tables have generally fallen since.</div>";
 }
 
 function parcelHtml(p){
