@@ -19,6 +19,16 @@ const sdev = a => {
   const m = mean(a);
   return Math.sqrt(mean(a.map(v => (v - m) * (v - m))));
 };
+// Great-circle distance in miles.
+function haversineMiles(lat1, lon1, lat2, lon2) {
+  const R = 3958.7613;
+  const rad = d => d * Math.PI / 180;
+  const dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 const median = a => {
   if (!a.length) return null;
   const s = [...a].sort((x, y) => x - y);
@@ -63,7 +73,7 @@ export async function onRequestGet({ request }) {
     distance: String(radius),
     units: "esriSRUnit_Meter",
     spatialRel: "esriSpatialRelIntersects",
-    outFields: "SITE_ID,WELL_DEPTH,WL_DTW,DRILL_DATE_TEXT,WATER_USE",
+    outFields: "SITE_ID,WELL_DEPTH,WL_DTW,DRILL_DATE_TEXT,WATER_USE,DD_LAT,DD_LONG",
     returnGeometry: "false",
     resultRecordCount: "400",
     f: "json"
@@ -104,12 +114,20 @@ export async function onRequestGet({ request }) {
       .filter(a => +a.WELL_DEPTH > 0)
       .sort((a, b) => b.WELL_DEPTH - a.WELL_DEPTH)
       .slice(0, 60)
-      .map(a => ({
-        use: a.WATER_USE || null,
-        drilled: (a.DRILL_DATE_TEXT || "").slice(0, 4) || null,
-        depth: +a.WELL_DEPTH,
-        depthToWater: +a.WL_DTW > 0 ? +a.WL_DTW : null
-      })),
+      .map(a => {
+        const wlat = parseFloat(a.DD_LAT), wlon = parseFloat(a.DD_LONG);
+        const hasPt = isFinite(wlat) && isFinite(wlon);
+        return {
+          use: a.WATER_USE || null,
+          drilled: (a.DRILL_DATE_TEXT || "").slice(0, 4) || null,
+          depth: +a.WELL_DEPTH,
+          depthToWater: +a.WL_DTW > 0 ? +a.WL_DTW : null,
+          lat: hasPt ? wlat : null,
+          lon: hasPt ? wlon : null,
+          // Straight-line distance from the search point, in miles.
+          miles: hasPt ? +(haversineMiles(lat, lon, wlat, wlon).toFixed(2)) : null
+        };
+      }),
     source: {
       dataset: "Groundwater Site Inventory (GWSI)",
       publisher: "Arizona Department of Water Resources",
