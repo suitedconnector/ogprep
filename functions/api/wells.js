@@ -13,6 +13,13 @@ const GWSI = "https://services.arcgis.com/C34zQ7veRS0V1t04/arcgis/rest/services/
 const TIMEOUT_MS = 20000;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
 
+/**
+ * Bump this whenever the response shape changes. Cached entries are keyed by
+ * it, so old payloads are abandoned rather than served for another month.
+ * v2 — added lat/lon/miles per well for the map.
+ */
+const SCHEMA = "v2";
+
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 const sdev = a => {
   if (a.length < 2) return 0;
@@ -57,7 +64,7 @@ export async function onRequestGet({ request }) {
     return json({ ok: false, outsideArizona: true, error: "That point is outside Arizona. ADWR well records only cover Arizona." }, 400);
   }
 
-  const key = `https://wells-cache/${lat.toFixed(4)},${lon.toFixed(4)}/${radius}`;
+  const key = `https://wells-cache/${SCHEMA}/${lat.toFixed(4)},${lon.toFixed(4)}/${radius}`;
   const cache = caches.default;
   const hit = await cache.match(key);
   if (hit) {

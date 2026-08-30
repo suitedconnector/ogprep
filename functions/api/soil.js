@@ -16,6 +16,13 @@ const SDA = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest";
 const RULE = "ENG - Septic Tank Absorption Fields";
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // 30 days
 
+/**
+ * Bump when the response shape changes so cached entries are abandoned rather
+ * than served stale for another month.
+ * v2 — added the profile block (drainage, Ksat, restrictive layer).
+ */
+const SCHEMA = "v2";
+
 function classify(text) {
   const t = (text || "").toLowerCase();
   if (t.includes("not limited")) return "not_limited";
@@ -54,7 +61,7 @@ export async function onRequestGet({ request }) {
   if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return bad("coordinates out of range");
 
   // Round to ~100 m so nearby lookups share a cache entry.
-  const key = `https://soil-cache/${lat.toFixed(3)},${lon.toFixed(3)}`;
+  const key = `https://soil-cache/${SCHEMA}/${lat.toFixed(3)},${lon.toFixed(3)}`;
   const cache = caches.default;
   const hit = await cache.match(key);
   if (hit) {
