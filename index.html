@@ -74,23 +74,33 @@
   .b-local{background:rgba(91,143,185,.15);border:1px solid var(--info)}
   .b-thin{background:rgba(211,116,47,.14);border:1px solid var(--warn)}
   .b-err{background:rgba(193,80,46,.16);border:1px solid var(--bad)}
-  .wells{max-height:420px;overflow:auto;margin-top:10px}
-  .mapwrap{margin:10px 0 4px;padding:12px;border-radius:10px;
-    background:rgba(0,0,0,.22);border:1px solid var(--line)}
+  /* The well report reads as a light document inside the dark app. */
+  .wells{max-height:460px;overflow:auto;margin-top:10px;background:#fbfbf7;color:#1c1f18;
+    border:1px solid #d8dccd;border-radius:10px;padding:12px}
+  .wells table{color:#1c1f18}
+  .wells th{color:#5d6552;border-bottom-color:#d8dccd}
+  .wells td{border-bottom-color:#e6e9dd}
+  .wells td.wn{color:#8a6d1f}
+  .wells .src{color:#6b7360}
+  .mapwrap{margin:0 0 4px;padding:12px;border-radius:8px;
+    background:#f2f3ea;border:1px solid #dfe3d5}
   .maphdr{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
-    color:var(--muted);margin-bottom:8px}
+    color:#5d6552;margin-bottom:8px}
   .wellmap{width:100%;height:auto;display:block;max-width:340px;margin:0 auto}
   .welldot{cursor:pointer}
   .welldot text{pointer-events:none;user-select:none}
-  .welldot:hover circle,.welldot:focus circle{stroke:#fff;stroke-width:2}
+  .welldot:hover circle,.welldot:focus circle{stroke:#1c1f18;stroke-width:2}
   .welldot:focus{outline:none}
-  .welldot.sel circle{stroke:#fff;stroke-width:3}
-  td.wn{font-weight:800;color:var(--accent);width:2em}
+  .welldot.sel circle{stroke:#1c1f18;stroke-width:3}
+  td.wn{font-weight:800;width:2em}
   .welldetail{margin-top:10px;padding:11px 13px;border-radius:8px;font-size:12.5px;
-    background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--muted)}
-  .welldetail .soilrow{font-size:12.5px}
-  .welldetail b{color:var(--ink)}
-  .maplegend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+    background:#fff;border:1px solid #dfe3d5;color:#5d6552}
+  .welldetail .soilname{color:#1c1f18}
+  .welldetail .soilrow{font-size:12.5px;border-bottom-color:#e6e9dd}
+  .welldetail .soilrow span{color:#6b7360}
+  .welldetail b{color:#1c1f18}
+  .welldetail .src{color:#6b7360}
+  .maplegend{display:flex;align-items:center;gap:8px;font-size:11px;color:#5d6552;margin-top:8px;flex-wrap:wrap}
   .maplegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
   .mapgrad{flex:0 1 70px;height:7px;border-radius:4px;
     background:linear-gradient(90deg,rgb(110,170,90),rgb(235,75,70))}
@@ -627,8 +637,8 @@ function wellMapHtml(j,lat,lng){
     return `rgb(${r},${g},${b})`; };
 
   const rings=[R*0.25,R*0.5,R*0.75,R].map(m=>
-    `<circle cx="${C}" cy="${C}" r="${(m/R)*usable}" fill="none" stroke="rgba(255,255,255,.13)" stroke-dasharray="3 4"/>`+
-    `<text x="${C+2}" y="${C-(m/R)*usable+11}" font-size="9" fill="#8b917d">${m.toFixed(m<1?2:1)} mi</text>`).join("");
+    `<circle cx="${C}" cy="${C}" r="${(m/R)*usable}" fill="none" stroke="rgba(28,31,24,.16)" stroke-dasharray="3 4"/>`+
+    `<text x="${C+2}" y="${C-(m/R)*usable+11}" font-size="9" fill="#6b7360">${m.toFixed(m<1?2:1)} mi</text>`).join("");
 
   window.__wellPts=pts;   // for the click handler
   const dots=pts.map((w,i)=>{
@@ -650,15 +660,15 @@ function wellMapHtml(j,lat,lng){
     <svg viewBox="0 0 ${S} ${S}" class="wellmap" role="img"
          aria-label="Scatter map of ${pts.length} wells around your point">
       ${rings}
-      <line x1="${C-7}" y1="${C}" x2="${C+7}" y2="${C}" stroke="#c8a24a" stroke-width="2"/>
-      <line x1="${C}" y1="${C-7}" x2="${C}" y2="${C+7}" stroke="#c8a24a" stroke-width="2"/>
+      <line x1="${C-8}" y1="${C}" x2="${C+8}" y2="${C}" stroke="#8a6d1f" stroke-width="2.5"/>
+      <line x1="${C}" y1="${C-8}" x2="${C}" y2="${C+8}" stroke="#8a6d1f" stroke-width="2.5"/>
       ${dots}
     </svg>
     <div class="maplegend">
       <span><i style="background:${shade(dmin)}"></i>${Math.round(dmin).toLocaleString()} ft</span>
       <span class="mapgrad"></span>
       <span><i style="background:${shade(dmax)}"></i>${Math.round(dmax).toLocaleString()} ft</span>
-      <span style="margin-left:auto"><i style="background:#c8a24a"></i>your point</span>
+      <span style="margin-left:auto"><i style="background:#8a6d1f"></i>your point</span>
     </div>
     <div id="welldetail" class="welldetail">Tap any dot to see that well's record.</div>
     <div class="src">${pts.length} of ${j.withDepth} wells have mapped coordinates. North is up.</div>
