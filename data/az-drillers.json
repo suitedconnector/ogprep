@@ -1,0 +1,1691 @@
+{
+ "_meta": {
+  "source": "ADWR Licensed Well Drillers List",
+  "retrieved": "2026-08-30",
+  "url": "https://app.azwater.gov/DrillersList/",
+  "count": 168,
+  "note": "NUM matches DLIC_NUM in the Wells55 registry. No email addresses are published."
+ },
+ "drillers": [
+  {
+   "licence": "4",
+   "name": "ODOM'S,  INC.",
+   "city": "Buckeye",
+   "state": "AZ",
+   "zip": "85326-5237",
+   "phone": "(623) 386-3618",
+   "qualifyingParty": "ERNEST R. PARKER",
+   "active": true
+  },
+  {
+   "licence": "7",
+   "name": "LAYNE CHRISTENSEN COMPANY",
+   "city": "Chandler",
+   "state": "AZ",
+   "zip": "85249-3701",
+   "phone": "(480) 416-0035",
+   "qualifyingParty": "JAMES HAUSLADEN,CODY LOTZE, JASON MCKINNEY",
+   "active": true
+  },
+  {
+   "licence": "10",
+   "name": "SHELTON'S WELL SERVICE",
+   "city": "Goodyear",
+   "state": "AZ",
+   "zip": "85338-5774",
+   "phone": "(602) 757-5002",
+   "qualifyingParty": "GENE D. SHELTON",
+   "active": true
+  },
+  {
+   "licence": "12",
+   "name": "A TO Z DRILLING & PUMP SERVICE, LLC",
+   "city": "Taylor",
+   "state": "AZ",
+   "zip": "85939-0519",
+   "phone": "(928) 358-0324",
+   "qualifyingParty": "TERRANCE R. MCCRAY SR.",
+   "active": true
+  },
+  {
+   "licence": "13",
+   "name": "ALLEN PUMP COMPANY, INC.",
+   "city": "Thatcher",
+   "state": "AZ",
+   "zip": "85552-5624",
+   "phone": "(928) 428-3273",
+   "qualifyingParty": "STEVE ALLEN",
+   "active": true
+  },
+  {
+   "licence": "14",
+   "name": "ALLEN'S WELL SERVICE, LLC",
+   "city": "Elfrida",
+   "state": "AZ",
+   "zip": "85610-9050",
+   "phone": "(520) 642-3775",
+   "qualifyingParty": "HARVEY ALLEN",
+   "active": true
+  },
+  {
+   "licence": "25",
+   "name": "B-J DRILLING COMPANY, INC.",
+   "city": "Huachuca City",
+   "state": "AZ",
+   "zip": "85616",
+   "phone": "(520) 623-1010",
+   "qualifyingParty": "ZANE RITENOUR",
+   "active": true
+  },
+  {
+   "licence": "41",
+   "name": "COPPERSTATE DRILLING & SUPPLY, INC.",
+   "city": "Snowflake",
+   "state": "AZ",
+   "zip": "85937-0190",
+   "phone": "(928) 536-4447",
+   "qualifyingParty": "JEFF MCCRAY",
+   "active": true
+  },
+  {
+   "licence": "70",
+   "name": "INGLE WELL & PUMP, LLC",
+   "city": "Pearce",
+   "state": "AZ",
+   "zip": "85625-6037",
+   "phone": "(520) 824-3574",
+   "qualifyingParty": "GARY L. INGLE",
+   "active": true
+  },
+  {
+   "licence": "73",
+   "name": "JENSEN DRILLING COMPANY",
+   "city": "Eugene",
+   "state": "OR",
+   "zip": "97403-2399",
+   "phone": "(541) 726-7435",
+   "qualifyingParty": "JERRY J. JENSEN",
+   "active": true
+  },
+  {
+   "licence": "77",
+   "name": "JOHN HOOVER WELL SERVICE & REPAIR",
+   "city": "Casa Grande",
+   "state": "AZ",
+   "zip": "85130-0167",
+   "phone": "(520) 518-0012",
+   "qualifyingParty": "JOHN & TOMMY HOOVER",
+   "active": true
+  },
+  {
+   "licence": "78",
+   "name": "YELLOW JACKET DRILLING SERVICES, LLC",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85034-2208",
+   "phone": "(602) 453-3252",
+   "qualifyingParty": "R LEBLANC, D TRUAX , E BRUE, D MESSINA",
+   "active": true
+  },
+  {
+   "licence": "83",
+   "name": "BOART LONGYEAR COMPANY",
+   "city": "Glendale",
+   "state": "AZ",
+   "zip": "85303-1215",
+   "phone": "(623) 889-7523",
+   "qualifyingParty": "ROBERT SAWREY",
+   "active": true
+  },
+  {
+   "licence": "91",
+   "name": "MCGEE WELL DRILLING & PUMP SERVICE, LLC",
+   "city": "Chino Valley",
+   "state": "AZ",
+   "zip": "86323-2704",
+   "phone": "(928) 636-4576",
+   "qualifyingParty": "MCGEE WELL DRILLING & PUMP SERVICE, LLC",
+   "active": true
+  },
+  {
+   "licence": "99",
+   "name": "MYERS DRILLING COMPANY",
+   "city": "Vail",
+   "state": "AZ",
+   "zip": "85641-9056",
+   "phone": "(520) 762-9438",
+   "qualifyingParty": "JOHN WILLIAM MYERS, II",
+   "active": true
+  },
+  {
+   "licence": "133",
+   "name": "TANNER WELL SERVICE, LLC",
+   "city": "Sierra Vista",
+   "state": "AZ",
+   "zip": "85636-2234",
+   "phone": "(520) 378-1606",
+   "qualifyingParty": "MATT TANNER",
+   "active": true
+  },
+  {
+   "licence": "137",
+   "name": "TITAN DRILLING, LLC",
+   "city": "Benson",
+   "state": "AZ",
+   "zip": "85602-1912",
+   "phone": "(520) 603-1161",
+   "qualifyingParty": "JOHN COKELY",
+   "active": true
+  },
+  {
+   "licence": "141",
+   "name": "UNIVERSAL DRILLING, INC.",
+   "city": "Wickenburg",
+   "state": "AZ",
+   "zip": "85358-1027",
+   "phone": "(928) 684-2886",
+   "qualifyingParty": "DOUG ROBERTS",
+   "active": true
+  },
+  {
+   "licence": "151",
+   "name": "YUMA PUMP & DRILLING COMPANY",
+   "city": "Yuma",
+   "state": "AZ",
+   "zip": "85366-2332",
+   "phone": "(928) 341-1446",
+   "qualifyingParty": "CHUCK. POORBAUGH",
+   "active": true
+  },
+  {
+   "licence": "181",
+   "name": "UNITED DRILLING, INC.",
+   "city": "Albuquerque",
+   "state": "NM",
+   "zip": "87107-3010",
+   "phone": "(505) 232-7730",
+   "qualifyingParty": "UNITED DRILLING, INC.",
+   "active": true
+  },
+  {
+   "licence": "185",
+   "name": "ZIM INDUSTRIES, INC. DBA BAKERSFIELD WELL & PUMP CO",
+   "city": "Fresno",
+   "state": "CA",
+   "zip": "93725-9807",
+   "phone": "(559) 834-1551",
+   "qualifyingParty": "ROBERT ZIMMERER",
+   "active": true
+  },
+  {
+   "licence": "191",
+   "name": "GREGG DRILLING LLC",
+   "city": "Signal Hill",
+   "state": "CA",
+   "zip": "90755-1832",
+   "phone": "(562) 427-6899",
+   "qualifyingParty": null,
+   "active": true
+  },
+  {
+   "licence": "195",
+   "name": "SIMMONS DRILLING, INC.",
+   "city": "Cottonwood",
+   "state": "AZ",
+   "zip": "86326-2011",
+   "phone": "(928) 646-0371",
+   "qualifyingParty": "WILLIAM S. SIMMONS",
+   "active": true
+  },
+  {
+   "licence": "197",
+   "name": "BOTA COMPANY",
+   "city": "Florence",
+   "state": "AZ",
+   "zip": "85132-3013",
+   "phone": "(520) 868-5289",
+   "qualifyingParty": "ROBERT L. KELM",
+   "active": true
+  },
+  {
+   "licence": "200",
+   "name": "SOUTHLAND WELL DRILLING",
+   "city": "Tonopah",
+   "state": "AZ",
+   "zip": "85354-7344",
+   "phone": "(623) 386-3550",
+   "qualifyingParty": "BILL SCHAUT",
+   "active": true
+  },
+  {
+   "licence": "205",
+   "name": "HARRIS EXPLORATION DRILLING & ASSOCIATES, INC.",
+   "city": "Fallon",
+   "state": "NV",
+   "zip": "89407-5579",
+   "phone": "(760) 822-7886",
+   "qualifyingParty": "PATRICK HARRIS",
+   "active": true
+  },
+  {
+   "licence": "215",
+   "name": "WEBER WATER RESOURCES, LLC",
+   "city": "Mesa",
+   "state": "AZ",
+   "zip": "85212-5528",
+   "phone": "(480) 961-1141",
+   "qualifyingParty": "MARTY WEBER",
+   "active": true
+  },
+  {
+   "licence": "226",
+   "name": "CASCADE DRILLING, LP",
+   "city": "Peoria",
+   "state": "AZ",
+   "zip": "85345-7973",
+   "phone": "(623) 935-0124",
+   "qualifyingParty": "SHAWN CAIN, ANDREW WHITSELL",
+   "active": true
+  },
+  {
+   "licence": "230",
+   "name": "GODBE DRILLING, LLC",
+   "city": "Montrose",
+   "state": "CO",
+   "zip": "81403-7811",
+   "phone": "(970) 209-1164",
+   "qualifyingParty": "JOHN GODBE",
+   "active": true
+  },
+  {
+   "licence": "238",
+   "name": "U.S. GEOLOGICAL SURVEY - LAS VEGAS",
+   "city": "Las Vegas",
+   "state": "NV",
+   "zip": "89120-6220",
+   "phone": "(720) 272-6676",
+   "qualifyingParty": "ROBERT LEININGER",
+   "active": true
+  },
+  {
+   "licence": "239",
+   "name": "DRILL-TECH, INC.",
+   "city": "Chino Valley",
+   "state": "AZ",
+   "zip": "86323-5155",
+   "phone": "(928) 636-8006",
+   "qualifyingParty": "GARTH OWENS",
+   "active": true
+  },
+  {
+   "licence": "244",
+   "name": "SHUCK DRILLING COMPANY, LLC",
+   "city": "Yuma",
+   "state": "AZ",
+   "zip": "85365-4718",
+   "phone": "(928) 726-5153",
+   "qualifyingParty": "D. SHUCK & D. HOFSTETTER",
+   "active": true
+  },
+  {
+   "licence": "251",
+   "name": "SALISBURY & ASSOCIATES, INC.",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99220-3525",
+   "phone": "(509) 935-0720",
+   "qualifyingParty": "RON PATTERSON",
+   "active": true
+  },
+  {
+   "licence": "255",
+   "name": "CLUFF DRILLING & PUMP, INC.",
+   "city": "Fredonia",
+   "state": "AZ",
+   "zip": "86022-9608",
+   "phone": "(928) 640-7656",
+   "qualifyingParty": "JOE BISTLINE",
+   "active": true
+  },
+  {
+   "licence": "272",
+   "name": "WEBER DRILLING, INC.",
+   "city": "Benson",
+   "state": "AZ",
+   "zip": "85602-1419",
+   "phone": "(520) 720-4800",
+   "qualifyingParty": "DONALD E. WEBER, JASON MANGUM",
+   "active": true
+  },
+  {
+   "licence": "283",
+   "name": "WAY'S DRILLING, INC.",
+   "city": "Morristown",
+   "state": "AZ",
+   "zip": "85342-0130",
+   "phone": "(602) 397-3745",
+   "qualifyingParty": "BOB WAY & ROBERT WAY",
+   "active": true
+  },
+  {
+   "licence": "298",
+   "name": "SALT RIVER PROJECT DBA S.R.P.",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85072-2025",
+   "phone": "(602) 809-0695",
+   "qualifyingParty": "JEFF DADOW & NATHANAEL REVELES",
+   "active": true
+  },
+  {
+   "licence": "314",
+   "name": "STEWART BROS DRILLING CO DBA SBQ2 LLC",
+   "city": "Milan",
+   "state": "NM",
+   "zip": "87021-2067",
+   "phone": "(505) 287-2986",
+   "qualifyingParty": "RANDAL STEWART",
+   "active": true
+  },
+  {
+   "licence": "331",
+   "name": "C.E.T., INC.",
+   "city": "Prescott",
+   "state": "AZ",
+   "zip": "86305",
+   "phone": "(928) 925-0533",
+   "qualifyingParty": "CHARLES EDWARD TISCHLER",
+   "active": true
+  },
+  {
+   "licence": "341",
+   "name": "VALLEY WELL DRILLING",
+   "city": "Topock",
+   "state": "AZ",
+   "zip": "86436-0637",
+   "phone": "(928) 768-7111",
+   "qualifyingParty": "MICHAEL H. EXSTED, SR.",
+   "active": true
+  },
+  {
+   "licence": "350",
+   "name": "K. D. HUEY COMPANY, LLC",
+   "city": "Capitan",
+   "state": "NM",
+   "zip": "88316-0488",
+   "phone": "575-354-2246",
+   "qualifyingParty": "KENNETH & HEATH HUEY",
+   "active": true
+  },
+  {
+   "licence": "360",
+   "name": "ARIZONA BEEMAN DRILLING DBA MOREX INVESTMENTS LLC",
+   "city": "Gold Canyon",
+   "state": "AZ",
+   "zip": "85118-7410",
+   "phone": "(480) 983-2542",
+   "qualifyingParty": "NATE LITTLE",
+   "active": true
+  },
+  {
+   "licence": "363",
+   "name": "TORRENT RESOURCES, INC.",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85040-1330",
+   "phone": "(602) 268-0785",
+   "qualifyingParty": "DUSTIN M. REYNOLDS",
+   "active": true
+  },
+  {
+   "licence": "367",
+   "name": "U.S. BUREAU OF RECLAMATION - YUMA",
+   "city": "Yuma",
+   "state": "AZ",
+   "zip": "85364-9763",
+   "phone": "(928) 503-3072",
+   "qualifyingParty": "FIRASEK, TELLEZ & NELSON",
+   "active": true
+  },
+  {
+   "licence": "368",
+   "name": "BALOW'S WINDMILL, PUMP SERVICE & WELL DRILLING, LLC",
+   "city": "Skull Valley",
+   "state": "AZ",
+   "zip": "86338-0140",
+   "phone": "(928) 442-3240",
+   "qualifyingParty": "DALE H. & DALE (BUDDY) BALOW",
+   "active": true
+  },
+  {
+   "licence": "374",
+   "name": "Q MOUNTAIN DRILLING",
+   "city": "Bouse",
+   "state": "AZ",
+   "zip": "85325-0491",
+   "phone": "(928) 851-2537",
+   "qualifyingParty": "CURTIS COOPER",
+   "active": true
+  },
+  {
+   "licence": "377",
+   "name": "NAPCO DRILLING DBA NORTHERN ARIZONA PUMP, INC.",
+   "city": "Cornville",
+   "state": "AZ",
+   "zip": "86325-0252",
+   "phone": "(928) 634-4978",
+   "qualifyingParty": "NATHAN S. WHITE",
+   "active": true
+  },
+  {
+   "licence": "394",
+   "name": "KM DRILLING, INC.",
+   "city": "Camp Verde",
+   "state": "AZ",
+   "zip": "86322-1738",
+   "phone": "(928) 567-3633",
+   "qualifyingParty": "KENNETH E. MYERS",
+   "active": true
+  },
+  {
+   "licence": "400",
+   "name": "KAUFMAN CORP DBA BROWN DRILLING",
+   "city": "Kingman",
+   "state": "AZ",
+   "zip": "86409-3605",
+   "phone": "(928) 757-1920",
+   "qualifyingParty": "JONATHAN KAUFMAN, AMANDA KAUFMAN",
+   "active": true
+  },
+  {
+   "licence": "453",
+   "name": "H. E. BEEMAN WELL DRILLING DBA WYATT DRILLING, INC.",
+   "city": "Show Low",
+   "state": "AZ",
+   "zip": "85902-1498",
+   "phone": "(928) 537-1031",
+   "qualifyingParty": "PAUL & VINCENT WYATT",
+   "active": true
+  },
+  {
+   "licence": "461",
+   "name": "LEON ROSS DRILLING & PUMP SERVICE",
+   "city": "Roosevelt",
+   "state": "UT",
+   "zip": "84066-0757",
+   "phone": "(435) 722-4469",
+   "qualifyingParty": "MAX LEON ROSS",
+   "active": true
+  },
+  {
+   "licence": "480",
+   "name": "WELLTON-MOHAWK IRRIGATION AND DRAINAGE DISTRICT",
+   "city": "Wellton",
+   "state": "AZ",
+   "zip": "85356-6500",
+   "phone": "(928) 785-3351",
+   "qualifyingParty": "JOE JIMENEZ",
+   "active": true
+  },
+  {
+   "licence": "497",
+   "name": "DOUBLE F CONTRACTING, INC.",
+   "city": "Cochise",
+   "state": "AZ",
+   "zip": "85606",
+   "phone": "(520) 507-2481",
+   "qualifyingParty": "FRANK FLANDERS",
+   "active": true
+  },
+  {
+   "licence": "498",
+   "name": "GEOMECHANICS SOUTHWEST, INC.",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85706-4909",
+   "phone": "(520) 889-7787",
+   "qualifyingParty": "STEVEN BRADSHAW & MIKE SHELQUIST",
+   "active": true
+  },
+  {
+   "licence": "505",
+   "name": "BARBIE  DRILLING, INC.",
+   "city": "Williams",
+   "state": "AZ",
+   "zip": "86046-0205",
+   "phone": "(928) 699-1080",
+   "qualifyingParty": "RANGER \"PATCH\" KARR",
+   "active": true
+  },
+  {
+   "licence": "530",
+   "name": "DEL RIO DRILLING & PUMP, INC.",
+   "city": "Chino Valley",
+   "state": "AZ",
+   "zip": "86323-5360",
+   "phone": "(928) 636-4272",
+   "qualifyingParty": "ERIC OWENS & BEN MARLEY",
+   "active": true
+  },
+  {
+   "licence": "550",
+   "name": "BRINER DRILLING, INC.",
+   "city": "Kingman",
+   "state": "AZ",
+   "zip": "86409-2301",
+   "phone": "(928) 757-3434",
+   "qualifyingParty": "MICHAEL BRINER",
+   "active": true
+  },
+  {
+   "licence": "562",
+   "name": "K. P. VENTURES WELL DRILLING & PUMP CO., LLC",
+   "city": "Cottonwood",
+   "state": "AZ",
+   "zip": "86326-2371",
+   "phone": "(928) 639-1709",
+   "qualifyingParty": "KENNY PORTER AND CLAYTON THAYER",
+   "active": true
+  },
+  {
+   "licence": "572",
+   "name": "BEEMAN PUMP COMPANY, INC.",
+   "city": "Apache Junction",
+   "state": "AZ",
+   "zip": "85119-6551",
+   "phone": "(480) 983-1104",
+   "qualifyingParty": "BOBBY & ROBERT BEEMAN",
+   "active": true
+  },
+  {
+   "licence": "577",
+   "name": "BEAVER DAM DRILLING & CONSTRUCTION, LLC",
+   "city": "Littlefield",
+   "state": "AZ",
+   "zip": "86432-0549",
+   "phone": "(928) 347-5589",
+   "qualifyingParty": "BILL EVANS",
+   "active": true
+  },
+  {
+   "licence": "583",
+   "name": "NIELSEN WELL DRILLING & SERVICE, LLC",
+   "city": "St. Johns",
+   "state": "AZ",
+   "zip": "85936-2819",
+   "phone": "(928) 337-4553",
+   "qualifyingParty": "FRED NIELSEN",
+   "active": true
+  },
+  {
+   "licence": "587",
+   "name": "NELSON DRILLING",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85743-8270",
+   "phone": "(520) 682-8592",
+   "qualifyingParty": "RICHARD  NELSON",
+   "active": true
+  },
+  {
+   "licence": "608",
+   "name": "LORIMOR ENTERPRISES, INC. DBA RAINBOW DRILLING",
+   "city": "Glendale",
+   "state": "AZ",
+   "zip": "85312-6177",
+   "phone": null,
+   "qualifyingParty": "ELLIS LORIMOR",
+   "active": true
+  },
+  {
+   "licence": "619",
+   "name": "ARIZONA PRESTON DRILLING, LLC",
+   "city": "Mesa",
+   "state": "AZ",
+   "zip": "85207-1227",
+   "phone": "(480) 984-4747",
+   "qualifyingParty": "BILL \"TREY\" PRESTON",
+   "active": true
+  },
+  {
+   "licence": "621",
+   "name": "AZCA DRILLING & PUMP, INC.",
+   "city": "Ehrenberg",
+   "state": "AZ",
+   "zip": "85334-0570",
+   "phone": "(928) 923-9118",
+   "qualifyingParty": "LARRY J. SIDDALL",
+   "active": true
+  },
+  {
+   "licence": "628",
+   "name": "CRUX SUBSURFACE, INC.",
+   "city": "Spokane Valley",
+   "state": "WA",
+   "zip": "99027-9600",
+   "phone": "(509) 892-9409",
+   "qualifyingParty": "SCOTT TUNISON, STEVE WILSON",
+   "active": true
+  },
+  {
+   "licence": "635",
+   "name": "BERTRAM DRILLING, INC.",
+   "city": "Billings",
+   "state": "MT",
+   "zip": "59103-2053",
+   "phone": "(406) 259-2532",
+   "qualifyingParty": "DICK DECKER",
+   "active": true
+  },
+  {
+   "licence": "641",
+   "name": "DESERT ENGINE & PUMP, LLC",
+   "city": "Goodyear",
+   "state": "AZ",
+   "zip": "85338-5774",
+   "phone": "(602) 757-5002",
+   "qualifyingParty": "GENE SHELTON II",
+   "active": true
+  },
+  {
+   "licence": "643",
+   "name": "SKYTECH DRILLING",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85080-1881",
+   "phone": "(623) 580-4984",
+   "qualifyingParty": "B.J. & DUSTIN WASHBURN",
+   "active": true
+  },
+  {
+   "licence": "644",
+   "name": "NICKLAUS ENGINEERING, INC.",
+   "city": "Yuma",
+   "state": "AZ",
+   "zip": "85364-6104",
+   "phone": "(928) 344-8374",
+   "qualifyingParty": "MICHAEL L. DANIEL",
+   "active": true
+  },
+  {
+   "licence": "655",
+   "name": "WESTERN DRILLING COMPANY, LLC",
+   "city": "Buckeye",
+   "state": "AZ",
+   "zip": "85326-2303",
+   "phone": "(623) 327-1200",
+   "qualifyingParty": "WILLIAM  WOOD, CHAD CAHILL",
+   "active": true
+  },
+  {
+   "licence": "659",
+   "name": "RUEN DRILLING, INC.",
+   "city": "Clark Fork",
+   "state": "ID",
+   "zip": "83811-0267",
+   "phone": "(208) 266-1151",
+   "qualifyingParty": "JAMES ERDMAN & TOM VESETH",
+   "active": true
+  },
+  {
+   "licence": "667",
+   "name": "CATALINA WELL & PUMP, LLC",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85739-9789",
+   "phone": "(520) 818-9053",
+   "qualifyingParty": "DONALD E. TEWART, JR.",
+   "active": true
+  },
+  {
+   "licence": "670",
+   "name": "DEWEY DRILLING & PUMP, INC.",
+   "city": "Dewey",
+   "state": "AZ",
+   "zip": "86327-0131",
+   "phone": "(928) 632-7687",
+   "qualifyingParty": "GREG ROSKOPF",
+   "active": true
+  },
+  {
+   "licence": "674",
+   "name": "COLLUM DRILLING, INC.",
+   "city": "Wickenburg",
+   "state": "AZ",
+   "zip": "85390-3112",
+   "phone": "(602) 677-6408",
+   "qualifyingParty": "JAMES W. COLLUM",
+   "active": true
+  },
+  {
+   "licence": "676",
+   "name": "ELBROCK DRILLING, LLC",
+   "city": "Animas",
+   "state": "NM",
+   "zip": "88020-0067",
+   "phone": "(575) 534-7820",
+   "qualifyingParty": "WM. \"BUNCH\" SWIFT",
+   "active": true
+  },
+  {
+   "licence": "689",
+   "name": "R. DAVIS DRILLING, LLC",
+   "city": "Springerville",
+   "state": "AZ",
+   "zip": "85938-1427",
+   "phone": "(928) 245-0230",
+   "qualifyingParty": "RICHIE DAVIS",
+   "active": true
+  },
+  {
+   "licence": "701",
+   "name": "SUNBELT DRILLING, LLC",
+   "city": "Apache Junction",
+   "state": "AZ",
+   "zip": "85119-6551",
+   "phone": "(602) 376-1123",
+   "qualifyingParty": "ROD BEEMAN, SERGIO CONTRERAS",
+   "active": true
+  },
+  {
+   "licence": "715",
+   "name": "MOORHEAD DRILLING DBA MOORHEAD PUMP SERVICE",
+   "city": "Mc Neal",
+   "state": "AZ",
+   "zip": "85617-9654",
+   "phone": "(520) 234-5983",
+   "qualifyingParty": "THOMAS O. MOORHEAD",
+   "active": true
+  },
+  {
+   "licence": "725",
+   "name": "ST. CLAIR DRILLING AND PUMP SERVICE",
+   "city": "Cochise",
+   "state": "AZ",
+   "zip": "85606-1078",
+   "phone": "(520) 400-0738",
+   "qualifyingParty": "RON ST. CLAIR",
+   "active": true
+  },
+  {
+   "licence": "731",
+   "name": "SOUTHWEST REMEDIATION DBA DDC, LLC",
+   "city": "Scottsdale",
+   "state": "AZ",
+   "zip": "85255-8599",
+   "phone": "(602) 549-0925",
+   "qualifyingParty": "DAN BLAES",
+   "active": true
+  },
+  {
+   "licence": "733",
+   "name": "HYDER DRILLING, LLC",
+   "city": "Dateland",
+   "state": "AZ",
+   "zip": "85333-5561",
+   "phone": "602-918-3651",
+   "qualifyingParty": "GARY E. JOHN",
+   "active": true
+  },
+  {
+   "licence": "741",
+   "name": "WISDOM  DRILLING, LLC",
+   "city": "Young",
+   "state": "AZ",
+   "zip": "85554-0392",
+   "phone": "(928) 978-0252",
+   "qualifyingParty": "EDWARD E. WISDOM",
+   "active": true
+  },
+  {
+   "licence": "752",
+   "name": "HOLE TECH TUCSON, INC.",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85750-1821",
+   "phone": "(520) 975-5060",
+   "qualifyingParty": "DON KOLT",
+   "active": true
+  },
+  {
+   "licence": "757",
+   "name": "K.R. WELL DRILLING, LLC",
+   "city": "Bouse",
+   "state": "AZ",
+   "zip": "85325-1072",
+   "phone": "(928) 851-2975",
+   "qualifyingParty": "KEITH REFFETT",
+   "active": true
+  },
+  {
+   "licence": "769",
+   "name": "MAJOR DRILLING AMERICA, INC.",
+   "city": "Salt Lake City",
+   "state": "UT",
+   "zip": "84120-1292",
+   "phone": "(801) 974-0645",
+   "qualifyingParty": "JOEL CARR, JOEL CAMPBELL",
+   "active": true
+  },
+  {
+   "licence": "771",
+   "name": "EXCEL PUMP AND WELL SERVICE, LLC",
+   "city": "Globe",
+   "state": "AZ",
+   "zip": "85501-5087",
+   "phone": "(928) 812-7520",
+   "qualifyingParty": "DAVID T. RUIZ",
+   "active": true
+  },
+  {
+   "licence": "776",
+   "name": "CENTRAL ARIZONA PUMP, LLC",
+   "city": "Payson",
+   "state": "AZ",
+   "zip": "85541-2758",
+   "phone": "(928) 476-5440",
+   "qualifyingParty": "BRANDON  MOORE",
+   "active": true
+  },
+  {
+   "licence": "779",
+   "name": "EMPIRE PUMP CORPORATION",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85043-6104",
+   "phone": "(602) 403-0007",
+   "qualifyingParty": "SCOTT CAMPBELL",
+   "active": true
+  },
+  {
+   "licence": "780",
+   "name": "WILLIS MANAGEMENT ENTERPRISES, INC DBA WILLIS DRLG & PUMP",
+   "city": "Snowflake",
+   "state": "AZ",
+   "zip": "85937-5617",
+   "phone": "(928) 536-4414",
+   "qualifyingParty": "CHRISTOPHER WILLIS",
+   "active": true
+  },
+  {
+   "licence": "784",
+   "name": "ALTAR DRILLING, INC.",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85733-2831",
+   "phone": "520-289-4741",
+   "qualifyingParty": "DANIEL J. LAJACK",
+   "active": true
+  },
+  {
+   "licence": "792",
+   "name": "TONATEC EXPLORATION,  LLC",
+   "city": "Mapleton",
+   "state": "UT",
+   "zip": "84664-3521",
+   "phone": "801-310-1628",
+   "qualifyingParty": "STEPHEN R. BILLS AND PAUL HORSHEL",
+   "active": true
+  },
+  {
+   "licence": "796",
+   "name": "SHUMWAY EXPLORATION, LLC",
+   "city": "Cedar City",
+   "state": "UT",
+   "zip": "84720-9270",
+   "phone": "(435) 590-1912",
+   "qualifyingParty": "GARY SHUMWAY",
+   "active": true
+  },
+  {
+   "licence": "798",
+   "name": "MIKE'S DRILLING, LLC",
+   "city": "Vail",
+   "state": "AZ",
+   "zip": "85641-9472",
+   "phone": "(520) 490-0399",
+   "qualifyingParty": "MICHAEL RAY LISTER",
+   "active": true
+  },
+  {
+   "licence": "816",
+   "name": "HYDRO RESOURCES - ROCKY MOUNTAIN, INC.",
+   "city": "Fort Lupton",
+   "state": "CO",
+   "zip": "80621",
+   "phone": "(970) 381-3788",
+   "qualifyingParty": "FRED ROTHAUGE",
+   "active": true
+  },
+  {
+   "licence": "817",
+   "name": "CHAMPION CORROSION PRODUCTS, INC.",
+   "city": "Midland",
+   "state": "TX",
+   "zip": "79708-7847",
+   "phone": "(432) 682-8343",
+   "qualifyingParty": "MICHAEL STEPHEN LOFTIS",
+   "active": true
+  },
+  {
+   "licence": "822",
+   "name": "ALPINE REMEDIATION, INC.",
+   "city": "Golden",
+   "state": "CO",
+   "zip": "80403-1800",
+   "phone": "303-277-0857",
+   "qualifyingParty": "MATTHEW W. STEERE",
+   "active": true
+  },
+  {
+   "licence": "823",
+   "name": "NATIONAL EWP, INC.",
+   "city": "Elko",
+   "state": "NV",
+   "zip": "89801-2606",
+   "phone": "(775) 753-7355",
+   "qualifyingParty": "TJ GREEN, & JEFF HACKING",
+   "active": true
+  },
+  {
+   "licence": "830",
+   "name": "BEEMAN DRILLING SERVICES DBA T B DRLG SVCS",
+   "city": "Moab",
+   "state": "UT",
+   "zip": "84532-3680",
+   "phone": "435-259-7281",
+   "qualifyingParty": "TODD B. BEEMAN",
+   "active": true
+  },
+  {
+   "licence": "836",
+   "name": "MEINZER WELL SERVICE, LLC",
+   "city": "Eloy",
+   "state": "AZ",
+   "zip": "85131-0018",
+   "phone": "(520) 705-9502",
+   "qualifyingParty": "BRAD MEINZER",
+   "active": true
+  },
+  {
+   "licence": "838",
+   "name": "MOHAVE SERVICE LLC",
+   "city": "Colorado City",
+   "state": "AZ",
+   "zip": "",
+   "phone": null,
+   "qualifyingParty": "MOHAVE SERVICE LLC",
+   "active": true
+  },
+  {
+   "licence": "841",
+   "name": "PATAGONIA TRADING COMPANY, LLC",
+   "city": "Sonoita",
+   "state": "AZ",
+   "zip": "85637-0232",
+   "phone": "(520) 455-5099",
+   "qualifyingParty": "DENNY HUBBELL",
+   "active": true
+  },
+  {
+   "licence": "842",
+   "name": "ENERGY SERVICES, LLC",
+   "city": "Colorado City",
+   "state": "AZ",
+   "zip": "86021-2175",
+   "phone": "435-619-4652",
+   "qualifyingParty": "GARY K. SMITH",
+   "active": true
+  },
+  {
+   "licence": "843",
+   "name": "PALOMA IRRIGATION & DRAINAGE DISTRICT",
+   "city": "Gila Bend",
+   "state": "AZ",
+   "zip": "85337",
+   "phone": "602-819-0344",
+   "qualifyingParty": "KENNETH M. PORTER",
+   "active": true
+  },
+  {
+   "licence": "845",
+   "name": "SOUTHLANDS ENGINEERING, LLC",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85728-5017",
+   "phone": "(520) 940-0472",
+   "qualifyingParty": "DAVID MWEWA",
+   "active": true
+  },
+  {
+   "licence": "847",
+   "name": "HYDRO-SOLUTIONS PUMP & WELL SERVICE",
+   "city": "Gilbert",
+   "state": "AZ",
+   "zip": "85297-8135",
+   "phone": "480-277-7849",
+   "qualifyingParty": "BRIAN KELLY WEST",
+   "active": true
+  },
+  {
+   "licence": "850",
+   "name": "TIMBERLINE DRILLING, INC.",
+   "city": "Hayden",
+   "state": "ID",
+   "zip": "83835-8306",
+   "phone": "(208) 818-0588",
+   "qualifyingParty": "THOMAS RICHARDSON, JULIAN COLLINS",
+   "active": true
+  },
+  {
+   "licence": "852",
+   "name": "SMYTH INDUSTRIES, INC.",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85714-2170",
+   "phone": "(520) 750-8719",
+   "qualifyingParty": "DON SAWADE",
+   "active": true
+  },
+  {
+   "licence": "854",
+   "name": "ACS SERVICES, LLC",
+   "city": "Mesa",
+   "state": "AZ",
+   "zip": "85202-1003",
+   "phone": "(480) 968-0190",
+   "qualifyingParty": "ANNEMARIE HAENFLER",
+   "active": true
+  },
+  {
+   "licence": "855",
+   "name": "RESILIENT DRILLING SERVICES, LLC",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85034-7205",
+   "phone": "(602) 218-8848",
+   "qualifyingParty": "GREG JONES",
+   "active": true
+  },
+  {
+   "licence": "857",
+   "name": "WILDCAT DRILLING, INC.",
+   "city": "Phoenix",
+   "state": "AZ",
+   "zip": "85034-3028",
+   "phone": "(602) 689-0228",
+   "qualifyingParty": "DUSTIN MILLER",
+   "active": true
+  },
+  {
+   "licence": "859",
+   "name": "LAST DROP DRILLING & PUMP SERVICES, LLC",
+   "city": "Cedar City",
+   "state": "UT",
+   "zip": "84720-6800",
+   "phone": "(435) 559-9357",
+   "qualifyingParty": "RICHARD R. PETERSEN",
+   "active": true
+  },
+  {
+   "licence": "860",
+   "name": "PACIFIC COAST WELL DRILLING, INC.",
+   "city": "Paso Robles",
+   "state": "CA",
+   "zip": "93446-5974",
+   "phone": "(805) 434-5543",
+   "qualifyingParty": "TYSON DAVIS",
+   "active": true
+  },
+  {
+   "licence": "863",
+   "name": "LONGMIRE WELL SERVICE, INC.",
+   "city": "Willcox",
+   "state": "AZ",
+   "zip": "85644-0759",
+   "phone": "(602) 531-3660",
+   "qualifyingParty": "MICHAEL W. LONGMIRE",
+   "active": true
+  },
+  {
+   "licence": "866",
+   "name": "JNJ WELL SERVICE, LLC",
+   "city": "Chandler",
+   "state": "AZ",
+   "zip": "85248-7805",
+   "phone": "(480) 603-7083",
+   "qualifyingParty": "NATHANAEL REVELES",
+   "active": true
+  },
+  {
+   "licence": "867",
+   "name": "RELIANT WELL DRILLING & PUMP CORP., INC.",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85745-9636",
+   "phone": "(520) 276-0913",
+   "qualifyingParty": "CLARK P. VAUGHT",
+   "active": true
+  },
+  {
+   "licence": "868",
+   "name": "W/W SERVICES, LLC",
+   "city": "Willcox",
+   "state": "AZ",
+   "zip": "85643-3175",
+   "phone": "(928) 651-0147",
+   "qualifyingParty": "KYLE LEE WORTMAN",
+   "active": true
+  },
+  {
+   "licence": "869",
+   "name": "PRIDE DRILLING, LLC",
+   "city": "Benson",
+   "state": "AZ",
+   "zip": "85602",
+   "phone": "(520) 250-0078",
+   "qualifyingParty": "DAVID E. BROTT",
+   "active": true
+  },
+  {
+   "licence": "871",
+   "name": "HOOVER DRILLING COMPANY, LLC",
+   "city": "Casa Grande",
+   "state": "AZ",
+   "zip": "85130-0057",
+   "phone": "(520) 251-1449",
+   "qualifyingParty": "TOMMY HOOVER",
+   "active": true
+  },
+  {
+   "licence": "872",
+   "name": "SOUTH BOUND DRILLING, LLC",
+   "city": "Goodyear",
+   "state": "AZ",
+   "zip": "85338-3661",
+   "phone": "(623) 693-4142",
+   "qualifyingParty": "JOHN W. SHELTON",
+   "active": true
+  },
+  {
+   "licence": "877",
+   "name": "VERDAD GROUP, LLC",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85754-5033",
+   "phone": "(520) 743-8553",
+   "qualifyingParty": "RUSSELL HUNTER",
+   "active": true
+  },
+  {
+   "licence": "880",
+   "name": "MATCOR, INC.",
+   "city": "Commerce City",
+   "state": "CO",
+   "zip": "",
+   "phone": null,
+   "qualifyingParty": "JASON MCKINNEY",
+   "active": true
+  },
+  {
+   "licence": "883",
+   "name": "SUPERIOR DRILLING LLC",
+   "city": "Litchfield Park",
+   "state": "AZ",
+   "zip": "85340-4670",
+   "phone": "(602) 290-7332",
+   "qualifyingParty": "BRYCE WALLACE",
+   "active": true
+  },
+  {
+   "licence": "884",
+   "name": "WESTERN HYDRO ENGINEERING, LLC",
+   "city": "Cochise",
+   "state": "AZ",
+   "zip": "85606-8738",
+   "phone": "(520) 826-1164",
+   "qualifyingParty": "BUDDY RATLIFF, JOSH MCMANUS",
+   "active": true
+  },
+  {
+   "licence": "885",
+   "name": "THE WELL GUYS, LLC",
+   "city": "Dewey",
+   "state": "AZ",
+   "zip": "86327",
+   "phone": "(480) 536-5828",
+   "qualifyingParty": "MARTIN J. CRAVEN, JR.",
+   "active": true
+  },
+  {
+   "licence": "888",
+   "name": "PANTERRA ENERGY, LLC",
+   "city": "Fort Morgan",
+   "state": "CO",
+   "zip": "80701-3894",
+   "phone": "(970) 420-1210",
+   "qualifyingParty": "SKYLER WILSON",
+   "active": true
+  },
+  {
+   "licence": "889",
+   "name": "WELL INDUSTRIES, INC.",
+   "city": "Chico",
+   "state": "CA",
+   "zip": "95973-8735",
+   "phone": "(530) 891-5545",
+   "qualifyingParty": "CODY STILWELL",
+   "active": true
+  },
+  {
+   "licence": "890",
+   "name": "GRANILLO CONSTRUCTION, INC.",
+   "city": "Florence",
+   "state": "AZ",
+   "zip": "85132-8092",
+   "phone": "(520) 709-4180",
+   "qualifyingParty": "ZACH LANE",
+   "active": true
+  },
+  {
+   "licence": "891",
+   "name": "CONE TEC, INC.",
+   "city": "Salt Lake City",
+   "state": "UT",
+   "zip": "84104-4410",
+   "phone": "(801) 973-3801",
+   "qualifyingParty": "SHAWN STEINER",
+   "active": true
+  },
+  {
+   "licence": "892",
+   "name": "STAR WATER TECHNOLOGIES, LLC",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85736-2106",
+   "phone": "(520) 649-5213",
+   "qualifyingParty": "JOE CLEMENTS",
+   "active": true
+  },
+  {
+   "licence": "893",
+   "name": "DESERT MOUNTAIN DRILLING & PUMP SERVICE, LLC",
+   "city": "Vail",
+   "state": "AZ",
+   "zip": "85641-1414",
+   "phone": "(928) 242-6329",
+   "qualifyingParty": "TYLER PAUL RIES",
+   "active": true
+  },
+  {
+   "licence": "895",
+   "name": "D AND M WELL SERVICE, LLC",
+   "city": "Douglas",
+   "state": "AZ",
+   "zip": "85607",
+   "phone": "(520) 364-2261",
+   "qualifyingParty": "RANDY CURETON",
+   "active": true
+  },
+  {
+   "licence": "898",
+   "name": "HOLT SERVICES, INC.",
+   "city": "Milton",
+   "state": "WA",
+   "zip": "98354-1659",
+   "phone": "(253) 604-4878",
+   "qualifyingParty": "ROBERT STADELI",
+   "active": true
+  },
+  {
+   "licence": "900",
+   "name": "ALFORD DRILLING, LLC",
+   "city": "Elko",
+   "state": "NV",
+   "zip": "89803-2142",
+   "phone": "(775) 299-5635",
+   "qualifyingParty": "STEVE ALFORD & CLAYTON WHITE",
+   "active": true
+  },
+  {
+   "licence": "903",
+   "name": "FUGRO USA LAND INC",
+   "city": "Houston",
+   "state": "TX",
+   "zip": "77074-3700",
+   "phone": "(713) 346-4002",
+   "qualifyingParty": "STEPHEN(STEVE) BUTREJ",
+   "active": true
+  },
+  {
+   "licence": "904",
+   "name": "INTEGRITY DRILLING SERVICES",
+   "city": "Queen Creek",
+   "state": "AZ",
+   "zip": "85142-8574",
+   "phone": "(928) 300-2093",
+   "qualifyingParty": "MITCHELL FERGUSON",
+   "active": true
+  },
+  {
+   "licence": "909",
+   "name": "AUTHENTIC DRILLING",
+   "city": "Kiowa",
+   "state": "CO",
+   "zip": "80117-0087",
+   "phone": "(303) 351-3581",
+   "qualifyingParty": "MARC HAES",
+   "active": true
+  },
+  {
+   "licence": "913",
+   "name": "RCS DRILLING LLC",
+   "city": "Gilbert",
+   "state": "AZ",
+   "zip": "85295",
+   "phone": "480-540-2485",
+   "qualifyingParty": "ROBERT COLBATH",
+   "active": true
+  },
+  {
+   "licence": "914",
+   "name": "REI DRILLING",
+   "city": "Salt Lake City",
+   "state": "UT",
+   "zip": "84107-4770",
+   "phone": "(801) 281-2880",
+   "qualifyingParty": "ROBERT HOGG",
+   "active": true
+  },
+  {
+   "licence": "915",
+   "name": "TISCHLER INVESTMENTS LLC DBA: CET WELL DRILLING",
+   "city": "Chino Valley",
+   "state": "AZ",
+   "zip": "86323-0268",
+   "phone": "(928) 420-6639",
+   "qualifyingParty": "JACOB TISCHLER",
+   "active": true
+  },
+  {
+   "licence": "917",
+   "name": "NEXTGEN WATER WELL SERVICE LLC",
+   "city": "Eagar",
+   "state": "AZ",
+   "zip": "85925-9793",
+   "phone": "(432) 813-8704",
+   "qualifyingParty": "CODY MYERS",
+   "active": true
+  },
+  {
+   "licence": "918",
+   "name": "ASSOCIATED ENVIRONMENTAL INDUSTRIES CORP",
+   "city": "Norman",
+   "state": "OK",
+   "zip": "73070",
+   "phone": "405-360-1480",
+   "qualifyingParty": "ROBERT KEYES",
+   "active": true
+  },
+  {
+   "licence": "919",
+   "name": "TRIPLE L WELL AND PUMP SERVICE",
+   "city": "Huachuca City",
+   "state": "AZ",
+   "zip": "85616-8214",
+   "phone": "(520) 456-9377",
+   "qualifyingParty": "CODY MITCHELL LOHSE",
+   "active": true
+  },
+  {
+   "licence": "921",
+   "name": "AMERICAN DRILLING CORPORATION",
+   "city": "Spokane Valley",
+   "state": "WA",
+   "zip": "99206",
+   "phone": "(509) 921-7836",
+   "qualifyingParty": "AUSTIN AUGARE",
+   "active": true
+  },
+  {
+   "licence": "922",
+   "name": "JRGO, LLC DBA INTEGRITY ASSESSMENT GROUP LLC",
+   "city": "Clare",
+   "state": "MI",
+   "zip": "48617",
+   "phone": "(830) 279-1915",
+   "qualifyingParty": "CHADD LOOMIS",
+   "active": true
+  },
+  {
+   "licence": "924",
+   "name": "LAMB DRILLING LLC",
+   "city": "South Jordan",
+   "state": "UT",
+   "zip": "84095",
+   "phone": "801-834-9495",
+   "qualifyingParty": "JASON LAMB",
+   "active": true
+  },
+  {
+   "licence": "925",
+   "name": "FALCON DRILLING INC",
+   "city": "Mound House",
+   "state": "NV",
+   "zip": "89706-7777",
+   "phone": "(775) 246-0720",
+   "qualifyingParty": "LEIF PAULSON",
+   "active": true
+  },
+  {
+   "licence": "927",
+   "name": "ELLINGSON DRAINAGE INC",
+   "city": "West Concord",
+   "state": "MN",
+   "zip": "55985-6066",
+   "phone": "(507) 527-2294",
+   "qualifyingParty": "DAVID BARDSLEY",
+   "active": true
+  },
+  {
+   "licence": "929",
+   "name": "CHAMBERS CHOICE DRILLING",
+   "city": "Twentynine Palms",
+   "state": "CA",
+   "zip": "92277",
+   "phone": "760-401-7232",
+   "qualifyingParty": "CHANCEY CHAMBERS",
+   "active": true
+  },
+  {
+   "licence": "931",
+   "name": "MALCOLM DRILLING COMPANY",
+   "city": "San Francisco",
+   "state": "CA",
+   "zip": "94105-2685",
+   "phone": "(415) 901-4421",
+   "qualifyingParty": "THOMAS MORELAND",
+   "active": true
+  },
+  {
+   "licence": "932",
+   "name": "CLUFF BROTHERS DRILLING",
+   "city": "Rodeo",
+   "state": "NM",
+   "zip": "88056",
+   "phone": "(435) 625-1126",
+   "qualifyingParty": "JOSHUA CLUFF",
+   "active": true
+  },
+  {
+   "licence": "933",
+   "name": "PREMIER DRILLING",
+   "city": "Elko",
+   "state": "NV",
+   "zip": "89801",
+   "phone": "(208) 520-4451",
+   "qualifyingParty": "MATTHEW CHARLES FISHER",
+   "active": true
+  },
+  {
+   "licence": "936",
+   "name": "AQUA 2000 WATER WELL & DRILLING SERVICES, LLC",
+   "city": "Yuma",
+   "state": "AZ",
+   "zip": "85364",
+   "phone": "(928) 246-9213",
+   "qualifyingParty": "RICHARD MARTINEZ",
+   "active": true
+  },
+  {
+   "licence": "937",
+   "name": "BIG SKY EXPLORATION",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27675-0324",
+   "phone": "(602) 329-6330",
+   "qualifyingParty": "BIG SKY EXPLORATION",
+   "active": true
+  },
+  {
+   "licence": "938",
+   "name": "TRUE NORTH DRILLING LLC",
+   "city": "San Tan Valley",
+   "state": "AZ",
+   "zip": "85143",
+   "phone": "(435) 572-5098",
+   "qualifyingParty": "JOHNNIE NOBLE",
+   "active": true
+  },
+  {
+   "licence": "939",
+   "name": "MERSINO DEWATERING LLC",
+   "city": "Auburn Hills",
+   "state": "MI",
+   "zip": "48326",
+   "phone": "(810) 730-1122",
+   "qualifyingParty": "DAVID TERSIGNI",
+   "active": true
+  },
+  {
+   "licence": "941",
+   "name": "BRAYTON LEASING LLC",
+   "city": "Tonopah",
+   "state": "AZ",
+   "zip": "85354-8762",
+   "phone": "(928) 851-5157",
+   "qualifyingParty": "HAL PURCELL III",
+   "active": true
+  },
+  {
+   "licence": "943",
+   "name": "ENVIROTECH DRILLING LLC",
+   "city": "Winnemucca",
+   "state": "NV",
+   "zip": "89445",
+   "phone": "(775) 421-0481",
+   "qualifyingParty": "BRIAN MIKELSON",
+   "active": true
+  },
+  {
+   "licence": "944",
+   "name": "RELIABLE WATER WELL SERVICES LLC",
+   "city": "San Luis",
+   "state": "AZ",
+   "zip": "85349",
+   "phone": "(928) 919-0173",
+   "qualifyingParty": "ERICK LOPEZ NUNEZ",
+   "active": true
+  },
+  {
+   "licence": "945",
+   "name": "ST JOHNS WELL DRILLING COMPANY LLP",
+   "city": "Florence",
+   "state": "AZ",
+   "zip": "85132",
+   "phone": "(520) 840-3274",
+   "qualifyingParty": "SAMUAL MIXIS",
+   "active": true
+  },
+  {
+   "licence": "946",
+   "name": "CASNER DRILLING & PUMP LLC",
+   "city": "Rimrock",
+   "state": "AZ",
+   "zip": "86335",
+   "phone": "(928) 821-8161",
+   "qualifyingParty": "MATTHEW HOUSE",
+   "active": true
+  },
+  {
+   "licence": "947",
+   "name": "PRISBREY DRILLING LLC",
+   "city": "St. George",
+   "state": "UT",
+   "zip": "84791",
+   "phone": "(435) 632-1340",
+   "qualifyingParty": "CHRIS PRISBREY",
+   "active": true
+  },
+  {
+   "licence": "949",
+   "name": "WAYFINDER DRILLING LTD",
+   "city": "Reno",
+   "state": "NV",
+   "zip": "89523",
+   "phone": "(604) 629-9427",
+   "qualifyingParty": "TRUDI WHITE",
+   "active": true
+  },
+  {
+   "licence": "956",
+   "name": "GILA PUMP LLC",
+   "city": "Young",
+   "state": "AZ",
+   "zip": "85554",
+   "phone": null,
+   "qualifyingParty": "GILA PUMP LLC",
+   "active": true
+  },
+  {
+   "licence": "960",
+   "name": "BALOW'S BLACK ROCK DRILLING LLC",
+   "city": "Skull Valley",
+   "state": "AZ",
+   "zip": "86338",
+   "phone": null,
+   "qualifyingParty": null,
+   "active": true
+  },
+  {
+   "licence": "963",
+   "name": "ALASKA MIDNIGHT SUN DRILLING, INC.",
+   "city": "Whitehorse",
+   "state": "YT",
+   "zip": "Y1A6C4",
+   "phone": null,
+   "qualifyingParty": "TRENT JAMIESON",
+   "active": true
+  },
+  {
+   "licence": "972",
+   "name": "XTREMEX MINING TECHNOLOGY INC",
+   "city": "Bellaire",
+   "state": "TX",
+   "zip": "77401",
+   "phone": null,
+   "qualifyingParty": "RYAN HEIDRICH",
+   "active": true
+  },
+  {
+   "licence": "974",
+   "name": "LSG DRILLING",
+   "city": "Redding",
+   "state": "CA",
+   "zip": "96003",
+   "phone": "530-646-5621",
+   "qualifyingParty": "JOSHUA CYPHERS",
+   "active": true
+  }
+ ]
+}
