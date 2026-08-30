@@ -85,6 +85,11 @@
   .maplegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
   .mapgrad{flex:0 1 70px;height:7px;border-radius:4px;
     background:linear-gradient(90deg,rgb(110,170,90),rgb(235,75,70))}
+  .rainbox{margin-top:12px;padding:13px 15px;border-radius:10px;
+    background:rgba(91,143,185,.12);border:1px solid var(--info)}
+  .rainbox.g-ok{background:rgba(127,166,80,.12);border-color:var(--good)}
+  .rainbox.g-warn{background:rgba(211,116,47,.12);border-color:var(--warn)}
+  .rainbox .src{display:block;margin-top:8px}
   .src{font-size:11.5px;color:var(--muted);margin-top:6px}
   .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
     padding:2px 7px;border-radius:99px;margin-top:5px;cursor:help}
@@ -160,6 +165,14 @@
     <div class="seg" id="waterSeg">
       <button data-v="well" aria-pressed="true">Drill a well</button>
       <button data-v="haul" aria-pressed="false">Cistern + hauling</button>
+      <button data-v="rain" aria-pressed="false">Rainwater catchment</button>
+    </div>
+    <div id="rainPanel" style="display:none">
+      <label for="roof">Catchment roof area (sq ft)</label>
+      <input type="number" id="roof" value="1200" min="100" step="100">
+      <label for="usegpd">Household use (gallons per day)</label>
+      <input type="number" id="usegpd" value="50" min="5" step="5">
+      <div class="note">50 gal/day is a common off-grid figure — roughly a quarter of average US mains use.</div>
     </div>
 
     <label>Wastewater</label>
@@ -324,6 +337,8 @@ const C = {
   wellKitLow:8000, wellKitMid:11000, wellKitHigh:15000,
   cisternLow:8000, cisternMid:13000, cisternHigh:20000,
   haulYrLow:3000, haulYrMid:4500, haulYrHigh:6500,
+  // Gutters, downpipes, first-flush diverters, filtration, pump.
+  catchLow:2500, catchMid:5000, catchHigh:9000,
   septicConv:[7500,11000,15000],
   septicAlt:[20000,28000,40000],
   septicNone:[1500,3500,6000],
@@ -333,7 +348,8 @@ const C = {
   site:[4000,9000,16000]
 };
 
-let state={county:"Mohave",water:"well",septic:"conv",power:"solar",local:null,soil:null,parcel:null,septicTouched:false};
+let state={county:"Mohave",water:"well",septic:"conv",power:"solar",
+           local:null,soil:null,parcel:null,rain:null,septicTouched:false};
 
 const SOIL_API="/api/soil";               // Cloudflare Pages Function
 const SOIL_LABEL={
@@ -395,6 +411,11 @@ function seg(id,key){
   });
 }
 seg("waterSeg","water");seg("septicSeg","septic");seg("powerSeg","power");
+$("waterSeg").addEventListener("click",()=>{
+  $("rainPanel").style.display = state.water==="rain" ? "" : "none";
+});
+["roof","usegpd"].forEach(id=>$(id).addEventListener("input",render));
+document.addEventListener("input",e=>{ if(e.target && e.target.id==="rainIn") render(); });
 $("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
 sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;state.parcel=null;state.soil=null;
   $("lookupMsg").innerHTML=""; $("wellList").innerHTML=""; $("parcelBox").innerHTML="";
@@ -561,7 +582,14 @@ async function lookup(){
     }else{ state.soil=null; }
   }catch(_){ state.soil=null; }
 
-  btn.disabled=false;btn.textContent="Look up wells";
+  // Rainfall for catchment sizing. Optional — the panel works without it.
+  try{
+    const rr=await fetch("/api/rain?lat="+lat+"&lon="+lng);
+    const rj=await rr.json();
+    state.rain = rj.ok ? rj : null;
+  }catch(_){ state.rain=null; }
+
+  btn.disabled=false;btn.textContent="Look it up";
   render();
 }
 
@@ -702,6 +730,60 @@ function soilProfileHtml(s){
     "planning figure — it is not a perc test result. Your county will require an actual site evaluation.</div></details>";
 }
 
+/**
+ * Rainwater catchment maths.
+ * One inch of rain on one square foot yields about 0.623 gallons; 0.85 allows
+ * for first-flush diversion, splash and evaporation losses.
+ * Sizing is judged on the driest year on record, not the average — an average
+ * year is exactly the wrong basis for a water supply.
+ */
+function rainMath(){
+  const roof=Math.max(100,+$("roof").value||1200);
+  const gpd=Math.max(5,+$("usegpd").value||50);
+  const need=gpd*365;
+  const inches = state.rain ? state.rain.annualInches : (+$("rainIn")?.value || 10);
+  const dry = state.rain && state.rain.driest ? state.rain.driest.inches : inches*0.6;
+  const harvest = roof*inches*0.623*0.85;
+  const harvestDry = roof*dry*0.623*0.85;
+  const coverage = need>0 ? harvest/need : 0;
+  const coverageDry = need>0 ? harvestDry/need : 0;
+  const shortfallShare = Math.max(0, 1-coverageDry);   // budget on the dry year
+  return {
+    roof, gpd, need, inches, dry, harvest, harvestDry, coverage, coverageDry, shortfallShare,
+    detail: Math.round(harvest).toLocaleString()+" gal/yr from "+roof.toLocaleString()+
+      " sq ft at "+inches+" in/yr; "+Math.round(harvestDry).toLocaleString()+
+      " gal in the driest year on record"
+  };
+}
+
+function rainPanelHtml(){
+  if(state.water!=="rain") return "";
+  const r=rainMath();
+  const pct=v=>Math.round(v*100)+"%";
+  const cls = r.coverageDry>=1 ? "g-ok" : r.coverageDry>=0.5 ? "" : "g-warn";
+  const verdict = r.coverageDry>=1
+    ? "Catchment alone could cover your usage even in the driest year on record. Rare in Arizona — check the roof area is realistic."
+    : r.coverageDry>=0.5
+      ? "Catchment covers a useful share of your needs. Most people here pair it with hauled top-ups through the dry months."
+      : "Catchment supplements but won't carry a household at this roof size and rainfall. Treat it as a way to cut hauling costs, not replace them.";
+  return "<div class='rainbox "+cls+"'>"+
+    "<div class='soilrow'><span>Average rainfall</span><b>"+r.inches+" in/yr"+
+      (state.rain?"":" (estimate — edit below)")+"</b></div>"+
+    (state.rain?"<div class='soilrow'><span>Driest year ("+state.rain.driest.year+")</span><b>"+
+      state.rain.driest.inches+" in</b></div>":"")+
+    "<div class='soilrow'><span>Harvest, average year</span><b>"+Math.round(r.harvest).toLocaleString()+" gal</b></div>"+
+    "<div class='soilrow'><span>Harvest, driest year</span><b>"+Math.round(r.harvestDry).toLocaleString()+" gal</b></div>"+
+    "<div class='soilrow'><span>You need</span><b>"+Math.round(r.need).toLocaleString()+" gal/yr</b></div>"+
+    "<div class='soilrow'><span>Covered (avg / dry year)</span><b>"+pct(r.coverage)+" / "+pct(r.coverageDry)+"</b></div>"+
+    "<p style='margin:9px 0 0;font-size:13px'>"+verdict+"</p>"+
+    (state.rain
+      ? "<div class='src'>Rainfall: "+state.rain.source.publisher+", "+state.rain.window+
+        ". "+state.rain.source.note+"</div>"
+      : "<div style='margin-top:9px'><label for='rainIn' style='margin-top:0'>Annual rainfall (inches) — "+
+        "auto-fills after a coordinate lookup</label><input type='number' id='rainIn' value='10' min='1' step='0.5'></div>")+
+    "</div>";
+}
+
 function render(){
   const cty=COUNTIES[state.county];
   const L=state.local;
@@ -748,6 +830,16 @@ function render(){
     wLabel="Well (drilling + pump, casing, tank)";
     wDetail=dLow+"–"+dHigh+" ft at $"+C.drillFtLow+"–"+C.drillFtHigh+"/ft, based on "+
       (usingLocal?"wells within "+L.miles+" miles":"the county average");
+  }else if(state.water==="rain"){
+    const r=rainMath();
+    // Catchment rarely covers everything in Arizona — the shortfall is hauled.
+    const haulLow=C.haulYrLow*r.shortfallShare, haulMid=C.haulYrMid*r.shortfallShare,
+          haulHigh=C.haulYrHigh*r.shortfallShare;
+    wLow  = C.cisternLow  + C.catchLow  + haulLow*years;
+    wMid  = C.cisternMid  + C.catchMid  + haulMid*years;
+    wHigh = C.cisternHigh + C.catchHigh + haulHigh*years;
+    wLabel="Catchment + cistern"+(r.shortfallShare>0.02?" + top-up hauling ("+years+" yr)":"");
+    wDetail=r.detail;
   }else{
     wLow  = C.cisternLow  + C.haulYrLow*years;
     wMid  = C.cisternMid  + C.haulYrMid*years;
@@ -847,6 +939,7 @@ function render(){
         : "")+
       soilProfileHtml(state.soil)+
       " <span class='src'>Source: USDA-NRCS SSURGO, interpretation &ldquo;Septic Tank Absorption Fields.&rdquo;</span></div>" : "")+
+    rainPanelHtml()+
     "<p style='margin-top:10px'>Water assumption: "+wDetail+
     ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
 }
