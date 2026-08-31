@@ -20,7 +20,7 @@
 const WELLS55 = "https://services1.arcgis.com/Ezk9fcjSUkeadg6u/arcgis/rest/services/Wells_55/FeatureServer/0/query";
 const TIMEOUT_MS = 20000;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;
-const SCHEMA = "v1";
+const SCHEMA = "v2";   // v2 — flattened name/city/phone, licensed flag
 
 /** ADWR licensed well drillers, licence number → company. 168 active licences. */
 const NAMES = {
@@ -277,10 +277,19 @@ export async function onRequestGet({ request }) {
   }
 
   const drillers = [...groups.values()]
-    .filter(g => g.depths.length > 0)
-    .map(g => ({
+    // Licence "0" is a placeholder on old records, not a company.
+    .filter(g => g.depths.length > 0 && g.licence !== "0")
+    .map(g => {
+      const rec = NAMES[g.licence] || null;
+      return {
       licence: g.licence,
-      name: NAMES[g.licence] || null,
+      // Flattened — the lookup holds a record, but callers want plain fields.
+      name: rec ? rec.name : null,
+      city: rec ? rec.city : null,
+      phone: rec ? rec.phone : null,
+      // ADWR publishes only currently-active licences, so a miss usually means
+      // the driller has retired rather than that the data is wrong.
+      licensed: !!rec,
       wells: g.depths.length,
       medianDepth: median(g.depths),
       deepest: Math.max(...g.depths),
@@ -288,19 +297,25 @@ export async function onRequestGet({ request }) {
       medianYieldGpm: g.yields.length ? median(g.yields) : null,
       firstYear: g.years.length ? Math.min(...g.years) : null,
       lastYear: g.years.length ? Math.max(...g.years) : null
-    }))
-    .sort((a, b) => b.wells - a.wells);
+      };
+    })
+    // Currently-licensed companies first — those are the ones you can call.
+    .sort((a, b) => (b.licensed - a.licensed) || (b.wells - a.wells));
 
   const payload = {
     ok: true,
     scope: byPoint ? { lat, lon, radiusMiles: +(radius / 1609.34).toFixed(1) } : { county },
     wellsConsidered: rows.length,
     drillerCount: drillers.length,
+    licensedCount: drillers.filter(d => d.licensed).length,
     namesAvailable: Object.keys(NAMES).length > 0,
     drillers: drillers.slice(0, 40),
     caveats: [
       "Built from filed well registrations, so it shows who has drilled here — not who is currently accepting work.",
       "This is a partial extract of the ADWR registry; driller totals understate real activity.",
+      drillers.some(d => !d.licensed)
+        ? "Some licence numbers on older wells aren't on ADWR's current list — those drillers have most likely retired."
+        : null,
       Object.keys(NAMES).length === 0
         ? "Company names are not yet loaded — ADWR publishes the licence-to-name list at app.azwater.gov/DrillersList."
         : null

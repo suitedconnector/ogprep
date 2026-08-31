@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arizona Water Cost Finder — What a Well Will Cost on That Parcel</title>
-<meta name="description" content="How deep is the water under that Arizona parcel, and what will a well cost? Built from the actual wells drilled nearby — depth, water level, cost — plus hauling and rainwater catchment compared.">
-<meta property="og:title" content="What will water cost on that Arizona parcel?">
-<meta property="og:description" content="That $8,000 parcel might need a $70,000 well. See the wells actually drilled nearby — how deep they went and what it would cost you.">
+<meta name="description" content="How deep is the water under that Arizona parcel, and what will a well cost? Built from 174,782 filed Arizona well records — depth, water level, tested yield — plus hauling and rainwater catchment compared.">
+<meta property="og:title" content="Will you hit water on that Arizona parcel?">
+<meta property="og:description" content="Will you hit water on that Arizona parcel? See the wells actually drilled nearby — depth, water level, yield — and what a well would cost. Built on 174,782 filed records.">
 <meta property="og:type" content="website">
 <style>
   :root{
@@ -177,14 +177,15 @@
 
 <header>
   <div class="kicker">Build Off Grid · Arizona Water Cost Finder</div>
-  <h1>That $8,000 parcel might need a $70,000 well.</h1>
-  <p class="sub">Water is the one thing you can't engineer your way around — it's either under that land or it
+  <h1>Will you hit water — and what will it cost?</h1>
+  <p class="sub">Water is the one thing you can't engineer your way around: it's either under that land or it
   isn't. Enter a parcel and this pulls the <strong>actual wells drilled nearby</strong> from Arizona's
-  groundwater records: how deep they went, how deep the water sat, what it would cost you.
-  Then it compares drilling against hauling and rainwater catchment.</p>
+  groundwater records — how deep they went, how deep the water sat, what they produced — and prices your
+  well against hauling and rainwater catchment.</p>
   <p class="sub" style="margin-top:10px;font-size:14px">
-  County averages are often wildly wrong for a specific spot. Mohave County averages 587 ft — around Golden
-  Valley the wells run 962 to 1,518 ft. That difference is roughly $45,000.</p>
+  Built on <strong>174,782 filed well records</strong>. Statewide medians run 105 ft in Graham to 490 ft in
+  Pinal — but the county figure can be wildly wrong for one spot. Around Golden Valley in Mohave, wells run
+  three to six times the county median. That difference is tens of thousands of dollars.</p>
 </header>
 
 <div class="grid">
@@ -327,7 +328,7 @@
 </div>
 
 <footer>
-  <span class="pill">County data: ADWR Wells55 registry</span>
+  <span class="pill">County data: 174,782 ADWR well records</span>
   <span class="pill">Local lookup: ADWR GWSI (live)</span>
   <span class="pill">Soil: USDA-NRCS SSURGO (live)</span>
   <span class="pill">Costs: 2026 published AZ ranges</span>
@@ -359,21 +360,21 @@ const FORMSPREE_ENDPOINT = "https://formspree.io/f/xaewqnwk";
 const WELLS_API="/api/wells";   // Cloudflare Pages Function proxying ADWR GWSI
 
 const COUNTIES = {
-  "Apache":     {n:27,   avg:494,  sd:279, max:1028, wl:270},
-  "Cochise":    {n:662,  avg:464,  sd:245, max:1500, wl:149},
-  "Coconino":   {n:74,   avg:1253, sd:562, max:2508, wl:712},
-  "Gila":       {n:131,  avg:426,  sd:298, max:1150, wl:112},
-  "Graham":     {n:32,   avg:232,  sd:184, max:950,  wl:58},
-  "Greenlee":   {n:6,    avg:128,  sd:79,  max:260,  wl:47},
-  "La Paz":     {n:33,   avg:787,  sd:330, max:1340, wl:337},
-  "Maricopa":   {n:3384, avg:720,  sd:447, max:2986, wl:219},
-  "Mohave":     {n:111,  avg:587,  sd:404, max:1630, wl:298},
-  "Navajo":     {n:143,  avg:485,  sd:267, max:1370, wl:217},
-  "Pima":       {n:1758, avg:513,  sd:311, max:2786, wl:194},
-  "Pinal":      {n:1874, avg:883,  sd:402, max:2823, wl:313},
-  "Santa Cruz": {n:225,  avg:212,  sd:196, max:1200, wl:54},
-  "Yavapai":    {n:392,  avg:475,  sd:302, max:1700, wl:148},
-  "Yuma":       {n:43,   avg:292,  sd:149, max:657,  wl:96}
+  "Apache":      {n:5474, med:260, avg:308, sd:249, max:4143, wl:108, gpm:15},
+  "Cochise":     {n:18154, med:300, avg:374, sd:310, max:4210, wl:130, gpm:25},
+  "Coconino":    {n:3642, med:220, avg:424, sd:528, max:4800, wl:122, gpm:11},
+  "Gila":        {n:7623, med:160, avg:225, sd:239, max:4295, wl:54, gpm:15},
+  "Graham":      {n:4885, med:105, avg:266, sd:439, max:4747, wl:43, gpm:40},
+  "Greenlee":    {n:1949, med:152, avg:376, sd:516, max:4006, wl:65, gpm:30},
+  "La Paz":      {n:4158, med:160, avg:284, sd:301, max:3000, wl:80, gpm:20},
+  "Maricopa":    {n:36741, med:277, avg:378, sd:327, max:4542, wl:126, gpm:25},
+  "Mohave":      {n:11074, med:230, avg:358, sd:358, max:4696, wl:99, gpm:20},
+  "Navajo":      {n:7118, med:335, avg:337, sd:250, max:4300, wl:215, gpm:20},
+  "Pima":        {n:16521, med:310, avg:376, sd:290, max:3489, wl:160, gpm:25},
+  "Pinal":       {n:11834, med:490, avg:534, sd:430, max:4893, wl:225, gpm:25},
+  "Santa Cruz":  {n:3717, med:228, avg:281, sd:332, max:4722, wl:80, gpm:16},
+  "Yavapai":     {n:34194, med:300, avg:328, sd:221, max:4110, wl:125, gpm:15},
+  "Yuma":        {n:7698, med:145, avg:179, sd:196, max:2459, wl:50, gpm:30}
 };
 
 const C = {
@@ -579,16 +580,16 @@ async function lookup(){
       list.innerHTML="";
     }else{
       const s=j.stats;
-      state.local={n:j.withDepth,total:j.found,avg:s.avg,sd:s.sd,
+      state.local={n:j.withDepth,total:j.found,avg:s.avg,med:s.avg,sd:s.sd,
         min:s.min,max:s.max,dtw:s.medianDepthToWater,miles:miles,lat:lat,lng:lng};
-      const cAvg=COUNTIES[state.county].avg;
+      const cAvg=COUNTIES[state.county].med;
       const ratio=state.local.avg/cAvg;
       let cmp="";
       if(ratio>1.35) cmp=" — about <strong>"+ratio.toFixed(1)+"× deeper</strong> than the "+state.county+
-        " county average of "+cAvg+" ft. The county number would badly understate your cost here.";
+        " county median of "+cAvg+" ft. The county number would badly understate your cost here.";
       else if(ratio<0.7) cmp=" — noticeably <strong>shallower</strong> than the "+state.county+
-        " county average of "+cAvg+" ft. Better than the county picture suggests.";
-      else cmp=" — broadly in line with the "+state.county+" county average of "+cAvg+" ft.";
+        " county median of "+cAvg+" ft. Better than the county picture suggests.";
+      else cmp=" — broadly in line with the "+state.county+" county median of "+cAvg+" ft.";
       const wide = dist>8100
         ? '<div class="banner b-thin" style="margin-top:8px"><strong>Wide search.</strong> '+
           'Arizona is basin-and-range country — at 10 miles these wells may sit in different '+
@@ -750,8 +751,10 @@ function showWell(i,dot){
  */
 function drillersHtml(d){
   if(!d || !d.drillers || !d.drillers.length) return "";
-  const named=d.drillers.filter(x=>x.name);
+  // Only currently-licensed companies — a retired licence number is no use to a buyer.
+  const named=d.drillers.filter(x=>x.licensed && x.name);
   if(!named.length) return "";
+  const retired=d.drillers.length-named.length;
   const rows=named.slice(0,8).map(x=>{
     const tel=x.phone?x.phone.replace(/[^\d]/g,""):null;
     return "<div class='drow'>"+
@@ -773,7 +776,10 @@ function drillersHtml(d){
       "it shows who works this ground and how deep their wells go.</p>"+
     rows+
     "<div class='src'>Companies from ADWR's licensed driller list; well counts from the Wells55 "+
-    "registry. Filing a well here doesn't mean they're currently taking work.</div>"+
+    "registry. Filing a well here doesn't mean they're currently taking work."+
+    (retired?" "+retired+" other licence"+(retired===1?" is":"s are")+
+      " on nearby wells but no longer on ADWR's active list — most likely retired.":"")+
+    "</div>"+
   "</div>";
 }
 
@@ -923,9 +929,12 @@ function render(){
   const price=Math.max(0,+$("price").value||0);
   const years=Math.max(1,+$("years").value||10);
 
-  const dLow=Math.max(60,Math.round(src.avg-0.7*src.sd));
-  const dMid=Math.round(src.avg);
-  const dHigh=Math.round(src.avg+src.sd);
+  // Depth distributions are right-skewed — a few very deep wells drag the mean
+  // up — so the median is the planning number and the spread comes from sd.
+  const centre = usingLocal ? src.med : src.med;
+  const dLow=Math.max(60,Math.round(centre-0.6*src.sd));
+  const dMid=Math.round(centre);
+  const dHigh=Math.round(centre+src.sd);
 
   $("statsTitle").textContent = usingLocal
     ? "Wells within "+L.miles+" miles of your point"
@@ -936,14 +945,15 @@ function render(){
     <div class="stat"><span>Average depth nearby</span><b>${Math.round(L.avg).toLocaleString()} ft</b></div>
     <div class="stat"><span>Shallowest / deepest</span><b>${L.min.toLocaleString()} – ${L.max.toLocaleString()} ft</b></div>
     <div class="stat"><span>Median depth to water</span><b>${L.dtw?Math.round(L.dtw).toLocaleString()+" ft":"no data"}</b></div>
-    <div class="stat"><span>County average, for contrast</span><b>${cty.avg} ft</b></div>` : `
+    <div class="stat"><span>County median, for contrast</span><b>${cty.med} ft</b></div>` : `
     <div class="stat"><span>Wells on record</span><b>${cty.n.toLocaleString()}</b></div>
-    <div class="stat"><span>Average depth drilled</span><b>${cty.avg} ft</b></div>
-    <div class="stat"><span>Typical range (±1 sd)</span><b>${dLow}–${dHigh} ft</b></div>
+    <div class="stat"><span>Median depth drilled</span><b>${cty.med} ft</b></div>
+    <div class="stat"><span>Typical range</span><b>${dLow}–${dHigh} ft</b></div>
     <div class="stat"><span>Deepest on record</span><b>${cty.max.toLocaleString()} ft</b></div>
-    <div class="stat"><span>Average static water level</span><b>${cty.wl} ft</b></div>`;
+    <div class="stat"><span>Median water level</span><b>${cty.wl} ft</b></div>
+    ${cty.gpm?`<div class="stat"><span>Median tested yield</span><b>${cty.gpm} gpm</b></div>`:""}`;
 
-  const spread=src.sd/src.avg;
+  const spread=src.sd/(src.med||src.avg);
   $("confNote").textContent = usingLocal
     ? (L.n<6 ? "A handful of nearby records — directional, not definitive."
              : spread>0.5 ? "Nearby wells vary a lot. Budget nearer the deep end."

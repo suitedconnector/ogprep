@@ -1,39 +1,147 @@
 {
-  "_meta": {
-    "description": "Arizona well depth statistics by county, used for the fallback (non-parcel) estimates in the Cost to Livable calculator.",
-    "source": "Arizona Department of Water Resources — Wells55 registry",
-    "service": "https://services1.arcgis.com/Ezk9fcjSUkeadg6u/arcgis/rest/services/Wells_55/FeatureServer/0",
-    "query_filter": "WELL_DEPTH > 20 AND WELL_DEPTH < 3000",
-    "fields": {
-      "n": "count of wells with a usable recorded depth",
-      "avg": "mean well depth, feet",
-      "sd": "standard deviation of well depth, feet",
-      "max": "deepest well on record, feet",
-      "wl": "mean static water level, feet"
-    },
-    "caveats": [
-      "This is a hosted extract (University of Arizona GIS), not the full ADWR registry.",
-      "The complete Wells55 registry holds roughly 200,000 records; this subset has ~8,900 with usable depths.",
-      "Counties with small n (Greenlee n=6, Apache n=27, Graham n=32, La Paz n=33, Yuma n=43) are weak signals.",
-      "County averages are a poor guide for any specific parcel. Use the live GWSI radius lookup instead."
-    ],
-    "retrieved": "2026-08-07"
+ "_meta": {
+  "source": "ADWR Wells55 / AZ Well Registry 2024 (full export)",
+  "retrieved": "2026-08-30",
+  "records_total": 241708,
+  "records_used": 174782,
+  "filter": "20 < Well Depth < 5000",
+  "note": "Depths in feet. wl = median static water level. Yield from Tested Rate, else Pump Rate."
+ },
+ "counties": {
+  "Apache": {
+   "n": 5474,
+   "avg": 308,
+   "sd": 249,
+   "median": 260,
+   "max": 4143,
+   "wl": 108,
+   "medianYieldGpm": 15
   },
-  "counties": {
-    "Apache":     { "n": 27,   "avg": 494,  "sd": 279, "max": 1028, "wl": 270 },
-    "Cochise":    { "n": 662,  "avg": 464,  "sd": 245, "max": 1500, "wl": 149 },
-    "Coconino":   { "n": 74,   "avg": 1253, "sd": 562, "max": 2508, "wl": 712 },
-    "Gila":       { "n": 131,  "avg": 426,  "sd": 298, "max": 1150, "wl": 112 },
-    "Graham":     { "n": 32,   "avg": 232,  "sd": 184, "max": 950,  "wl": 58  },
-    "Greenlee":   { "n": 6,    "avg": 128,  "sd": 79,  "max": 260,  "wl": 47  },
-    "La Paz":     { "n": 33,   "avg": 787,  "sd": 330, "max": 1340, "wl": 337 },
-    "Maricopa":   { "n": 3384, "avg": 720,  "sd": 447, "max": 2986, "wl": 219 },
-    "Mohave":     { "n": 111,  "avg": 587,  "sd": 404, "max": 1630, "wl": 298 },
-    "Navajo":     { "n": 143,  "avg": 485,  "sd": 267, "max": 1370, "wl": 217 },
-    "Pima":       { "n": 1758, "avg": 513,  "sd": 311, "max": 2786, "wl": 194 },
-    "Pinal":      { "n": 1874, "avg": 883,  "sd": 402, "max": 2823, "wl": 313 },
-    "Santa Cruz": { "n": 225,  "avg": 212,  "sd": 196, "max": 1200, "wl": 54  },
-    "Yavapai":    { "n": 392,  "avg": 475,  "sd": 302, "max": 1700, "wl": 148 },
-    "Yuma":       { "n": 43,   "avg": 292,  "sd": 149, "max": 657,  "wl": 96  }
+  "Cochise": {
+   "n": 18154,
+   "avg": 374,
+   "sd": 310,
+   "median": 300,
+   "max": 4210,
+   "wl": 130,
+   "medianYieldGpm": 25
+  },
+  "Coconino": {
+   "n": 3642,
+   "avg": 424,
+   "sd": 528,
+   "median": 220,
+   "max": 4800,
+   "wl": 122,
+   "medianYieldGpm": 11
+  },
+  "Gila": {
+   "n": 7623,
+   "avg": 225,
+   "sd": 239,
+   "median": 160,
+   "max": 4295,
+   "wl": 54,
+   "medianYieldGpm": 15
+  },
+  "Graham": {
+   "n": 4885,
+   "avg": 266,
+   "sd": 439,
+   "median": 105,
+   "max": 4747,
+   "wl": 43,
+   "medianYieldGpm": 40
+  },
+  "Greenlee": {
+   "n": 1949,
+   "avg": 376,
+   "sd": 516,
+   "median": 152,
+   "max": 4006,
+   "wl": 65,
+   "medianYieldGpm": 30
+  },
+  "La Paz": {
+   "n": 4158,
+   "avg": 284,
+   "sd": 301,
+   "median": 160,
+   "max": 3000,
+   "wl": 80,
+   "medianYieldGpm": 20
+  },
+  "Maricopa": {
+   "n": 36741,
+   "avg": 378,
+   "sd": 327,
+   "median": 277,
+   "max": 4542,
+   "wl": 126,
+   "medianYieldGpm": 25
+  },
+  "Mohave": {
+   "n": 11074,
+   "avg": 358,
+   "sd": 358,
+   "median": 230,
+   "max": 4696,
+   "wl": 99,
+   "medianYieldGpm": 20
+  },
+  "Navajo": {
+   "n": 7118,
+   "avg": 337,
+   "sd": 250,
+   "median": 335,
+   "max": 4300,
+   "wl": 215,
+   "medianYieldGpm": 20
+  },
+  "Pima": {
+   "n": 16521,
+   "avg": 376,
+   "sd": 290,
+   "median": 310,
+   "max": 3489,
+   "wl": 160,
+   "medianYieldGpm": 25
+  },
+  "Pinal": {
+   "n": 11834,
+   "avg": 534,
+   "sd": 430,
+   "median": 490,
+   "max": 4893,
+   "wl": 225,
+   "medianYieldGpm": 25
+  },
+  "Santa Cruz": {
+   "n": 3717,
+   "avg": 281,
+   "sd": 332,
+   "median": 228,
+   "max": 4722,
+   "wl": 80,
+   "medianYieldGpm": 16
+  },
+  "Yavapai": {
+   "n": 34194,
+   "avg": 328,
+   "sd": 221,
+   "median": 300,
+   "max": 4110,
+   "wl": 125,
+   "medianYieldGpm": 15
+  },
+  "Yuma": {
+   "n": 7698,
+   "avg": 179,
+   "sd": 196,
+   "median": 145,
+   "max": 2459,
+   "wl": 50,
+   "medianYieldGpm": 30
   }
+ }
 }
