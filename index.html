@@ -123,8 +123,22 @@
   .dcity{font-weight:500;font-size:11.5px;color:#6b7360;white-space:nowrap}
   .dstats{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#5d6552;margin-top:4px}
   .dstats b{color:#1c1f18}
-  .dphone{display:inline-block;margin-top:6px;font-size:13px;font-weight:700;
-    color:#7a5f14;text-decoration:none;border-bottom:1px solid rgba(122,95,20,.35)}
+  .dquote{margin-top:8px;background:#8a6d1f;color:#fff;border:0;border-radius:7px;
+    padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer}
+  .dquote:disabled{background:#7fa650;cursor:default}
+  .qform{margin-top:10px;padding:11px;border-radius:8px;background:#fff;border:1px solid #dfe3d5}
+  .qfields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  @media(max-width:640px){.qfields{grid-template-columns:1fr}}
+  .qform input,.qform textarea{width:100%;background:#fff;color:#1c1f18;border:1px solid #d8dccd;
+    border-radius:6px;padding:8px 9px;font-size:13px;font-family:inherit}
+  .qform textarea{margin-top:7px;resize:vertical}
+  .qsend{margin-top:8px;background:#1c1f18;color:#fbfbf7;border:0;border-radius:7px;
+    padding:8px 16px;font-size:12.5px;font-weight:800;cursor:pointer}
+  .qsend:disabled{opacity:.6;cursor:default}
+  .qnote{font-size:11.5px;color:#6b7360;margin-top:8px;line-height:1.5}
+  .qresult{margin-top:7px;font-size:12.5px}
+  .qerr{color:#a8391c;font-weight:600}
+  .qok{font-size:13px;font-weight:700;color:#4d6b2f;padding:4px 0}
   .drillers .src{color:#6b7360;margin-top:10px}
   .src{font-size:11.5px;color:var(--muted);margin-top:6px}
   .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
@@ -755,8 +769,8 @@ function drillersHtml(d){
   const named=d.drillers.filter(x=>x.licensed && x.name);
   if(!named.length) return "";
   const retired=d.drillers.length-named.length;
-  const rows=named.slice(0,8).map(x=>{
-    const tel=x.phone?x.phone.replace(/[^\d]/g,""):null;
+  const rows=named.slice(0,8).map((x,i)=>{
+    const id="q"+i;
     return "<div class='drow'>"+
       "<div class='dname'>"+x.name+
         (x.city?" <span class='dcity'>"+x.city+"</span>":"")+"</div>"+
@@ -766,7 +780,21 @@ function drillersHtml(d){
         (x.medianYieldGpm?"<span>~<b>"+x.medianYieldGpm+" gpm</b></span>":"")+
         (x.firstYear?"<span>"+x.firstYear+"–"+x.lastYear+"</span>":"")+
       "</div>"+
-      (tel?"<a class='dphone' href='tel:"+tel+"'>"+x.phone+"</a>":"")+
+      "<button type='button' class='dquote' data-q='"+id+"' data-driller=\""+
+        x.name.replace(/"/g,"&quot;")+"\" data-licence='"+x.licence+"'>Request a quote</button>"+
+      "<div class='qform' id='"+id+"' hidden>"+
+        "<div class='qfields'>"+
+          "<input type='text'  placeholder='Your name'  data-f='name'>"+
+          "<input type='email' placeholder='Email'      data-f='email'>"+
+          "<input type='tel'   placeholder='Phone'      data-f='phone'>"+
+        "</div>"+
+        "<textarea placeholder='Anything they should know? (optional)' rows='2' data-f='note'></textarea>"+
+        "<button type='button' class='qsend'>Send request</button>"+
+        "<div class='qnote'>We'll pass your details to "+x.name+
+          " along with the well data for your location. They contact you directly — "+
+          "we can't promise a reply, and nothing is charged either way.</div>"+
+        "<div class='qresult'></div>"+
+      "</div>"+
     "</div>";
   }).join("");
   return "<div class='drillers'>"+
@@ -782,6 +810,58 @@ function drillersHtml(d){
     "</div>"+
   "</div>";
 }
+
+// Quote requests — delegated so they survive the panel being re-rendered.
+document.addEventListener("click",async e=>{
+  const open=e.target.closest && e.target.closest(".dquote");
+  if(open){
+    const box=document.getElementById(open.dataset.q);
+    if(!box) return;
+    const showing=!box.hasAttribute("hidden");
+    if(showing){ box.setAttribute("hidden",""); open.textContent="Request a quote"; }
+    else { box.removeAttribute("hidden"); open.textContent="Cancel"; box.querySelector("input").focus(); }
+    return;
+  }
+  const send=e.target.closest && e.target.closest(".qsend");
+  if(!send) return;
+
+  const box=send.closest(".qform");
+  const btn=box.parentElement.querySelector(".dquote");
+  const val=f=>{const el=box.querySelector('[data-f="'+f+'"]'); return el?el.value.trim():"";};
+  const out=box.querySelector(".qresult");
+  if(!val("email")&&!val("phone")){
+    out.innerHTML="<span class='qerr'>Give an email or a phone number so they can reach you.</span>";
+    return;
+  }
+
+  const L=state.local, P=state.parcel;
+  const payload={
+    _subject:"Drilling quote request — "+btn.dataset.driller,
+    driller:btn.dataset.driller,
+    driller_licence:btn.dataset.licence,
+    name:val("name"), email:val("email"), phone:val("phone"), note:val("note"),
+    county:state.county,
+    parcel:P?P.apn:"(not given)",
+    location:L?L.lat.toFixed(5)+", "+L.lng.toFixed(5):"(not given)",
+    nearby_wells:L?L.n:"",
+    nearby_median_depth_ft:L?Math.round(L.med||L.avg):"",
+    submitted_at:new Date().toISOString()
+  };
+
+  send.disabled=true; send.textContent="Sending…"; out.innerHTML="";
+  try{
+    const r=await fetch(FORMSPREE_ENDPOINT,{method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify(payload)});
+    if(!r.ok) throw new Error("server returned "+r.status);
+    box.innerHTML="<div class='qok'>Sent. We'll pass this to "+btn.dataset.driller+
+      " with the well data for your spot.</div>";
+    btn.textContent="Request sent"; btn.disabled=true;
+  }catch(ex){
+    out.innerHTML="<span class='qerr'>Couldn't send that — "+(ex.message||ex)+". Try again shortly.</span>";
+    send.disabled=false; send.textContent="Send request";
+  }
+});
 
 function parcelHtml(p){
   const money=v=>v==null?"—":"$"+v.toLocaleString();

@@ -284,9 +284,11 @@ export async function onRequestGet({ request }) {
       return {
       licence: g.licence,
       // Flattened — the lookup holds a record, but callers want plain fields.
+      // Phone is deliberately withheld from the public payload: enquiries go
+      // through the quote form so the lead is captured and forwarded, rather
+      // than the page acting as a free phone directory.
       name: rec ? rec.name : null,
       city: rec ? rec.city : null,
-      phone: rec ? rec.phone : null,
       // ADWR publishes only currently-active licences, so a miss usually means
       // the driller has retired rather than that the data is wrong.
       licensed: !!rec,
