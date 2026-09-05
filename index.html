@@ -409,7 +409,8 @@ const C = {
 };
 
 let state={county:"Mohave",water:"well",septic:"conv",power:"solar",region:"AZ",
-           local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,septicTouched:false};
+           local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,
+           utDepths:null,septicTouched:false};
 
 const SOIL_API="/api/soil";               // Cloudflare Pages Function
 const SOIL_LABEL={
@@ -493,9 +494,10 @@ const STATES = {
             "withdrawals ran 28,000 acre-feet against a 21,000 safe yield. Near Cedar City there are live "+
             "irrigation, stock and municipal rights going back to 1870 decrees, and <strong>no domestic rights "+
             "at all</strong>. That pattern is what a closed basin looks like.",
-    missing: "Utah files well logs as scanned documents rather than parsed data, so there are no depth "+
-             "or yield numbers to average — you get links to the filed logs instead. Driller records are "+
-             "Arizona-only so far."
+    missing: "Depths here are read from the individual filed well logs, one at a time — Utah's map layer "+
+             "carries only an index, so the numbers come from a page deeper. Coverage starts in 1991, when "+
+             "the state computerised its records; older wells appear without depths. Yield is not filed at "+
+             "all, so there is no gallons-per-minute figure to give you."
   }
 };
 
@@ -763,12 +765,25 @@ async function lookup(){
       const wj=await wr.json();
       state.rights = wj.ok ? wj : null;
       msg.innerHTML = wj.ok
-        ? '<div class="banner b-local"><strong>Utah — water rights view.</strong> '+
-          'Well depth records and driller data are Arizona-only, so this shows what governs '+
-          'whether you can drill at all.</div>'
+        ? '<div class="banner b-local"><strong>Utah — water rights first.</strong> '+
+          'You cannot drill here without an approved right, so that question comes before cost.</div>'
         : '<div class="banner b-err">'+(wj.error||"Water rights lookup failed.")+'</div>';
       list.innerHTML = wj.ok ? rightsHtml(wj) : "";
-      // Utah publishes log documents, not parsed depths — surface the links.
+
+      // Depths come from the filed logs themselves, read one well at a time.
+      // Utah's map layer carries only an index; the numbers are a page deeper.
+      try{
+        const dp=await fetch("/api/utahwelldepths?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
+        const dj=await dp.json();
+        state.utDepths = dj.ok ? dj : null;
+        if(dj.ok) list.innerHTML += utDepthsHtml(dj);
+        // Reshape into the same object the Arizona cost model consumes, so a
+        // Utah parcel is priced from Utah wells rather than a county fallback.
+        state.local = localFromUtah(dj);
+      }catch(_){ state.utDepths=null; state.local=null; }
+
+      // The document index still earns its place: geologic logs and pre-1991
+      // wells appear there with no parsed numbers to show.
       try{
         const lg=await fetch("/api/utahwelllogs?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
         const lj=await lg.json();
@@ -1103,6 +1118,92 @@ function rightsHtml(w){
  * Utah well logs. No depths here — Utah files the document, not the numbers —
  * so this is a shortcut to the paperwork rather than an analysis.
  */
+/* Map the Utah depth response onto the object shape the Arizona cost model
+   already understands { n, med, avg, sd, min, max, dtw, miles }. Doing the
+   translation here rather than branching the pricing code means Utah and
+   Arizona are costed by exactly the same arithmetic, and only the data source
+   differs. Returns null when the sample is too thin to be honest about. */
+function localFromUtah(d){
+  if(!d || !d.ok) return null;
+  const depths = (d.wells||[])
+    .filter(w => !w.nonProduction && !w.dryHole && w.depthFt!=null && w.depthFt>20)
+    .map(w => w.depthFt);
+  // Three wells is the floor. Below that a median is an anecdote wearing a
+  // statistic's clothes, and the county fallback would be no better.
+  if(depths.length < 3) return null;
+
+  const avg = depths.reduce((a,b)=>a+b,0)/depths.length;
+  const sd  = Math.sqrt(depths.reduce((s,v)=>s+(v-avg)**2,0)/depths.length) || avg*0.35;
+  return {
+    n: depths.length,
+    med: d.medianDepthFt!=null ? d.medianDepthFt : Math.round(avg),
+    avg, sd,
+    min: Math.min(...depths),
+    max: Math.max(...depths),
+    dtw: d.medianStaticWaterLevelFt,
+    miles: d.scope ? d.scope.radiusMiles : null,
+    utah: true,
+    dryHoleCount: d.dryHoleCount||0,
+    wlMin: d.minStaticWaterLevelFt, wlMax: d.maxStaticWaterLevelFt
+  };
+}
+
+function utDepthsHtml(d){
+  const money=v=>v==null?"—":v.toLocaleString();
+  const supply=(d.wells||[]).filter(w=>!w.nonProduction);
+
+  let dry="";
+  if(d.dryHoleCount){
+    // The single most consequential fact on the page. It leads.
+    dry = "<div class='banner b-err' style='margin:10px 0'><strong>"+d.dryHoleCount+
+      " dry hole"+(d.dryHoleCount===1?"":"s")+" on record nearby.</strong> "+
+      d.dryHoles.map(h=>"A well at "+(h.miles!=null?h.miles+" mi":"unknown distance")+
+        (h.drilled?", drilled "+h.drilled:"")+", was logged as: "+
+        (h.comments||[]).join("; ")+".").join(" ")+
+      " Someone paid to drill here and got nothing. That is the risk this page exists to show you.</div>";
+  }
+
+  if(d.medianDepthFt==null){
+    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Well depths nearby</div>"+dry+
+      "<p class='dintro'>Found "+d.distinctWellCount+" well"+(d.distinctWellCount===1?"":"s")+
+      " within "+d.scope.radiusMiles+" miles, but none carry a usable depth"+
+      (d.supplyWellsMissingDepth?" — "+d.supplyWellsMissingDepth+" predate Utah's 1991 computerised records":"")+
+      ". Widen the radius, or open the filed logs below.</p></div>";
+  }
+
+  const rows=supply.slice(0,15).map(w=>
+    "<tr><td class='n'>"+(w.miles!=null?w.miles+" mi":"—")+"</td>"+
+    "<td class='n'>"+(w.depthFt!=null?money(w.depthFt)+" ft":"—")+"</td>"+
+    "<td class='n'>"+(w.staticWaterLevelFt!=null
+        ? money(w.staticWaterLevelFt)+" ft"+(w.waterLevelSuspect?" <span title='Filed level is below the bottom of the well — treated as a filing error and excluded from the median.'>⚠</span>":"")
+        : "—")+"</td>"+
+    "<td>"+(w.drilled||"—")+"</td>"+
+    "<td>"+(w.driller||"—")+"</td>"+
+    "<td>"+(w.dryHole?"<b style='color:#b00'>Dry</b>":(w.waterRights&&w.waterRights.length>1
+        ? w.waterRights.length+" rights":"—"))+"</td>"+
+    "<td><a href='"+w.link+"' target='_blank' rel='noopener'>Log</a></td></tr>").join("");
+
+  const wlSpread = (d.minStaticWaterLevelFt!=null && d.maxStaticWaterLevelFt!=null &&
+                    d.maxStaticWaterLevelFt - d.minStaticWaterLevelFt > 100)
+    ? "<p class='dintro'><strong>Depth to water swings "+money(d.minStaticWaterLevelFt)+" to "+
+      money(d.maxStaticWaterLevelFt)+" ft inside this radius.</strong> That is fractured ground, not a "+
+      "consistent water table — two neighbours can get very different wells. Budget toward the deep end.</p>"
+    : "";
+
+  return "<div class='wells' style='margin-top:12px'>"+
+    "<div class='maphdr'>Well depths within "+d.scope.radiusMiles+" miles</div>"+dry+
+    "<p class='dintro'>Read from <strong>"+d.inspected+"</strong> filed well logs ("+
+      d.distinctWellCount+" distinct wells indexed nearby). Median depth <strong>"+
+      money(d.medianDepthFt)+" ft</strong>, range "+money(d.minDepthFt)+"–"+money(d.maxDepthFt)+" ft"+
+      (d.nonProductionCount?". "+d.nonProductionCount+" monitoring or geothermal bore"+
+        (d.nonProductionCount===1?"":"s")+" excluded — they are not drilled for water":"")+".</p>"+
+    wlSpread+
+    "<table><thead><tr><th class='n'>Away</th><th class='n'>Depth</th><th class='n'>To water</th>"+
+    "<th>Drilled</th><th>Driller</th><th>Notes</th><th></th></tr></thead><tbody>"+rows+"</tbody></table>"+
+    "<div class='src'>Source: Utah Division of Water Rights, well drilling database — read from the "+
+    "individual filed logs, not the map index.</div></div>";
+}
+
 function utLogsHtml(d){
   if(!d.logs || !d.logs.length){
     return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
@@ -1287,7 +1388,12 @@ function render(){
     <div class="stat"><span>Average depth nearby</span><b>${Math.round(L.avg).toLocaleString()} ft</b></div>
     <div class="stat"><span>Shallowest / deepest</span><b>${L.min.toLocaleString()} – ${L.max.toLocaleString()} ft</b></div>
     <div class="stat"><span>Median depth to water</span><b>${L.dtw?Math.round(L.dtw).toLocaleString()+" ft":"no data"}</b></div>
-    <div class="stat"><span>County median, for contrast</span><b>${cty.med} ft</b></div>` : `
+    ${L.utah
+      // COUNTIES holds Arizona only, so a "county median" contrast row in Utah
+      // would silently compare a Utah parcel against Mohave. Show what Utah
+      // actually has instead: how many nearby wells came back dry.
+      ? `<div class="stat"><span>Dry holes nearby</span><b>${L.dryHoleCount||0}</b></div>`
+      : `<div class="stat"><span>County median, for contrast</span><b>${cty.med} ft</b></div>`}` : `
     <div class="stat"><span>Wells on record</span><b>${cty.n.toLocaleString()}</b></div>
     <div class="stat"><span>Median depth drilled</span><b>${cty.med} ft</b></div>
     <div class="stat"><span>Typical range</span><b>${dLow}–${dHigh} ft</b></div>
@@ -1297,7 +1403,10 @@ function render(){
 
   const spread=src.sd/(src.med||src.avg);
   $("confNote").textContent = usingLocal
-    ? (L.n<6 ? "A handful of nearby records — directional, not definitive."
+    ? (L.utah && L.dryHoleCount
+        ? "A dry hole is on record within this radius. Depth is only half the question here — whether "+
+          "you hit water at all is the other half."
+       : L.n<6 ? "A handful of nearby records — directional, not definitive."
              : spread>0.5 ? "Nearby wells vary a lot. Budget nearer the deep end."
              : "Nearby wells are consistent, which makes this a reasonably firm planning number.")
     : (cty.n<40 ? "Only "+cty.n+" usable records in this county — a weak signal, not a forecast."
@@ -1343,24 +1452,25 @@ function render(){
   const sum=a=>a.reduce((x,y)=>x+y,0);
   const tLow=sum(lows),tMid=sum(mids),tHigh=sum(highs);
 
-  // Utah files well logs as documents, so there is no depth to price a well
-  // from. Falling back to the Arizona county would produce a confident,
-  // meaningless number — refuse instead.
-  const noDepthData = state.region==="UT" && state.water==="well";
+  // Utah now has real depths — but only where enough logs carry them. Without
+  // a local sample there is nothing to price from, and the Arizona county
+  // figure would be a confident number about the wrong state. Refuse instead.
+  const noDepthData = state.region==="UT" && state.water==="well" && !usingLocal;
   if(noDepthData){
     $("heroLabel").textContent = "Cost to drill a well";
-    $("waterBig").textContent  = "Not available in Utah";
+    $("waterBig").textContent  = "Not enough local records";
     $("waterBig").style.fontSize = "26px";
     $("waterRange").innerHTML =
-      "Utah publishes well logs as scanned documents, not as depth figures, so there is nothing to average. "+
-      "Open the filed logs below to read actual depths, or switch to <strong>cistern + hauling</strong> or "+
-      "<strong>rainwater catchment</strong> — both are costed the same way in either state.";
+      "Fewer than three nearby wells have a filed depth, so there is nothing honest to average — Utah only "+
+      "computerised well logs in 1991, and older wells are indexed without their numbers. Widen the search "+
+      "radius, or switch to <strong>cistern + hauling</strong> or <strong>rainwater catchment</strong>, "+
+      "which are costed the same way in either state.";
     $("total").textContent = "—";
     $("totalRange").textContent = "";
     $("bar").innerHTML = "";
     $("verdict").className = "verdict v-warn";
-    $("verdict").innerHTML = "The question in Utah is whether you may drill at all, not what it costs. "+
-      "See the water rights above.";
+    $("verdict").innerHTML = "In Utah the binding question is whether you may drill at all, not what it "+
+      "costs. Check the water rights above first — a cost estimate is worthless without one.";
     $("lines").innerHTML = "";
     $("assumptions").innerHTML = "";
     return;
@@ -1510,6 +1620,25 @@ $("leadForm").addEventListener("submit",async e=>{
       if(top) put("Nearest right", top.waterRight+" · "+top.type+" · "+top.status+
         (top.uses&&top.uses.length?" · "+top.uses.join(", "):"")+
         (top.acreFeet?" · "+top.acreFeet+" af":"")+(top.miles!=null?" · "+top.miles+" mi":""));
+    }
+    // Depths read from the filed Utah logs. A dry hole goes near the top of the
+    // email — it is the fact that changes whether the deal happens.
+    const D=state.utDepths;
+    if(D){
+      if(D.dryHoleCount) put("DRY HOLES NEARBY", D.dryHoleCount+" — "+
+        D.dryHoles.map(h=>(h.miles!=null?h.miles+" mi":"?")+(h.drilled?", "+h.drilled:"")).join("; "));
+      if(D.medianDepthFt!=null){
+        put("Median depth nearby", D.medianDepthFt+" ft (range "+D.minDepthFt+"–"+D.maxDepthFt+
+          " ft, "+D.depthSampleSize+" wells)");
+      }else{
+        put("Median depth nearby", "no usable depth on file within "+D.scope.radiusMiles+" miles");
+      }
+      if(D.medianStaticWaterLevelFt!=null) put("Depth to water",
+        D.medianStaticWaterLevelFt+" ft"+
+        (D.minStaticWaterLevelFt!=null&&D.maxStaticWaterLevelFt!=null
+          ? " (range "+D.minStaticWaterLevelFt+"–"+D.maxStaticWaterLevelFt+" ft)":""));
+      if(D.nonProductionCount) put("Non-production bores excluded", D.nonProductionCount+
+        (D.geothermalCount?" ("+D.geothermalCount+" geothermal)":""));
     }
     if(G) put("Well logs on file", G.found+" within "+G.scope.radiusMiles+" miles"+
       (G.geologicCount?" ("+G.geologicCount+" geologic)":""));
