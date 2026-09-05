@@ -153,9 +153,13 @@ function parseWell(html, win) {
   let comments = [], dryHole = false;
   const com = section(all, "Comments");
   if (com) {
+    // Most comment rows are the measurement metadata the driller filled in on
+    // the form — point of measurement, height above surface, temperature. That
+    // is not a note about the well, and it buries the ones that are.
+    const BOILERPLATE = /^(height above|point of|method of|temperature|ground temp|flowing)\b/i;
     comments = com.rows
       .map(r => (r[r.length - 1] || "").trim())
-      .filter(c => c && !/^no comment records/i.test(c));
+      .filter(c => c && !/^no comment records/i.test(c) && !BOILERPLATE.test(c));
     dryHole = comments.some(c => /\bdry\s*hole\b|\bno water\b|\bdid ?n'?t hit water\b|\bunsuccessful\b/i.test(c));
   }
 
@@ -386,6 +390,11 @@ export async function onRequestGet({ request }) {
     maxDepthFt: depths.length ? Math.max(...depths) : null,
     depthSampleSize: depths.length,
     medianStaticWaterLevelFt: median(levels),
+    // Depth to water varies far more than drilling depth around here — 14 ft to
+    // 290 ft within five miles. Publishing the median alone would imply a
+    // consistency the data does not support, so the spread travels with it.
+    minStaticWaterLevelFt: levels.length ? Math.min(...levels) : null,
+    maxStaticWaterLevelFt: levels.length ? Math.max(...levels) : null,
     waterLevelSampleSize: levels.length,
     wells: classified.map(w => ({
       win: w.win, waterRight: w.wrchex || null, waterRights: w.rights || [],
