@@ -101,8 +101,14 @@ function section(all, bannerName) {
 
 const cell = (row, i) => (i >= 0 && i < row.length) ? row[i] : null;
 
+// Utah writes "no measurement" as 1.3563E-19 rather than leaving the cell
+// empty. Strip commas and units but keep exponent notation intact, or that
+// sentinel parses as 1.3563 and reports a water table 16 inches down.
 const num = v => {
-  const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
+  const s = String(v).replace(/,/g, "").trim();
+  const m = s.match(/-?\d*\.?\d+(?:[eE][-+]?\d+)?/);
+  if (!m) return null;
+  const n = parseFloat(m[0]);
   return isFinite(n) ? n : null;
 };
 
@@ -139,6 +145,20 @@ function parseWell(html, win) {
     }
   }
 
+  /* Driller comments. This is the highest-value field on the page and the only
+     place a failed well is recorded: Well Features shows zeros for a dry hole
+     exactly as it does for an old log that was never digitised, so without the
+     comment the two are indistinguishable. "DRY HOLE" next door is worth more
+     to a buyer than any median. */
+  let comments = [], dryHole = false;
+  const com = section(all, "Comments");
+  if (com) {
+    comments = com.rows
+      .map(r => (r[r.length - 1] || "").trim())
+      .filter(c => c && !/^no comment records/i.test(c));
+    dryHole = comments.some(c => /\bdry\s*hole\b|\bno water\b|\bdid ?n'?t hit water\b|\bunsuccessful\b/i.test(c));
+  }
+
   // Static water level: the shallowest reading marked static, else the median
   // of all readings. A pumping level is drawdown, not the water table.
   let waterLevel = null;
@@ -156,7 +176,9 @@ function parseWell(html, win) {
   }
 
   return {
-    wellIntakeDepth: intake,
+    wellIntakeDepth: intake && intake > 0 ? intake : null,
+    comments,
+    dryHole,
     win,
     boreDepth: boreDepth && boreDepth > 0 ? boreDepth : null,
     wellDepth: wellDepth && wellDepth > 0 ? wellDepth : null,
@@ -304,7 +326,11 @@ export async function onRequestGet({ request }) {
   const classified = parsed.map(w => ({ ...w, ...classify(w, w.wrchex) }));
 
   const supply = classified.filter(w => !w.nonProduction);
-  const depths = supply.map(w => w.wellDepth ?? w.boreDepth).filter(v => v != null && v > 20);
+  // A dry hole's depth is real but answers a different question — it is how far
+  // someone drilled before giving up, not how far to water. Averaging it into
+  // "median depth" would understate the risk and overstate the certainty.
+  const depths = supply.filter(w => !w.dryHole)
+    .map(w => w.wellDepth ?? w.boreDepth).filter(v => v != null && v > 20);
   const levels = supply.map(w => w.staticWaterLevel).filter(v => v != null && v > 0);
 
   const payload = {
@@ -319,6 +345,13 @@ export async function onRequestGet({ request }) {
     // Depth may be absent even when supply wells exist: Utah only computerised
     // well logs from 1991, so older wells are indexed without their numbers.
     supplyWellsMissingDepth: supply.filter(w => (w.wellDepth ?? w.boreDepth) == null).length,
+    // Failed wells, reported separately and never averaged into the depth.
+    dryHoleCount: classified.filter(w => w.dryHole).length,
+    dryHoles: classified.filter(w => w.dryHole).map(w => ({
+      win: w.win, miles: w.miles, drilled: w.drilled, owner: w.owner,
+      depthFt: w.wellDepth ?? w.boreDepth, comments: w.comments,
+      link: WLBROWSE + w.win
+    })),
     medianDepthFt: median(depths),
     minDepthFt: depths.length ? Math.min(...depths) : null,
     maxDepthFt: depths.length ? Math.max(...depths) : null,
@@ -332,6 +365,7 @@ export async function onRequestGet({ request }) {
       staticWaterLevelFt: w.staticWaterLevel, drillingMethod: w.drillingMethod,
       driller: w.driller, activity: w.activity, drilled: w.drilled,
       geologicLog: w.geologicLog, kind: w.kind, nonProduction: w.nonProduction,
+      dryHole: w.dryHole, comments: w.comments,
       link: WLBROWSE + w.win
     })),
     caveats: [
@@ -341,6 +375,8 @@ export async function onRequestGet({ request }) {
       "They are drilled for heat or observation, not water, and would drag the figure far too low.",
       "Utah computerised well logs in 1991. Older wells appear in the index without depth, so a " +
       "small sample here means the records are thin, not that the wells are shallow.",
+      "Dry holes are counted separately and kept out of the median. A dry hole nearby is a " +
+      "warning, not a depth estimate — and the absence of one is not a guarantee.",
       "Only the " + MAX_WELLS + " nearest logs are read, so a wider area may contain deeper wells.",
       "A well log proves a well was drilled. It does not prove you may drill one — in Utah that " +
       "requires an approved water right."
