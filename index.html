@@ -1307,6 +1307,30 @@ function render(){
   const sum=a=>a.reduce((x,y)=>x+y,0);
   const tLow=sum(lows),tMid=sum(mids),tHigh=sum(highs);
 
+  // Utah files well logs as documents, so there is no depth to price a well
+  // from. Falling back to the Arizona county would produce a confident,
+  // meaningless number — refuse instead.
+  const noDepthData = state.region==="UT" && state.water==="well";
+  if(noDepthData){
+    $("heroLabel").textContent = "Cost to drill a well";
+    $("waterBig").textContent  = "Not available in Utah";
+    $("waterBig").style.fontSize = "26px";
+    $("waterRange").innerHTML =
+      "Utah publishes well logs as scanned documents, not as depth figures, so there is nothing to average. "+
+      "Open the filed logs below to read actual depths, or switch to <strong>cistern + hauling</strong> or "+
+      "<strong>rainwater catchment</strong> — both are costed the same way in either state.";
+    $("total").textContent = "—";
+    $("totalRange").textContent = "";
+    $("bar").innerHTML = "";
+    $("verdict").className = "verdict v-warn";
+    $("verdict").innerHTML = "The question in Utah is whether you may drill at all, not what it costs. "+
+      "See the water rights above.";
+    $("lines").innerHTML = "";
+    $("assumptions").innerHTML = "";
+    return;
+  }
+  $("waterBig").style.fontSize = "";
+
   // Water is the headline; the full cost-to-livable sits underneath as context.
   $("heroLabel").textContent = state.water==="well" ? "Estimated cost to drill a well"
     : state.water==="haul" ? "Estimated cost of cistern + hauling"
@@ -1314,8 +1338,8 @@ function render(){
   $("waterBig").textContent=money(wMid);
   $("waterRange").textContent="Range "+money(wLow)+" – "+money(wHigh)+
     (state.water==="well"&&usingLocal ? " · from "+L.n+" wells within "+L.miles+" miles"
-     : state.water==="well" ? " · from "+state.county+" county records"
-     : " · over "+years+" years");
+     : state.water==="well" ? " · from "+state.county+" County well records"
+     : " · over "+years+" years"+(state.region==="UT"?" · statewide ranges, not Utah-specific":""));
   $("total").textContent=money(tMid);
   $("totalRange").textContent=money(tLow)+" – "+money(tHigh)+
     " · land is "+(price/tMid*100).toFixed(0)+"% of it";
