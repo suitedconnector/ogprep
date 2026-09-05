@@ -1463,28 +1463,63 @@ $("leadForm").addEventListener("submit",async e=>{
   e.preventDefault();
   if($("leadForm").querySelector('[name=_gotcha]').value) return;  // bot
 
-  const L=state.local;
-  const lead={
-    email:$("leadEmail").value.trim(),
-    county:$("leadCounty").value,
-    apn:$("leadApn").value.trim(),
-    _subject:"Parcel water report request — "+state.region+" — "+$("leadCounty").value+" — "+$("leadApn").value.trim(),
-    state:state.region,
-    viewing_county:state.county,
-    land_price:+$("price").value||0,
-    water_plan:state.water==="well"?"drill a well":"cistern + hauling",
-    septic_plan:state.septic,
-    power_plan:state.power,
-    resolved_parcel:state.parcel?(state.parcel.apn+" · "+(state.parcel.acres??"?")+" ac · "+
-      (state.parcel.improved?"improved":"vacant")):"(none)",
-    neighbours_improved:state.parcel&&state.parcel.neighbours
-      ?state.parcel.neighbours.improved+"/"+state.parcel.neighbours.total:"",
-    soil_rating:state.soil?state.soil.rating:"",
-    looked_up_point:L?L.lat+", "+L.lng:"(none)",
-    nearby_wells:L?L.n:"",
-    nearby_avg_depth_ft:L?Math.round(L.avg):"",
-    submitted_at:new Date().toISOString()
-  };
+  // Build from what actually exists. Empty keys and raw codes make these emails
+  // useless to act on, and a stale Arizona county beside a Utah parcel is worse.
+  const L=state.local, P=state.parcel, W=state.rights, G=state.utLogs, S=state.soil;
+  const SEPTIC_LABEL={conv:"Conventional septic", alt:"Alternative / ATU", none:"Composting toilet"};
+  const POWER_LABEL={solar:"Off-grid solar", grid:"Grid extension", none:"Not costed"};
+  const WATER_LABEL={well:"Drill a well", haul:"Cistern + hauling", rain:"Rainwater catchment"};
+  const SOIL_TXT={not_limited:"Not limited", somewhat_limited:"Somewhat limited",
+                  very_limited:"Very limited", unknown:"Not mapped"};
+
+  const lead={};
+  const put=(k,v)=>{ if(v!==null&&v!==undefined&&v!=="") lead[k]=v; };
+
+  put("_subject","Parcel report — "+state.region+" — "+$("leadCounty").value+" — "+$("leadApn").value.trim());
+  put("Email", $("leadEmail").value.trim());
+  put("State", state.region==="UT"?"Utah":"Arizona");
+  put("County", $("leadCounty").value);
+  put("Parcel", $("leadApn").value.trim());
+
+  if(P){
+    put("Resolved parcel", P.apn+(P.acres?" · "+P.acres+" acres":"")+(P.improved?" · improved":" · vacant"));
+    put("Parcel address", P.address);
+  }
+  if(L) put("Coordinates", L.lat.toFixed(5)+", "+L.lng.toFixed(5));
+
+  put("Water plan", WATER_LABEL[state.water]);
+  if(!(state.region==="UT" && state.water==="well")){
+    put("Wastewater", SEPTIC_LABEL[state.septic]);
+    put("Power", POWER_LABEL[state.power]);
+    if(+$("price").value>0) put("Land price entered", "$"+(+$("price").value).toLocaleString());
+  }
+
+  if(state.region==="AZ"){
+    if(L){
+      put("Wells nearby", L.n+" within "+L.miles+" miles");
+      put("Median depth nearby", Math.round(L.med||L.avg)+" ft");
+      if(L.dtw) put("Depth to water", Math.round(L.dtw)+" ft");
+    }
+  }else{
+    if(W){
+      put("Water rights nearby", W.liveCount+" live of "+W.found+" on record");
+      put("Domestic rights", W.domesticCount===0
+        ? "NONE — needs a purchased right, a public connection, or hauling"
+        : W.domesticCount+" nearby");
+      const top=(W.rights||[]).filter(r=>r.uses&&r.uses.includes("Domestic"))[0] || (W.rights||[])[0];
+      if(top) put("Nearest right", top.waterRight+" · "+top.type+" · "+top.status+
+        (top.uses&&top.uses.length?" · "+top.uses.join(", "):"")+
+        (top.acreFeet?" · "+top.acreFeet+" af":"")+(top.miles!=null?" · "+top.miles+" mi":""));
+    }
+    if(G) put("Well logs on file", G.found+" within "+G.scope.radiusMiles+" miles"+
+      (G.geologicCount?" ("+G.geologicCount+" geologic)":""));
+  }
+
+  if(S) put("Soil septic rating", (SOIL_TXT[S.rating]||S.rating)+(S.mapunit?" · "+S.mapunit:""));
+  if(state.rain) put("Annual rainfall", state.rain.annualInches+" in/yr"+
+    (state.rain.driest?" · driest "+state.rain.driest.inches+" in":""));
+
+  put("Submitted", new Date().toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}));
 
   const btn=$("leadBtn"), err=$("leadErr");
   err.innerHTML="";
