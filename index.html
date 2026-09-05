@@ -150,12 +150,8 @@
   .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:9px;
     padding:12px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
   .keymap{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
-  .stateIntro{margin-top:12px;padding:14px 16px;border-radius:10px;
-    background:rgba(200,162,74,.09);border:1px solid var(--line)}
-  .siQ{font-size:16px;font-weight:800;line-height:1.3;color:var(--ink)}
-  .siBody{font-size:13.5px;color:var(--muted);line-height:1.6;margin:8px 0 0}
-  .siList{margin:10px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
-  .siGap{margin-top:10px;padding:8px 10px;border-radius:7px;font-size:12.5px;
+  .headSeg{max-width:280px;margin:12px 0 4px}
+  .siGap{margin-top:12px;max-width:62ch;padding:8px 10px;border-radius:7px;font-size:12.5px;
     background:rgba(211,116,47,.13);border:1px solid var(--warn);color:var(--ink)}
   .soilbox{margin-top:10px;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.55;
     background:rgba(91,143,185,.13);border:1px solid var(--info)}
@@ -197,16 +193,15 @@
 <div class="wrap">
 
 <header>
-  <div class="kicker">Build Off Grid · Arizona Water Cost Finder</div>
-  <h1>Will you hit water — and what will it cost?</h1>
-  <p class="sub">Water is the one thing you can't engineer your way around: it's either under that land or it
-  isn't. Enter a parcel and this pulls the <strong>actual wells drilled nearby</strong> from Arizona's
-  groundwater records — how deep they went, how deep the water sat, what they produced — and prices your
-  well against hauling and rainwater catchment.</p>
-  <p class="sub" style="margin-top:10px;font-size:14px">
-  Built on <strong>174,782 filed well records</strong>. Statewide medians run 105 ft in Graham to 490 ft in
-  Pinal — but the county figure can be wildly wrong for one spot. Around Golden Valley in Mohave, wells run
-  three to six times the county median. That difference is tens of thousands of dollars.</p>
+  <div class="kicker" id="kicker">Build Off Grid · Arizona Water Finder</div>
+  <div class="seg headSeg" id="stateSeg">
+    <button data-v="AZ" aria-pressed="true">Arizona</button>
+    <button data-v="UT" aria-pressed="false">Utah</button>
+  </div>
+  <h1 id="headline">Will you hit water — and what will it cost?</h1>
+  <p class="sub" id="headIntro"></p>
+  <p class="sub" id="headDetail" style="margin-top:10px;font-size:14px"></p>
+  <div id="headGap"></div>
 </header>
 
 <div class="grid">
@@ -252,14 +247,7 @@
   </div>
 
   <div class="card">
-    <label style="margin-top:0">State</label>
-    <div class="seg" id="stateSeg">
-      <button data-v="AZ" aria-pressed="true">Arizona</button>
-      <button data-v="UT" aria-pressed="false">Utah</button>
-    </div>
-    <div class="stateIntro" id="stateIntro"></div>
-
-    <h2 id="statsTitle" style="margin-top:20px">What the well records say</h2>
+    <h2 id="statsTitle">What the well records say</h2>
     <div id="wellStats"></div>
     <div class="note" id="confNote"></div>
 
@@ -458,23 +446,28 @@ const APN_COUNTIES=["Mohave","Yavapai"];
 const STATES = {
   AZ: {
     name: "Arizona",
-    question: "How deep is the water, and what will a well cost?",
+    kicker: "Build Off Grid · Arizona Water Cost Finder",
+    question: "Will you hit water — and what will it cost?",
     intro: "Arizona lets you drill an exempt domestic well on your own land without buying a water right, "+
            "so the question is cost, not permission. This shows the wells actually drilled near your parcel — "+
            "depth, water level, tested yield — and prices drilling against hauling and rainwater catchment. "+
            "Built on 174,782 filed well records from the Department of Water Resources.",
-    gives: ["Well depths from nearby records", "Cost to drill, haul or harvest",
-            "Septic feasibility from soil", "Drillers who work that ground", "Parcel lookup in Mohave and Yavapai"]
+    detail: "Built on <strong>174,782 filed well records</strong>. Statewide medians run 105 ft in Graham to "+
+            "490 ft in Pinal — but the county figure can be wildly wrong for one spot. Around Golden Valley in "+
+            "Mohave, wells run three to six times the county median. That difference is tens of thousands of dollars."
   },
   UT: {
     name: "Utah",
+    kicker: "Build Off Grid · Utah Water Rights Finder",
     question: "Are you allowed to drill here at all?",
     intro: "Utah requires an approved water right before you can drill, and in closed basins like Cedar Valley "+
            "in Iron County the State Engineer has stopped issuing new ones. So the binding question isn't depth — "+
            "it's whether a right already exists that you can use. This shows the points of diversion on record "+
            "near your parcel, what they're approved for, and how senior they are.",
-    gives: ["Water rights near the parcel", "Status, use and volume of each",
-            "Priority dates (seniority)", "Septic feasibility from soil", "Rainfall for catchment"],
+    detail: "Cedar Valley in Iron County has been a <strong>critical management area</strong> since 2021 — "+
+            "withdrawals ran 28,000 acre-feet against a 21,000 safe yield. Near Cedar City there are live "+
+            "irrigation, stock and municipal rights going back to 1870 decrees, and <strong>no domestic rights "+
+            "at all</strong>. That pattern is what a closed basin looks like.",
     missing: "No well-depth records or driller data — those are Arizona-only so far."
   }
 };
@@ -504,11 +497,12 @@ function applyState(code){
   const s = STATES[code];
   [...$("stateSeg").children].forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===code));
 
-  $("stateIntro").innerHTML =
-    "<div class='siQ'>"+s.question+"</div>"+
-    "<p class='siBody'>"+s.intro+"</p>"+
-    "<ul class='siList'>"+s.gives.map(g=>"<li>"+g+"</li>").join("")+"</ul>"+
-    (s.missing?"<div class='siGap'>"+s.missing+"</div>":"");
+  $("kicker").textContent   = s.kicker;
+  $("headline").textContent = s.question;
+  $("headIntro").innerHTML  = s.intro;
+  $("headDetail").innerHTML = s.detail;
+  $("headGap").innerHTML    = s.missing ? "<div class='siGap'>"+s.missing+"</div>" : "";
+  document.title = s.kicker.replace("Build Off Grid · ","") + " — what water will cost on that parcel";
 
   const az = code==="AZ";
   // Arizona drives everything off county statistics; Utah has none of that yet.
