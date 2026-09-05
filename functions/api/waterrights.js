@@ -22,7 +22,7 @@ const WRPOD = "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services
 // give up early and say what happened.
 const TIMEOUT_MS = 8000;
 const CACHE_SECONDS = 60 * 60 * 24 * 7;   // rebuilt nightly upstream
-const SCHEMA = "v2";   // v2 — corrected service URL and WebLink field case
+const SCHEMA = "v4";   // v4 — case-insensitive types, monitoring wells separated
 
 // Codes from the WRPOD metadata, spelled out for the reader.
 const STATUS = { A:"Approved", P:"Perfected", T:"Terminated", U:"Unapproved" };
@@ -58,13 +58,6 @@ export async function onRequestGet({ request }) {
   const lon = parseFloat(url.searchParams.get("lon"));
   const radius = Math.min(Math.max(parseInt(url.searchParams.get("radius") || "805", 10) || 805, 100), 8047);
 
-  if (!isFinite(lat) || !isFinite(lon)) return json({ ok: false, error: "lat and lon are required" }, 400);
-  // Rough Utah envelope — this layer is Utah only.
-  if (lat < 36.9 || lat > 42.1 || lon < -114.1 || lon > -108.9) {
-    return json({ ok: false, outsideUtah: true,
-      error: "That point is outside Utah. This layer covers Utah water rights only." }, 400);
-  }
-
   // ?probe=1 checks the upstream service is reachable and reports its layer
   // metadata, without running a spatial query. Use it when the endpoint 502s.
   if (url.searchParams.get("probe")) {
@@ -91,8 +84,17 @@ export async function onRequestGet({ request }) {
     } catch (e) {
       clearTimeout(t0);
       return json({ ok: false, probe: true, service: WRPOD.replace(/\/query$/, ""),
-        error: "Could not reach the service: " + (e.message || e) }, 502);
+        upstreamFailed: true,
+        error: "Could not reach the service: " + (e.message || e) });
     }
+  }
+
+
+  if (!isFinite(lat) || !isFinite(lon)) return json({ ok: false, error: "lat and lon are required" }, 400);
+  // Rough Utah envelope — this layer is Utah only.
+  if (lat < 36.9 || lat > 42.1 || lon < -114.1 || lon > -108.9) {
+    return json({ ok: false, outsideUtah: true,
+      error: "That point is outside Utah. This layer covers Utah water rights only." }, 400);
   }
 
   const key = `https://wr-cache/${SCHEMA}/${lat.toFixed(4)},${lon.toFixed(4)}/${radius}`;
@@ -126,7 +128,8 @@ export async function onRequestGet({ request }) {
     feats = j.features || [];
   } catch (e) {
     clearTimeout(t);
-    return json({ ok: false, error: "Utah water rights service unavailable: " + (e.message || e) }, 502);
+    return json({ ok: false, upstreamFailed: true,
+      error: "Utah water rights service unavailable: " + (e.message || e) });
   }
   clearTimeout(t);
 
@@ -158,13 +161,25 @@ export async function onRequestGet({ request }) {
       link: a.WebLink || a.WEBLINK || null,
       miles: (isFinite(g.y) && isFinite(g.x)) ? +miles(g.y, g.x).toFixed(2) : null,
       // "Live" means approved or perfected and not lapsed/forfeited/rejected.
-      live: LIVE.has(st) && !DEAD_STATUS.has(String(a.STATUS || "").toUpperCase())
+      live: LIVE.has(st) && !DEAD_STATUS.has(String(a.STATUS || "").toUpperCase()),
+      // Environmental monitoring bores — commonly fuel-station remediation.
+      // They carry a water right number but supply nothing, so they are counted
+      // separately rather than inflating the useful totals.
+      monitoring: /non-?production/i.test(String(a.SOURCE || "")) ||
+                  /\d{2}\d{4}M\d{2}$/.test(String(a.WRNUM || ""))
     };
   }).sort((a, b) => (b.live - a.live) || ((a.miles ?? 99) - (b.miles ?? 99)));
 
-  const live = rights.filter(r => r.live);
+  // TYPE and SOURCE come back title-case despite the metadata documenting them
+  // in caps, so compare case-insensitively.
+  const isType = (r, t) => String(r.type || "").toUpperCase().includes(t);
+
+  const live = rights.filter(r => r.live && !r.monitoring);
   const domestic = live.filter(r => r.uses.includes("Domestic"));
-  const wells = live.filter(r => r.type === "UNDERGROUND");
+  const wells = live.filter(r => isType(r, "UNDERGROUND"));
+  const springs = live.filter(r => isType(r, "SPRING"));
+  const surface = live.filter(r => isType(r, "SURFACE"));
+  const monitoring = rights.filter(r => r.monitoring);
 
   const payload = {
     ok: true,
@@ -173,7 +188,11 @@ export async function onRequestGet({ request }) {
     liveCount: live.length,
     domesticCount: domestic.length,
     undergroundCount: wells.length,
-    rights: rights.slice(0, 40),
+    springCount: springs.length,
+    surfaceCount: surface.length,
+    monitoringCount: monitoring.length,
+    rights: live.slice(0, 40),
+    monitoringWells: monitoring.slice(0, 10),
     caveats: [
       "A diversion point near a parcel does not prove the right conveys with that land — " +
       "Utah water rights are separate property and can be sold away from the ground.",
