@@ -320,14 +320,13 @@
 </div>
 
 <div class="cta" id="report">
-  <div style="font-size:19px;font-weight:800;margin-bottom:4px">Want this run on a specific parcel?</div>
-  <div style="color:var(--muted);font-size:14.5px">Give us the county and APN and we'll pull the wells within a half
-  mile of it — actual depths, actual yields, not a county average.</div>
+  <div style="font-size:19px;font-weight:800;margin-bottom:4px" id="ctaHeading">Want this run on a specific parcel?</div>
+  <div style="color:var(--muted);font-size:14.5px" id="ctaBlurb"></div>
   <form id="leadForm">
     <div class="fields">
       <div><label for="leadCounty">County</label>
         <select id="leadCounty" name="county" required></select></div>
-      <div><label for="leadApn">Parcel number (APN)</label>
+      <div><label for="leadApn" id="leadApnLabel">Parcel number (APN)</label>
         <input type="text" id="leadApn" name="apn" placeholder="e.g. 226-31-004" required></div>
       <div><label for="leadEmail">Email</label>
         <input type="email" id="leadEmail" name="email" placeholder="you@email.com" required></div>
@@ -335,7 +334,7 @@
     <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"
            style="position:absolute;left:-9999px" aria-hidden="true">
     <button type="submit" id="leadBtn">Send me the parcel report</button>
-    <div class="note">No APN handy? Paste a listing link or the nearest cross streets instead.</div>
+    <div class="note" id="leadApnHint">No APN handy? Paste a listing link or the nearest cross streets instead.</div>
     <div id="leadErr"></div>
   </form>
   <div id="thanks" style="display:none;margin-top:14px;padding:12px 14px;border-radius:9px;
@@ -437,6 +436,32 @@ const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const 
 // Counties with a parcel/APN adapter. Everywhere else is coordinates-only.
 const APN_COUNTIES=["Mohave","Yavapai"];
 
+const UT_COUNTIES=["Beaver","Box Elder","Cache","Carbon","Daggett","Davis","Duchesne","Emery","Garfield",
+  "Grand","Iron","Juab","Kane","Millard","Morgan","Piute","Rich","Salt Lake","San Juan","Sanpete","Sevier",
+  "Summit","Tooele","Uintah","Utah","Wasatch","Washington","Wayne","Weber"];
+
+// What the parcel report can actually contain, per state. The offer has to
+// match the data or it is a promise we cannot keep.
+const REPORT_OFFER = {
+  AZ: {
+    heading: "Want this run on a specific parcel?",
+    blurb: "Give us the county and APN and we'll pull the wells within a half mile of it — actual depths, "+
+           "actual yields, not a county average.",
+    apnLabel: "Parcel number (APN)",
+    apnHint: "No APN handy? Paste a listing link or the nearest cross streets instead.",
+    apnPlaceholder: "e.g. 226-31-004"
+  },
+  UT: {
+    heading: "Want the water picture on a specific parcel?",
+    blurb: "Give us the county and parcel number and we'll pull the water rights on and around it — status, "+
+           "use, seniority and volume — plus any filed well logs nearby. In a closed basin that's what decides "+
+           "whether the land is buildable.",
+    apnLabel: "Parcel number",
+    apnHint: "Utah parcel numbers vary by county — e.g. E-0209-0025-0001 in Iron County. A listing link works too.",
+    apnPlaceholder: "e.g. E-0209-0025-0001"
+  }
+};
+
 /**
  * The two states answer genuinely different questions, because their water law
  * differs. Arizona: how deep and what will it cost. Utah: are you allowed to
@@ -498,6 +523,17 @@ function applyState(code){
   state.region = code;
   const s = STATES[code];
   [...$("stateSeg").children].forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===code));
+
+  // The parcel-report offer must describe what that state can actually deliver.
+  const off = REPORT_OFFER[code];
+  $("ctaHeading").textContent = off.heading;
+  $("ctaBlurb").textContent   = off.blurb;
+  $("leadApnLabel").textContent = off.apnLabel;
+  $("leadApn").placeholder    = off.apnPlaceholder;
+  $("leadApnHint").textContent = off.apnHint;
+  const counties = code==="UT" ? UT_COUNTIES : Object.keys(COUNTIES);
+  leadSel.innerHTML = counties.map(c=>"<option>"+c+"</option>").join("");
+  leadSel.value = code==="UT" ? "Iron" : state.county;
 
   $("kicker").textContent   = s.kicker;
   $("headline").textContent = s.question;
@@ -1432,7 +1468,8 @@ $("leadForm").addEventListener("submit",async e=>{
     email:$("leadEmail").value.trim(),
     county:$("leadCounty").value,
     apn:$("leadApn").value.trim(),
-    _subject:"Parcel water report request — "+$("leadCounty").value+" — "+$("leadApn").value.trim(),
+    _subject:"Parcel water report request — "+state.region+" — "+$("leadCounty").value+" — "+$("leadApn").value.trim(),
+    state:state.region,
     viewing_county:state.county,
     land_price:+$("price").value||0,
     water_plan:state.water==="well"?"drill a well":"cistern + hauling",
