@@ -305,8 +305,26 @@ export async function onRequestGet({ request }) {
   })).filter(w => w.win != null)
     .sort((a, b) => (a.miles ?? 99) - (b.miles ?? 99));
 
+  /* The layer carries one row per well PER WATER RIGHT. WIN 6747 near Cedar
+     City appears twelve times, once for each right assigned to it. Left alone
+     that makes a single well look like twelve independent data points and
+     collapses the median onto one value — min, max and median all identical,
+     which reads as precision and is the opposite. Deduplicate on WIN, keep the
+     nearest row, and carry the rights along as a list. */
+  const byWin = new Map();
+  for (const w of index) {
+    const prev = byWin.get(w.win);
+    if (prev) {
+      if (w.wrchex && !prev.rights.includes(w.wrchex)) prev.rights.push(w.wrchex);
+    } else {
+      byWin.set(w.win, { ...w, rights: w.wrchex ? [w.wrchex] : [] });
+    }
+  }
+  const unique = [...byWin.values()];
+
   const indexedCount = index.length;
-  const targets = index.slice(0, MAX_WELLS);
+  const distinctWellCount = unique.length;
+  const targets = unique.slice(0, MAX_WELLS);
 
   // 2. Fetch the log pages in parallel. One failure must not sink the batch.
   const ctl2 = new AbortController();
@@ -323,7 +341,14 @@ export async function onRequestGet({ request }) {
   clearTimeout(t2);
 
   const parsed = fetched.filter(w => !w.fetchFailed);
-  const classified = parsed.map(w => ({ ...w, ...classify(w, w.wrchex) }));
+  const classified = parsed.map(w => {
+    const c = classify(w, w.wrchex);
+    const depth = w.wellDepth ?? w.boreDepth;
+    // A static level below the bottom of the hole is a filing error. Keep the
+    // number visible but refuse to average it into anything.
+    const wlSuspect = w.staticWaterLevel != null && depth != null && w.staticWaterLevel > depth;
+    return { ...w, ...c, waterLevelSuspect: wlSuspect };
+  });
 
   const supply = classified.filter(w => !w.nonProduction);
   // A dry hole's depth is real but answers a different question — it is how far
@@ -331,12 +356,16 @@ export async function onRequestGet({ request }) {
   // "median depth" would understate the risk and overstate the certainty.
   const depths = supply.filter(w => !w.dryHole)
     .map(w => w.wellDepth ?? w.boreDepth).filter(v => v != null && v > 20);
-  const levels = supply.map(w => w.staticWaterLevel).filter(v => v != null && v > 0);
+  const levels = supply.filter(w => !w.waterLevelSuspect)
+    .map(w => w.staticWaterLevel).filter(v => v != null && v > 0);
 
   const payload = {
     ok: true,
     scope: { lat, lon, radiusMiles: +(radius / 1609.34).toFixed(2) },
+    // indexedCount counts layer rows; distinctWellCount counts actual wells.
+    // The two differ a lot where one well carries many water rights.
     indexedCount,
+    distinctWellCount,
     inspected: parsed.length,
     nonProductionCount: classified.filter(w => w.nonProduction).length,
     geothermalCount: classified.filter(w => w.kind === "geothermal").length,
@@ -359,10 +388,12 @@ export async function onRequestGet({ request }) {
     medianStaticWaterLevelFt: median(levels),
     waterLevelSampleSize: levels.length,
     wells: classified.map(w => ({
-      win: w.win, waterRight: w.wrchex || null, owner: w.owner, legal: w.legal,
+      win: w.win, waterRight: w.wrchex || null, waterRights: w.rights || [],
+      owner: w.owner, legal: w.legal,
       miles: w.miles, depthFt: w.wellDepth ?? w.boreDepth,
       boreDepthFt: w.boreDepth, casingDiameterIn: w.casingDiameterIn,
-      staticWaterLevelFt: w.staticWaterLevel, drillingMethod: w.drillingMethod,
+      staticWaterLevelFt: w.staticWaterLevel, waterLevelSuspect: w.waterLevelSuspect,
+      drillingMethod: w.drillingMethod,
       driller: w.driller, activity: w.activity, drilled: w.drilled,
       geologicLog: w.geologicLog, kind: w.kind, nonProduction: w.nonProduction,
       dryHole: w.dryHole, comments: w.comments,
@@ -377,7 +408,8 @@ export async function onRequestGet({ request }) {
       "small sample here means the records are thin, not that the wells are shallow.",
       "Dry holes are counted separately and kept out of the median. A dry hole nearby is a " +
       "warning, not a depth estimate — and the absence of one is not a guarantee.",
-      "Only the " + MAX_WELLS + " nearest logs are read, so a wider area may contain deeper wells.",
+        "Only the " + MAX_WELLS + " nearest distinct wells are read, so a wider area may contain " +
+      "deeper wells. Sample size counts wells, not database rows.",
       "A well log proves a well was drilled. It does not prove you may drill one — in Utah that " +
       "requires an approved water right."
     ],
