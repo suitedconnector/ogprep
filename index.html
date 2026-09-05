@@ -410,7 +410,7 @@ const C = {
 };
 
 let state={county:"Mohave",water:"well",septic:"conv",power:"solar",region:"AZ",
-           local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,septicTouched:false};
+           local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,septicTouched:false};
 
 const SOIL_API="/api/soil";               // Cloudflare Pages Function
 const SOIL_LABEL={
@@ -468,7 +468,9 @@ const STATES = {
             "withdrawals ran 28,000 acre-feet against a 21,000 safe yield. Near Cedar City there are live "+
             "irrigation, stock and municipal rights going back to 1870 decrees, and <strong>no domestic rights "+
             "at all</strong>. That pattern is what a closed basin looks like.",
-    missing: "No well-depth records or driller data — those are Arizona-only so far."
+    missing: "Utah files well logs as scanned documents rather than parsed data, so there are no depth "+
+             "or yield numbers to average — you get links to the filed logs instead. Driller records are "+
+             "Arizona-only so far."
   }
 };
 
@@ -718,7 +720,7 @@ async function lookup(){
   // Utah: no well-depth registry here, but water rights are the binding
   // question — you cannot drill without one. Run that instead and stop.
   if(state.region==="UT"){
-    state.local=null; state.drillers=null; list.innerHTML="";
+    state.local=null; state.drillers=null; state.utLogs=null; list.innerHTML="";
     msg.innerHTML='<div class="banner b-local">Querying Utah water rights…</div>';
     try{
       const wr=await fetch("/api/waterrights?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
@@ -730,6 +732,13 @@ async function lookup(){
           'whether you can drill at all.</div>'
         : '<div class="banner b-err">'+(wj.error||"Water rights lookup failed.")+'</div>';
       list.innerHTML = wj.ok ? rightsHtml(wj) : "";
+      // Utah publishes log documents, not parsed depths — surface the links.
+      try{
+        const lg=await fetch("/api/utahwelllogs?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
+        const lj=await lg.json();
+        state.utLogs = lj.ok ? lj : null;
+        if(lj.ok) list.innerHTML += utLogsHtml(lj);
+      }catch(_){ state.utLogs=null; }
     }catch(e){
       state.rights=null;
       msg.innerHTML='<div class="banner b-err">Water rights lookup failed: '+(e.message||e)+'</div>';
@@ -1052,6 +1061,32 @@ function rightsHtml(w){
     "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
     "A diversion near a parcel does not prove the right conveys with that land — water rights are "+
     "separate property in Utah. Verify with title work.</div></div>";
+}
+
+/**
+ * Utah well logs. No depths here — Utah files the document, not the numbers —
+ * so this is a shortcut to the paperwork rather than an analysis.
+ */
+function utLogsHtml(d){
+  if(!d.logs || !d.logs.length){
+    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
+      "<p class='dintro'>No filed well logs within "+d.scope.radiusMiles+" miles. That may mean nothing has "+
+      "been drilled here, or that older wells were never filed.</p></div>";
+  }
+  const rows=d.logs.slice(0,15).map(l=>
+    "<tr><td class='n'>"+(l.miles!=null?l.miles+" mi":"—")+"</td>"+
+    "<td>"+(l.owner||"—")+"</td>"+
+    "<td>"+(l.waterRight||"—")+"</td>"+
+    "<td>"+(l.geologic?"<b>Geologic</b>":(l.logType||"Well log"))+"</td>"+
+    "<td><a href='"+l.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
+  return "<div class='wells' style='margin-top:12px'>"+
+    "<div class='maphdr'>Well logs within "+d.scope.radiusMiles+" miles</div>"+
+    "<p class='dintro'><strong>"+d.found+" filed log"+(d.found===1?"":"s")+"</strong>"+
+      (d.geologicCount?", "+d.geologicCount+" of them geologic logs (richer detail)":"")+
+      ". "+d.note+"</p>"+
+    "<table><thead><tr><th class='n'>Away</th><th>Owner</th><th>Water right</th>"+
+    "<th>Type</th><th>Document</th></tr></thead><tbody>"+rows+"</tbody></table>"+
+    "<div class='src'>Source: Utah Division of Water Rights well log index.</div></div>";
 }
 
 function parcelHtml(p){
