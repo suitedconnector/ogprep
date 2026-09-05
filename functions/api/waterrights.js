@@ -16,13 +16,13 @@
  * produces candidates for title work, not an answer.
  */
 
-const WRPOD = "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/PODView/FeatureServer/0/query";
+const WRPOD = "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Utah_Points_of_Diversion/FeatureServer/0/query";
 // Short deliberately: if the upstream hangs, Cloudflare kills the Worker and
 // serves its own 502 before our catch can return anything readable. Better to
 // give up early and say what happened.
 const TIMEOUT_MS = 8000;
 const CACHE_SECONDS = 60 * 60 * 24 * 7;   // rebuilt nightly upstream
-const SCHEMA = "v1";
+const SCHEMA = "v2";   // v2 — corrected service URL and WebLink field case
 
 // Codes from the WRPOD metadata, spelled out for the reader.
 const STATUS = { A:"Approved", P:"Perfected", T:"Terminated", U:"Unapproved" };
@@ -108,7 +108,7 @@ export async function onRequestGet({ request }) {
     distance: String(radius),
     units: "esriSRUnit_Meter",
     spatialRel: "esriSpatialRelIntersects",
-    outFields: "WRNUM,TYPE,SUMMARY_ST,TYPE_OF_RIGHT,STATUS,PRIORITY,USES,CFS,ACFT,LOCATION,WIN,OWNER,SOURCE,WEBLINK",
+    outFields: "WRNUM,TYPE,SUMMARY_ST,TYPE_OF_RIGHT,STATUS,PRIORITY,USES,CFS,ACFT,LOCATION,WIN,OWNER,SOURCE,WebLink",
     returnGeometry: "true",
     outSR: "4326",
     resultRecordCount: "200",
@@ -155,7 +155,7 @@ export async function onRequestGet({ request }) {
       source: a.SOURCE || null,
       wellId: a.WIN != null ? String(a.WIN) : null,
       legal: a.LOCATION || null,
-      link: a.WEBLINK || null,
+      link: a.WebLink || a.WEBLINK || null,
       miles: (isFinite(g.y) && isFinite(g.x)) ? +miles(g.y, g.x).toFixed(2) : null,
       // "Live" means approved or perfected and not lapsed/forfeited/rejected.
       live: LIVE.has(st) && !DEAD_STATUS.has(String(a.STATUS || "").toUpperCase())
