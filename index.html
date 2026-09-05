@@ -776,11 +776,26 @@ async function lookup(){
         const dp=await fetch("/api/utahwelldepths?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
         const dj=await dp.json();
         state.utDepths = dj.ok ? dj : null;
-        if(dj.ok) list.innerHTML += utDepthsHtml(dj);
-        // Reshape into the same object the Arizona cost model consumes, so a
-        // Utah parcel is priced from Utah wells rather than a county fallback.
-        state.local = localFromUtah(dj);
-      }catch(_){ state.utDepths=null; state.local=null; }
+        if(dj.ok){
+          list.innerHTML += utDepthsHtml(dj);
+          // Reshape into the same object the Arizona cost model consumes, so a
+          // Utah parcel is priced from Utah wells rather than a county fallback.
+          state.local = localFromUtah(dj);
+        }else{
+          // Say why. Reading 14 log pages is the slowest call this app makes and
+          // it can time out in dense areas — silently showing nothing would look
+          // identical to "no wells here", which is a very different fact.
+          list.innerHTML += "<div class='wells' style='margin-top:12px'>"+
+            "<div class='maphdr'>Well depths nearby</div><p class='dintro'>"+
+            "Could not read the filed well logs: "+(dj.error||"unknown error")+
+            " The document index below still works.</p></div>";
+        }
+      }catch(e){
+        state.utDepths=null; state.local=null;
+        list.innerHTML += "<div class='wells' style='margin-top:12px'>"+
+          "<div class='maphdr'>Well depths nearby</div><p class='dintro'>"+
+          "Depth lookup failed: "+(e.message||e)+"</p></div>";
+      }
 
       // The document index still earns its place: geologic logs and pre-1991
       // wells appear there with no parsed numbers to show.
