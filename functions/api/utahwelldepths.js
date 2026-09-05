@@ -59,33 +59,47 @@ const median = a => {
 const stripTags = h => h.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ")
   .replace(/&amp;/gi, "&").replace(/\s+/g, " ").trim();
 
+/* Each table on the page is laid out the same way:
+     row 0  spacer
+     row 1  a single cell naming the table  ("Activity", "Well Features", …)
+     row 2  spacer
+     row 3  the column headers
+     row 4+ data, or one wide cell saying "No … records found"
+   Keying off the banner is far safer than guessing by column text: "Drilling
+   Method" and "Total Bore Depth" would otherwise make Well Features answer to
+   a search for the water-level table's "method" and "depth" columns. */
 function tables(html) {
   return (html.match(/<table[\s\S]*?<\/table>/gi) || []).map(t => {
     const rows = (t.match(/<tr[\s\S]*?<\/tr>/gi) || []).map(r =>
       (r.match(/<t[dh][\s\S]*?<\/t[dh]>/gi) || []).map(stripTags)
     ).filter(r => r.length);
-    return rows;
-  }).filter(r => r.length);
+    const bannerRow = rows.find(r => r.length === 1 && r[0]);
+    return { banner: bannerRow ? bannerRow[0] : null, rows };
+  }).filter(t => t.rows.length);
 }
 
-// Find a table containing a header row with all the given phrases, and return
-// { rows, header, idx } where idx maps phrase -> column number.
-function findTable(all, phrases) {
-  for (const rows of all) {
-    for (let i = 0; i < Math.min(rows.length, 3); i++) {
-      const head = rows[i].map(c => c.toLowerCase().replace(/\s+/g, " "));
-      const idx = {};
-      const ok = phrases.every(p => {
-        const j = head.findIndex(c => c.includes(p));
-        if (j < 0) return false;
-        idx[p] = j;
-        return true;
-      });
-      if (ok) return { rows: rows.slice(i + 1), idx };
-    }
-  }
-  return null;
+// Return { idx, rows } for the table with this banner. idx maps a lowercase
+// header phrase to its column number; rows are the data rows only.
+function section(all, bannerName) {
+  const tbl = all.find(t => t.banner &&
+    t.banner.toLowerCase().includes(bannerName.toLowerCase()));
+  if (!tbl) return null;
+
+  // The header row is the first row with several cells — anything narrower is
+  // a spacer or the banner itself.
+  const hi = tbl.rows.findIndex(r => r.length >= 3);
+  if (hi < 0) return null;
+
+  const head = tbl.rows[hi].map(c => c.toLowerCase().replace(/\s+/g, " ").trim());
+  const idx = p => head.findIndex(c => c.includes(p));
+
+  // "No water level records found" arrives as a single wide cell; drop anything
+  // that does not have the full set of columns.
+  const rows = tbl.rows.slice(hi + 1).filter(r => r.length >= head.length - 1 && r.length >= 3);
+  return { idx, rows, head };
 }
+
+const cell = (row, i) => (i >= 0 && i < row.length) ? row[i] : null;
 
 const num = v => {
   const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
@@ -95,47 +109,52 @@ const num = v => {
 function parseWell(html, win) {
   const all = tables(html);
 
-  const feat = findTable(all, ["total bore", "finished well"]);
-  let boreDepth = null, wellDepth = null, casingDia = null, method = null, geologic = false;
+  // A WIN can have several activity rows (drilled, then deepened, then a pump
+  // change). Prefer the row whose WIN column matches; fall back to the first.
+  const pick = s => s.rows.find(r => r.some(c => c.trim() === String(win))) || s.rows[0] || null;
+
+  let boreDepth = null, wellDepth = null, casingDia = null, intake = null,
+      method = null, geologic = false;
+  const feat = section(all, "Well Features");
   if (feat) {
-    const row = feat.rows.find(r => r.join(" ").includes(String(win))) || feat.rows[0];
+    const row = pick(feat);
     if (row) {
-      boreDepth = num(row[feat.idx["total bore"]]);
-      wellDepth = num(row[feat.idx["finished well"]]);
-      const di = findTable(all, ["total bore", "finished casing"]);
-      if (di) casingDia = num(row[di.idx["finished casing"]]);
-      const mi = findTable(all, ["drilling method"]);
-      if (mi) method = row[mi.idx["drilling method"]] || null;
-      geologic = /yes/i.test(row[row.length - 1] || "");
+      boreDepth = num(cell(row, feat.idx("total bore")));
+      wellDepth = num(cell(row, feat.idx("finished well")));
+      casingDia = num(cell(row, feat.idx("finished casing")));
+      intake    = num(cell(row, feat.idx("well intake")));
+      method    = cell(row, feat.idx("drilling method")) || null;
+      geologic  = /yes/i.test(cell(row, feat.idx("geologic")) || "");
     }
   }
 
-  const act = findTable(all, ["drilling", "activity"]);
   let driller = null, activity = null, drilled = null;
+  const act = section(all, "Activity");
   if (act) {
-    const row = act.rows.find(r => r.join(" ").includes(String(win))) || act.rows[0];
+    const row = pick(act);
     if (row) {
-      const flat = row.join(" | ");
-      const d = flat.match(/(\d{2}\/\d{2}\/\d{4})/);
-      drilled = d ? d[1] : null;
-      // Company is the longest cell that isn't the WIN, a date or a short code.
-      const cand = row.filter(c => c && !/^\d+$/.test(c) && !/^\d{2}\/\d{2}\/\d{4}$/.test(c));
-      driller = cand.sort((a, b) => b.length - a.length)[0] || null;
-      activity = cand.find(c => /^(new|repair|deepen|replace|clean|abandon)/i.test(c)) || null;
-      if (driller && driller === activity) driller = null;
+      driller  = (cell(row, act.idx("company")) || "").trim() || null;
+      activity = (cell(row, act.idx("activity type")) || "").trim() || null;
+      drilled  = (cell(row, act.idx("begin date")) || "").trim() || null;
     }
   }
 
-  const wl = findTable(all, ["depth", "method"]);
+  // Static water level: the shallowest reading marked static, else the median
+  // of all readings. A pumping level is drawdown, not the water table.
   let waterLevel = null;
+  const wl = section(all, "Water Level");
   if (wl) {
-    const depths = wl.rows
-      .map(r => num(r[wl.idx["depth"]]))
-      .filter(v => v != null && v > 0 && v < 3000);
-    waterLevel = median(depths);
+    const di = wl.idx("depth"), si = wl.idx("status");
+    const readings = wl.rows.map(r => ({
+      depth: num(cell(r, di)),
+      status: (cell(r, si) || "").toLowerCase()
+    })).filter(x => x.depth != null && x.depth > 0 && x.depth < 5000);
+    const statics = readings.filter(x => x.status.includes("static")).map(x => x.depth);
+    waterLevel = statics.length ? median(statics) : median(readings.map(x => x.depth));
   }
 
   return {
+    wellIntakeDepth: intake,
     win,
     boreDepth: boreDepth && boreDepth > 0 ? boreDepth : null,
     wellDepth: wellDepth && wellDepth > 0 ? wellDepth : null,
@@ -168,9 +187,10 @@ export async function onRequestGet({ request }) {
       return json({
         ok: r.ok, debug: true, win: dbg, httpStatus: r.status,
         parsed: parseWell(html, dbg),
-        tableShapes: tables(html).map(t => t.slice(0, 2)),
-        htmlLength: html.length,
-        html: html.slice(0, 6000)
+        banners: tables(html).map(t => t.banner),
+        wellFeatures: (() => { const s = section(tables(html), "Well Features");
+          return s ? { head: s.head, rows: s.rows } : null; })(),
+        htmlLength: html.length
       });
     } catch (e) {
       return json({ ok: false, debug: true, error: String(e.message || e) });
