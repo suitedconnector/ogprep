@@ -17,7 +17,10 @@
  */
 
 const WRPOD = "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/PODView/FeatureServer/0/query";
-const TIMEOUT_MS = 20000;
+// Short deliberately: if the upstream hangs, Cloudflare kills the Worker and
+// serves its own 502 before our catch can return anything readable. Better to
+// give up early and say what happened.
+const TIMEOUT_MS = 8000;
 const CACHE_SECONDS = 60 * 60 * 24 * 7;   // rebuilt nightly upstream
 const SCHEMA = "v1";
 
@@ -60,6 +63,36 @@ export async function onRequestGet({ request }) {
   if (lat < 36.9 || lat > 42.1 || lon < -114.1 || lon > -108.9) {
     return json({ ok: false, outsideUtah: true,
       error: "That point is outside Utah. This layer covers Utah water rights only." }, 400);
+  }
+
+  // ?probe=1 checks the upstream service is reachable and reports its layer
+  // metadata, without running a spatial query. Use it when the endpoint 502s.
+  if (url.searchParams.get("probe")) {
+    const ctl0 = new AbortController();
+    const t0 = setTimeout(() => ctl0.abort(), TIMEOUT_MS);
+    try {
+      const r = await fetch(WRPOD.replace(/\/query$/, "") + "?f=json", { signal: ctl0.signal });
+      const txt = await r.text();
+      clearTimeout(t0);
+      let parsed = null;
+      try { parsed = JSON.parse(txt); } catch (_) {}
+      return json({
+        ok: r.ok && !!parsed && !parsed.error,
+        probe: true,
+        httpStatus: r.status,
+        service: WRPOD.replace(/\/query$/, ""),
+        layerName: parsed ? parsed.name : null,
+        geometryType: parsed ? parsed.geometryType : null,
+        fieldCount: parsed && parsed.fields ? parsed.fields.length : null,
+        fields: parsed && parsed.fields ? parsed.fields.map(f => f.name) : null,
+        upstreamError: parsed && parsed.error ? parsed.error : null,
+        rawHead: parsed ? null : txt.slice(0, 300)
+      });
+    } catch (e) {
+      clearTimeout(t0);
+      return json({ ok: false, probe: true, service: WRPOD.replace(/\/query$/, ""),
+        error: "Could not reach the service: " + (e.message || e) }, 502);
+    }
   }
 
   const key = `https://wr-cache/${SCHEMA}/${lat.toFixed(4)},${lon.toFixed(4)}/${radius}`;
