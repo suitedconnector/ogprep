@@ -150,6 +150,13 @@
   .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:9px;
     padding:12px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
   .keymap{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+  .stateIntro{margin-top:12px;padding:14px 16px;border-radius:10px;
+    background:rgba(200,162,74,.09);border:1px solid var(--line)}
+  .siQ{font-size:16px;font-weight:800;line-height:1.3;color:var(--ink)}
+  .siBody{font-size:13.5px;color:var(--muted);line-height:1.6;margin:8px 0 0}
+  .siList{margin:10px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
+  .siGap{margin-top:10px;padding:8px 10px;border-radius:7px;font-size:12.5px;
+    background:rgba(211,116,47,.13);border:1px solid var(--warn);color:var(--ink)}
   .soilbox{margin-top:10px;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.55;
     background:rgba(91,143,185,.13);border:1px solid var(--info)}
   .soilbox .src{display:block;margin-top:6px}
@@ -245,7 +252,14 @@
   </div>
 
   <div class="card">
-    <h2 id="statsTitle">What the well records say</h2>
+    <label style="margin-top:0">State</label>
+    <div class="seg" id="stateSeg">
+      <button data-v="AZ" aria-pressed="true">Arizona</button>
+      <button data-v="UT" aria-pressed="false">Utah</button>
+    </div>
+    <div class="stateIntro" id="stateIntro"></div>
+
+    <h2 id="statsTitle" style="margin-top:20px">What the well records say</h2>
     <div id="wellStats"></div>
     <div class="note" id="confNote"></div>
 
@@ -407,8 +421,8 @@ const C = {
   site:[4000,9000,16000]
 };
 
-let state={county:"Mohave",water:"well",septic:"conv",power:"solar",
-           local:null,soil:null,parcel:null,rain:null,drillers:null,septicTouched:false};
+let state={county:"Mohave",water:"well",septic:"conv",power:"solar",region:"AZ",
+           local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,septicTouched:false};
 
 const SOIL_API="/api/soil";               // Cloudflare Pages Function
 const SOIL_LABEL={
@@ -435,6 +449,36 @@ const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const 
 // Counties with a parcel/APN adapter. Everywhere else is coordinates-only.
 const APN_COUNTIES=["Mohave","Yavapai"];
 
+/**
+ * The two states answer genuinely different questions, because their water law
+ * differs. Arizona: how deep and what will it cost. Utah: are you allowed to
+ * drill at all. Saying so plainly beats letting people discover it by getting
+ * unexpected output.
+ */
+const STATES = {
+  AZ: {
+    name: "Arizona",
+    question: "How deep is the water, and what will a well cost?",
+    intro: "Arizona lets you drill an exempt domestic well on your own land without buying a water right, "+
+           "so the question is cost, not permission. This shows the wells actually drilled near your parcel — "+
+           "depth, water level, tested yield — and prices drilling against hauling and rainwater catchment. "+
+           "Built on 174,782 filed well records from the Department of Water Resources.",
+    gives: ["Well depths from nearby records", "Cost to drill, haul or harvest",
+            "Septic feasibility from soil", "Drillers who work that ground", "Parcel lookup in Mohave and Yavapai"]
+  },
+  UT: {
+    name: "Utah",
+    question: "Are you allowed to drill here at all?",
+    intro: "Utah requires an approved water right before you can drill, and in closed basins like Cedar Valley "+
+           "in Iron County the State Engineer has stopped issuing new ones. So the binding question isn't depth — "+
+           "it's whether a right already exists that you can use. This shows the points of diversion on record "+
+           "near your parcel, what they're approved for, and how senior they are.",
+    gives: ["Water rights near the parcel", "Status, use and volume of each",
+            "Priority dates (seniority)", "Septic feasibility from soil", "Rainfall for catchment"],
+    missing: "No well-depth records or driller data — those are Arizona-only so far."
+  }
+};
+
 const sel=$("county"), leadSel=$("leadCounty");
 Object.keys(COUNTIES).forEach(k=>{
   const supported=APN_COUNTIES.includes(k);
@@ -443,6 +487,65 @@ Object.keys(COUNTIES).forEach(k=>{
   if(k===state.county)o.selected=true;sel.appendChild(o);
   const o2=document.createElement("option");o2.value=k;o2.textContent=k;
   if(k===state.county)o2.selected=true;leadSel.appendChild(o2);
+});
+
+/**
+ * Switching state changes which questions the tool can answer, so the intro
+ * text, the county selector and the search modes all follow from it.
+ */
+function applyStateQuiet(code){
+  const v=$("coords").value;
+  applyState(code);
+  $("coords").value=v;
+}
+
+function applyState(code){
+  state.region = code;
+  const s = STATES[code];
+  [...$("stateSeg").children].forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===code));
+
+  $("stateIntro").innerHTML =
+    "<div class='siQ'>"+s.question+"</div>"+
+    "<p class='siBody'>"+s.intro+"</p>"+
+    "<ul class='siList'>"+s.gives.map(g=>"<li>"+g+"</li>").join("")+"</ul>"+
+    (s.missing?"<div class='siGap'>"+s.missing+"</div>":"");
+
+  const az = code==="AZ";
+  // Arizona drives everything off county statistics; Utah has none of that yet.
+  $("county").parentElement.querySelector('label[for="county"]').style.display = az?"":"none";
+  $("county").style.display = az?"":"none";
+  document.getElementById("statsTitle").style.display = az?"":"none";
+  $("wellStats").style.display = az?"":"none";
+  $("confNote").style.display = az?"":"none";
+
+  // Utah has no parcel adapter, so coordinates only.
+  [...$("modeSeg").children].forEach(b=>{
+    const off = !az && b.dataset.v!=="coords";
+    b.disabled=off; b.style.opacity=off?".4":"";
+    b.title = off ? "Parcel and address search are Arizona-only so far" : "";
+  });
+  if(!az){
+    mode="coords";
+    [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v==="coords"));
+    $("coords").placeholder="37.6800, -113.0600";
+    $("modeHint").textContent="Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and "+
+      "click the coordinates that appear to copy them.";
+  }else{
+    $("coords").placeholder=MODES[mode].ph;
+    $("modeHint").textContent=MODES[mode].hint;
+    syncModeAvailability();
+  }
+
+  // Clear anything from the other state.
+  state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.drillers=null;
+  $("coords").value=""; $("lookupMsg").innerHTML=""; $("wellList").innerHTML="";
+  $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
+  render();
+}
+
+$("stateSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  applyState(b.dataset.v);
 });
 
 function syncModeAvailability(){
@@ -478,7 +581,7 @@ document.addEventListener("input",e=>{ if(e.target && e.target.id==="rainIn") re
 $("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
 sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;state.parcel=null;state.soil=null;
   $("lookupMsg").innerHTML=""; $("wellList").innerHTML=""; $("parcelBox").innerHTML="";
-  $("drillersBox").innerHTML=""; state.drillers=null;
+  $("drillersBox").innerHTML=""; state.drillers=null; state.rights=null;
   syncModeAvailability(); render();});
 $("price").addEventListener("input",render);
 $("years").addEventListener("input",render);
@@ -493,7 +596,7 @@ const COORD_RE=/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/;
 const MODES={
   apn:     {ph:"306-32-007J  or  800-11-044T", hint:"Parcel number for Mohave or Yavapai County. We'll search both."},
   address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it, in Mohave or Yavapai. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
-  coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Works anywhere in Arizona."}
+  coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Arizona returns well depths and costs; Utah returns water rights."}
 };
 let mode="apn";
 $("modeSeg").addEventListener("click",e=>{
@@ -541,6 +644,32 @@ async function resolveParcel(qs,label){
   return pj;
 }
 
+// Soil and rainfall apply anywhere in the US, so both the Arizona and Utah
+// paths run them.
+async function runSoilAndRain(lat,lng){
+  // Soil / septic suitability for the same point, via the Pages Function.
+  try{
+    const sr=await fetch(SOIL_API+"?lat="+lat+"&lon="+lng);
+    const sj=await sr.json();
+    if(sj.ok){
+      state.soil=sj;
+      const map=SOIL_SEPTIC[sj.rating]||SOIL_SEPTIC.unknown;
+      if(map.mode && !state.septicTouched && state.septic!=="none"){
+        state.septic=map.mode;
+        [...$("septicSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===map.mode));
+      }
+    }else{ state.soil=null; }
+  }catch(_){ state.soil=null; }
+
+  // Rainfall for catchment sizing. Optional — the panel works without it.
+  try{
+    const rr=await fetch("/api/rain?lat="+lat+"&lon="+lng);
+    const rj=await rr.json();
+    state.rain = rj.ok ? rj : null;
+  }catch(_){ state.rain=null; }
+
+}
+
 async function lookup(){
   const raw=$("coords").value.trim();
   const msg=$("lookupMsg"), list=$("wellList"), pbox=$("parcelBox");
@@ -570,11 +699,54 @@ async function lookup(){
   if(!m){msg.innerHTML='<div class="banner b-err">Couldn\'t read that. Use a parcel number, a street address, or <strong>latitude, longitude</strong>.</div>';return;}
   let lat=parseFloat(m[1]), lng=parseFloat(m[2]);
   if(Math.abs(lat)>90&&Math.abs(lng)<=90){const t=lat;lat=lng;lng=t;}
-  if(lat<31||lat>37.1||lng<-115||lng>-108.9){
-    msg.innerHTML='<div class="banner b-err">That point is outside Arizona. This tool only has Arizona records.</div>';return;}
+  // Which state's data applies. Arizona has wells; Utah has water rights.
+  // Soil and rainfall work anywhere, so they run regardless.
+  const inAZ = lat>=31 && lat<=37.1 && lng>=-115 && lng<=-108.9;
+  const inUT = lat>=36.9 && lat<=42.1 && lng>=-114.1 && lng<=-108.9;
+  // The strip near 37N is in both boxes, so prefer whichever state is selected.
+  const detected = (state.region==="UT" && inUT) ? "UT"
+                 : (state.region==="AZ" && inAZ) ? "AZ"
+                 : inAZ ? "AZ" : inUT ? "UT" : null;
+  if(detected && detected!==state.region){
+    applyStateQuiet(detected);
+    msg.innerHTML='<div class="banner b-thin">Those coordinates are in '+STATES[detected].name+
+      ', so this switched states. '+STATES[detected].question+'</div>';
+  }
+  state.region = detected;
+  if(!state.region){
+    msg.innerHTML='<div class="banner b-err">That point is outside Arizona and Utah — the two states this tool has data for.</div>';
+    return;
+  }
 
   const dist=$("radius").value;
   const btn=$("goBtn");btn.disabled=true;btn.textContent="Looking…";
+
+  // Utah: no well-depth registry here, but water rights are the binding
+  // question — you cannot drill without one. Run that instead and stop.
+  if(state.region==="UT"){
+    state.local=null; state.drillers=null; list.innerHTML="";
+    msg.innerHTML='<div class="banner b-local">Querying Utah water rights…</div>';
+    try{
+      const wr=await fetch("/api/waterrights?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
+      const wj=await wr.json();
+      state.rights = wj.ok ? wj : null;
+      msg.innerHTML = wj.ok
+        ? '<div class="banner b-local"><strong>Utah — water rights view.</strong> '+
+          'Well depth records and driller data are Arizona-only, so this shows what governs '+
+          'whether you can drill at all.</div>'
+        : '<div class="banner b-err">'+(wj.error||"Water rights lookup failed.")+'</div>';
+      list.innerHTML = wj.ok ? rightsHtml(wj) : "";
+    }catch(e){
+      state.rights=null;
+      msg.innerHTML='<div class="banner b-err">Water rights lookup failed: '+(e.message||e)+'</div>';
+    }
+    await runSoilAndRain(lat,lng);
+    btn.disabled=false; btn.textContent="Look it up";
+    render();
+    return;
+  }
+
+  state.rights=null;
   msg.innerHTML='<div class="banner b-local">Querying Arizona groundwater records…</div>';
   try{
     // Routed through our own Function: ADWR does not allow cross-origin calls
@@ -630,26 +802,7 @@ async function lookup(){
     msg.innerHTML='<div class="banner b-err">Could not reach the ADWR groundwater service ('+
       String(err.message||err)+'). Showing county figures instead.</div>';
   }
-  // Soil / septic suitability for the same point, via the Pages Function.
-  try{
-    const sr=await fetch(SOIL_API+"?lat="+lat+"&lon="+lng);
-    const sj=await sr.json();
-    if(sj.ok){
-      state.soil=sj;
-      const map=SOIL_SEPTIC[sj.rating]||SOIL_SEPTIC.unknown;
-      if(map.mode && !state.septicTouched && state.septic!=="none"){
-        state.septic=map.mode;
-        [...$("septicSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===map.mode));
-      }
-    }else{ state.soil=null; }
-  }catch(_){ state.soil=null; }
-
-  // Rainfall for catchment sizing. Optional — the panel works without it.
-  try{
-    const rr=await fetch("/api/rain?lat="+lat+"&lon="+lng);
-    const rj=await rr.json();
-    state.rain = rj.ok ? rj : null;
-  }catch(_){ state.rain=null; }
+  await runSoilAndRain(lat,lng);
 
   // Who has actually drilled around here.
   try{
@@ -862,6 +1015,50 @@ document.addEventListener("click",async e=>{
     send.disabled=false; send.textContent="Send request";
   }
 });
+
+/**
+ * Utah water rights near the point. Utah requires an approved right to drill,
+ * so in a closed basin this — not depth — is what decides whether a parcel is
+ * usable. Presented deliberately as evidence to verify, not an answer.
+ */
+function rightsHtml(w){
+  if(!w || !w.rights || !w.rights.length){
+    return "<div class='wells'><div class='maphdr'>Utah water rights</div>"+
+      "<p class='dintro'>No points of diversion found within "+(w&&w.scope?w.scope.radiusMiles:1)+
+      " miles. In a closed basin that usually means there is no existing right to draw on here — "+
+      "worth confirming before assuming a well is possible.</p></div>";
+  }
+  const badge=r=>r.uses.length?r.uses.join(", "):"—";
+  const rows=w.rights.slice(0,15).map(r=>
+    "<tr><td><a href='"+(r.link||"#")+"' target='_blank' rel='noopener'>"+(r.waterRight||"—")+"</a></td>"+
+    "<td>"+(r.type||"—")+"</td>"+
+    "<td>"+(r.status||"—")+"</td>"+
+    "<td>"+badge(r)+"</td>"+
+    "<td class='n'>"+(r.priorityYear||"—")+"</td>"+
+    "<td class='n'>"+(r.acreFeet!=null?r.acreFeet+" af":"—")+"</td>"+
+    "<td class='n'>"+(r.miles!=null?r.miles+" mi":"—")+"</td></tr>").join("");
+
+  const dom = w.domesticCount;
+  const verdict = dom>0
+    ? "<strong>"+dom+" live domestic right"+(dom===1?"":"s")+" nearby.</strong> That is the one that "+
+      "matters for a home — worth checking whether any attaches to this parcel."
+    : "<strong>No live domestic rights within this radius.</strong> Everything here is irrigation, stock "+
+      "or municipal. In a closed basin that is the norm, and it means a home would need an existing "+
+      "right purchased and transferred, a connection to a public system, or hauled water.";
+
+  return "<div class='wells'>"+
+    "<div class='maphdr'>Utah water rights within "+w.scope.radiusMiles+" miles</div>"+
+    "<p class='dintro'>"+w.liveCount+" live of "+w.found+" on record"+
+      (w.monitoringCount?" ("+w.monitoringCount+" monitoring bores excluded)":"")+
+      " · "+w.undergroundCount+" underground · "+w.springCount+" spring · "+w.surfaceCount+" surface</p>"+
+    "<div class='densbox' style='text-align:left'>"+verdict+"</div>"+
+    "<table><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
+    "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
+    "<tbody>"+rows+"</tbody></table>"+
+    "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
+    "A diversion near a parcel does not prove the right conveys with that land — water rights are "+
+    "separate property in Utah. Verify with title work.</div></div>";
+}
 
 function parcelHtml(p){
   const money=v=>v==null?"—":"$"+v.toLocaleString();
@@ -1225,8 +1422,7 @@ $("leadForm").addEventListener("submit",async e=>{
   }
 });
 
-syncModeAvailability();
-render();
+applyState("AZ");
 </script>
 </body>
 </html>
