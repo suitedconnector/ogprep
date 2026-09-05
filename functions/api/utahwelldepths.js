@@ -145,10 +145,12 @@ function parseWell(html, win) {
   const wl = section(all, "Water Level");
   if (wl) {
     const di = wl.idx("depth"), si = wl.idx("status");
+    // Floor of 5 ft: a filed static level below that is a column misread, not a
+    // water table. Seen in practice on pre-1994 records.
     const readings = wl.rows.map(r => ({
       depth: num(cell(r, di)),
       status: (cell(r, si) || "").toLowerCase()
-    })).filter(x => x.depth != null && x.depth > 0 && x.depth < 5000);
+    })).filter(x => x.depth != null && x.depth >= 5 && x.depth < 5000);
     const statics = readings.filter(x => x.status.includes("static")).map(x => x.depth);
     waterLevel = statics.length ? median(statics) : median(readings.map(x => x.depth));
   }
@@ -168,12 +170,28 @@ function parseWell(html, win) {
   };
 }
 
-/* ---------- monitoring-bore classification -------------------------------
-   Two independent signals, either is enough. The WRNUM pattern matches the one
-   already used by /api/waterrights so both endpoints agree on what counts.     */
-const isMonitoring = (w, wrchex) =>
-  /\d{6}M\d{2}$/.test(String(wrchex || "")) ||
-  (w.casingDiameterIn != null && w.casingDiameterIn > 0 && w.casingDiameterIn <= 2.5);
+/* ---------- non-production classification ---------------------------------
+   Not all of these are monitoring wells. Around Cedar City the nearby logs are
+   a mix of 2-inch municipal piezometers and 150–200 ft closed-loop geothermal
+   bores drilled by heat-pump contractors. Neither produces water, so both are
+   excluded from the depth median — but calling a geothermal bore a "monitoring
+   well" in the UI would be wrong, so the reason is carried through.
+
+   The M-suffix pattern matches the one in /api/waterrights, so the two
+   endpoints agree on what counts as a real well.                              */
+const GEO_DRILLER = /geo\s*energy|geothermal|heat\s*pump|geo[- ]?exchange/i;
+
+function classify(w, wrchex) {
+  const mSuffix = /\d{6}M\d{2}$/.test(String(wrchex || ""));
+  const narrow = w.casingDiameterIn != null && w.casingDiameterIn > 0 && w.casingDiameterIn <= 2.5;
+  const geo = GEO_DRILLER.test(String(w.driller || "")) ||
+              /heat exchange|closed loop/i.test(String(w.activity || ""));
+
+  if (geo) return { nonProduction: true, kind: "geothermal" };
+  if (narrow) return { nonProduction: true, kind: "monitoring" };
+  if (mSuffix) return { nonProduction: true, kind: "non-production" };
+  return { nonProduction: false, kind: "water supply" };
+}
 
 export async function onRequestGet({ request }) {
   const url = new URL(request.url);
@@ -187,9 +205,14 @@ export async function onRequestGet({ request }) {
       return json({
         ok: r.ok, debug: true, win: dbg, httpStatus: r.status,
         parsed: parseWell(html, dbg),
-        banners: tables(html).map(t => t.banner),
-        wellFeatures: (() => { const s = section(tables(html), "Well Features");
-          return s ? { head: s.head, rows: s.rows } : null; })(),
+        sections: tables(html).map(t => {
+          const hi = t.rows.findIndex(r => r.length >= 3);
+          return {
+            banner: t.banner,
+            head: hi >= 0 ? t.rows[hi] : null,
+            rows: hi >= 0 ? t.rows.slice(hi + 1) : t.rows
+          };
+        }),
         htmlLength: html.length
       });
     } catch (e) {
@@ -278,9 +301,9 @@ export async function onRequestGet({ request }) {
   clearTimeout(t2);
 
   const parsed = fetched.filter(w => !w.fetchFailed);
-  const classified = parsed.map(w => ({ ...w, monitoring: isMonitoring(w, w.wrchex) }));
+  const classified = parsed.map(w => ({ ...w, ...classify(w, w.wrchex) }));
 
-  const supply = classified.filter(w => !w.monitoring);
+  const supply = classified.filter(w => !w.nonProduction);
   const depths = supply.map(w => w.wellDepth ?? w.boreDepth).filter(v => v != null && v > 20);
   const levels = supply.map(w => w.staticWaterLevel).filter(v => v != null && v > 0);
 
@@ -289,8 +312,13 @@ export async function onRequestGet({ request }) {
     scope: { lat, lon, radiusMiles: +(radius / 1609.34).toFixed(2) },
     indexedCount,
     inspected: parsed.length,
-    monitoringCount: classified.filter(w => w.monitoring).length,
+    nonProductionCount: classified.filter(w => w.nonProduction).length,
+    geothermalCount: classified.filter(w => w.kind === "geothermal").length,
+    monitoringCount: classified.filter(w => w.kind === "monitoring").length,
     supplyWellCount: supply.length,
+    // Depth may be absent even when supply wells exist: Utah only computerised
+    // well logs from 1991, so older wells are indexed without their numbers.
+    supplyWellsMissingDepth: supply.filter(w => (w.wellDepth ?? w.boreDepth) == null).length,
     medianDepthFt: median(depths),
     minDepthFt: depths.length ? Math.min(...depths) : null,
     maxDepthFt: depths.length ? Math.max(...depths) : null,
@@ -303,14 +331,16 @@ export async function onRequestGet({ request }) {
       boreDepthFt: w.boreDepth, casingDiameterIn: w.casingDiameterIn,
       staticWaterLevelFt: w.staticWaterLevel, drillingMethod: w.drillingMethod,
       driller: w.driller, activity: w.activity, drilled: w.drilled,
-      geologicLog: w.geologicLog, monitoring: w.monitoring,
+      geologicLog: w.geologicLog, kind: w.kind, nonProduction: w.nonProduction,
       link: WLBROWSE + w.win
     })),
     caveats: [
       "Depth is what the driller filed for nearby wells, not a prediction for your parcel — " +
       "depth to water can change sharply across a single section.",
-      "Two-inch and smaller bores are treated as monitoring or environmental wells and excluded " +
-      "from the median, because they are not drilled for water supply.",
+      "Monitoring piezometers and closed-loop geothermal bores are excluded from the median. " +
+      "They are drilled for heat or observation, not water, and would drag the figure far too low.",
+      "Utah computerised well logs in 1991. Older wells appear in the index without depth, so a " +
+      "small sample here means the records are thin, not that the wells are shallow.",
       "Only the " + MAX_WELLS + " nearest logs are read, so a wider area may contain deeper wells.",
       "A well log proves a well was drilled. It does not prove you may drill one — in Utah that " +
       "requires an approved water right."
