@@ -103,6 +103,15 @@
     text-transform:none;font-size:12px;color:#6b7360}
   details.pan>summary .flag{margin-left:auto;font-weight:800;letter-spacing:0;
     text-transform:none;font-size:12px;color:#a3341f}
+  /* Background note in the header, folded away by default. */
+  details.bg{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  details.bg>summary{cursor:pointer;list-style:none;font-size:13px;font-weight:700;
+    color:var(--muted);display:flex;align-items:center;gap:7px}
+  details.bg>summary::-webkit-details-marker{display:none}
+  details.bg>summary:before{content:"▸";transition:transform .15s}
+  details.bg[open]>summary:before{transform:rotate(90deg)}
+  details.bg>summary:hover{color:var(--ink)}
+
   /* Full-width results region, outside the two-column control grid. */
   #resultsHost{margin-top:16px}
   #resultsHost table{width:100%;table-layout:auto}
@@ -262,13 +271,14 @@
   </div>
   <h1 id="headline">Will you hit water — and what will it cost?</h1>
   <p class="sub" id="headIntro"></p>
-  <p class="sub" id="headDetail" style="margin-top:10px;font-size:14px"></p>
-  <div id="headGap"></div>
+  <!-- Background moved behind a toggle. It is worth reading once and never
+       again, and at full height it pushed the actual controls below the fold. -->
+  <details class="bg">
+    <summary>Why this is the question, and where the data comes from</summary>
+    <p class="sub" id="headDetail" style="margin-top:10px;font-size:14px"></p>
+    <div id="headGap"></div>
+  </details>
 </header>
-
-<!-- The answer, before the evidence. Populated by render(); hidden until a
-     lookup has actually run, so it never shows an opinion it hasn't earned. -->
-<div class="topv tv-idle" id="topVerdict" style="display:none"></div>
 
 <div class="grid">
   <div class="card">
@@ -343,6 +353,9 @@
   </div>
 </div>
 
+<!-- Reading order is: ask → answer → price → evidence. The verdict sits
+     directly under the controls that produced it, not above them. -->
+<div class="topv tv-idle" id="topVerdict" style="display:none"></div>
 
 <div class="headline">
   <div style="color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em;font-weight:700"
