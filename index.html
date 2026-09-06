@@ -88,6 +88,58 @@
   .wells .src{color:#6b7360}
   .mapwrap{margin:0 0 4px;padding:12px;border-radius:8px;
     background:#f2f3ea;border:1px solid #dfe3d5}
+
+  /* Detail panels collapse by default. Every finding still renders — the page
+     just stops presenting six of them at equal weight and shouting. */
+  details.pan{background:#fbfbf7;border:1px solid #d8dccd;border-radius:10px;margin-top:10px}
+  details.pan>summary{cursor:pointer;list-style:none;padding:11px 13px;
+    font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+    color:#5d6552;display:flex;align-items:center;gap:8px}
+  details.pan>summary::-webkit-details-marker{display:none}
+  details.pan>summary:before{content:"▸";font-size:13px;color:#96a086;transition:transform .15s}
+  details.pan[open]>summary:before{transform:rotate(90deg)}
+  details.pan>summary:hover{background:#f3f4eb}
+  details.pan>summary .cnt{margin-left:auto;font-weight:700;letter-spacing:0;
+    text-transform:none;font-size:12px;color:#6b7360}
+  details.pan>summary .flag{margin-left:auto;font-weight:800;letter-spacing:0;
+    text-transform:none;font-size:12px;color:#a3341f}
+  details.pan .body{max-height:440px;overflow:auto;padding:0 13px 13px;color:#1c1f18}
+  details.pan .body .wells{border:0;background:none;padding:0;margin:0;max-height:none}
+  details.pan .body .maphdr{display:none}
+
+  /* The answer, before any of the evidence. */
+  .topv{margin:14px 0 0;padding:16px 18px;border-radius:12px;border:1px solid;line-height:1.5}
+  .topv h3{margin:0 0 6px;font-size:19px;font-weight:800;letter-spacing:-.01em}
+  .topv p{margin:0;font-size:14.5px}
+  .topv .risks{margin:10px 0 0;padding:0;list-style:none;font-size:14px}
+  .topv .risks li{padding:5px 0 0}
+  .topv .risks li b{color:#a3341f}
+  .tv-ok{background:#f0f5ea;border-color:#c3d6b0}
+  .tv-warn{background:#fdf6e6;border-color:#e6d3a2}
+  .tv-bad{background:#fbeeea;border-color:#e8bfb3}
+  .tv-idle{background:#f5f5f0;border-color:#dfe0d6;color:#5d6552}
+
+  /* Wide data tables become stacked cards on narrow screens. Seven columns of
+     water rights cannot survive a 360px phone, and horizontal scrolling hides
+     the column that matters. Each cell carries its own label via data-label,
+     so a row reads as a labelled block instead. */
+  @media (max-width:620px){
+    table.stack{display:block}
+    table.stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    table.stack tbody,table.stack tr,table.stack td{display:block;width:auto}
+    table.stack tr{border:1px solid #dfe3d5;border-radius:9px;padding:9px 11px;
+      margin:0 0 8px;background:#fff}
+    table.stack td{border:0;padding:2px 0;text-align:left !important;
+      display:flex;gap:10px;align-items:baseline}
+    table.stack td:before{content:attr(data-label);flex:0 0 42%;
+      font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+      color:#6b7360}
+    table.stack td:empty{display:none}
+    /* First cell of each card reads as its heading. */
+    table.stack td:first-child{font-weight:800;font-size:15px;padding-bottom:5px;
+      margin-bottom:4px;border-bottom:1px solid #eceee4}
+    table.stack td:first-child:before{flex-basis:42%;font-size:11px;font-weight:700}
+  }
   .maphdr{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
     color:#5d6552;margin-bottom:8px}
   .wellmap{width:100%;height:auto;display:block;max-width:340px;margin:0 auto}
@@ -203,6 +255,10 @@
   <p class="sub" id="headDetail" style="margin-top:10px;font-size:14px"></p>
   <div id="headGap"></div>
 </header>
+
+<!-- The answer, before the evidence. Populated by render(); hidden until a
+     lookup has actually run, so it never shows an opinion it hasn't earned. -->
+<div class="topv tv-idle" id="topVerdict" style="display:none"></div>
 
 <div class="grid">
   <div class="card">
@@ -1098,14 +1154,16 @@ function rightsHtml(w){
       "worth confirming before assuming a well is possible.</p></div>";
   }
   const badge=r=>r.uses.length?r.uses.join(", "):"—";
+  // data-label lets each cell name itself when the table stacks on mobile.
   const rows=w.rights.slice(0,15).map(r=>
-    "<tr><td><a href='"+(r.link||"#")+"' target='_blank' rel='noopener'>"+(r.waterRight||"—")+"</a></td>"+
-    "<td>"+(r.type||"—")+"</td>"+
-    "<td>"+(r.status||"—")+"</td>"+
-    "<td>"+badge(r)+"</td>"+
-    "<td class='n'>"+(r.priorityYear||"—")+"</td>"+
-    "<td class='n'>"+(r.acreFeet!=null?r.acreFeet+" af":"—")+"</td>"+
-    "<td class='n'>"+(r.miles!=null?r.miles+" mi":"—")+"</td></tr>").join("");
+    "<tr><td data-label='Right'><a href='"+(r.link||"#")+"' target='_blank' rel='noopener'>"+
+      (r.waterRight||"—")+"</a></td>"+
+    "<td data-label='Type'>"+(r.type||"—")+"</td>"+
+    "<td data-label='Status'>"+(r.status||"—")+"</td>"+
+    "<td data-label='Uses'>"+badge(r)+"</td>"+
+    "<td class='n' data-label='Priority'>"+(r.priorityYear||"—")+"</td>"+
+    "<td class='n' data-label='Volume'>"+(r.acreFeet!=null?r.acreFeet+" af":"—")+"</td>"+
+    "<td class='n' data-label='Away'>"+(r.miles!=null?r.miles+" mi":"—")+"</td></tr>").join("");
 
   const dom = w.domesticCount;
   const verdict = dom>0
@@ -1121,7 +1179,7 @@ function rightsHtml(w){
       (w.monitoringCount?" ("+w.monitoringCount+" monitoring bores excluded)":"")+
       " · "+w.undergroundCount+" underground · "+w.springCount+" spring · "+w.surfaceCount+" surface</p>"+
     "<div class='densbox' style='text-align:left'>"+verdict+"</div>"+
-    "<table><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
+    "<table class='stack'><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
     "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
     "<tbody>"+rows+"</tbody></table>"+
     "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
@@ -1187,16 +1245,16 @@ function utDepthsHtml(d){
   }
 
   const rows=supply.slice(0,15).map(w=>
-    "<tr><td class='n'>"+(w.miles!=null?w.miles+" mi":"—")+"</td>"+
-    "<td class='n'>"+(w.depthFt!=null?money(w.depthFt)+" ft":"—")+"</td>"+
-    "<td class='n'>"+(w.staticWaterLevelFt!=null
+    "<tr><td class='n' data-label='Distance'>"+(w.miles!=null?w.miles+" mi":"—")+"</td>"+
+    "<td class='n' data-label='Depth'>"+(w.depthFt!=null?money(w.depthFt)+" ft":"—")+"</td>"+
+    "<td class='n' data-label='To water'>"+(w.staticWaterLevelFt!=null
         ? money(w.staticWaterLevelFt)+" ft"+(w.waterLevelSuspect?" <span title='Filed level is below the bottom of the well — treated as a filing error and excluded from the median.'>⚠</span>":"")
         : "—")+"</td>"+
-    "<td>"+(w.drilled||"—")+"</td>"+
-    "<td>"+(w.driller||"—")+"</td>"+
-    "<td>"+(w.dryHole?"<b style='color:#b00'>Dry</b>":(w.waterRights&&w.waterRights.length>1
-        ? w.waterRights.length+" rights":"—"))+"</td>"+
-    "<td><a href='"+w.link+"' target='_blank' rel='noopener'>Log</a></td></tr>").join("");
+    "<td data-label='Drilled'>"+(w.drilled||"—")+"</td>"+
+    "<td data-label='Driller'>"+(w.driller||"—")+"</td>"+
+    "<td data-label='Notes'>"+(w.dryHole?"<b style='color:#b00'>Dry hole</b>":(w.waterRights&&w.waterRights.length>1
+        ? w.waterRights.length+" rights on this well":"—"))+"</td>"+
+    "<td data-label='Document'><a href='"+w.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
 
   const wlSpread = (d.minStaticWaterLevelFt!=null && d.maxStaticWaterLevelFt!=null &&
                     d.maxStaticWaterLevelFt - d.minStaticWaterLevelFt > 100)
@@ -1213,7 +1271,7 @@ function utDepthsHtml(d){
       (d.nonProductionCount?". "+d.nonProductionCount+" monitoring or geothermal bore"+
         (d.nonProductionCount===1?"":"s")+" excluded — they are not drilled for water":"")+".</p>"+
     wlSpread+
-    "<table><thead><tr><th class='n'>Away</th><th class='n'>Depth</th><th class='n'>To water</th>"+
+    "<table class='stack'><thead><tr><th class='n'>Away</th><th class='n'>Depth</th><th class='n'>To water</th>"+
     "<th>Drilled</th><th>Driller</th><th>Notes</th><th></th></tr></thead><tbody>"+rows+"</tbody></table>"+
     "<div class='src'>Source: Utah Division of Water Rights, well drilling database — read from the "+
     "individual filed logs, not the map index.</div></div>";
@@ -1226,17 +1284,17 @@ function utLogsHtml(d){
       "been drilled here, or that older wells were never filed.</p></div>";
   }
   const rows=d.logs.slice(0,15).map(l=>
-    "<tr><td class='n'>"+(l.miles!=null?l.miles+" mi":"—")+"</td>"+
-    "<td>"+(l.owner||"—")+"</td>"+
-    "<td>"+(l.waterRight||"—")+"</td>"+
-    "<td>"+(l.geologic?"<b>Geologic</b>":(l.logType||"Well log"))+"</td>"+
-    "<td><a href='"+l.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
+    "<tr><td class='n' data-label='Distance'>"+(l.miles!=null?l.miles+" mi":"—")+"</td>"+
+    "<td data-label='Owner'>"+(l.owner||"—")+"</td>"+
+    "<td data-label='Water right'>"+(l.waterRight||"—")+"</td>"+
+    "<td data-label='Type'>"+(l.geologic?"<b>Geologic</b>":(l.logType||"Well log"))+"</td>"+
+    "<td data-label='Document'><a href='"+l.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
   return "<div class='wells' style='margin-top:12px'>"+
     "<div class='maphdr'>Well logs within "+d.scope.radiusMiles+" miles</div>"+
     "<p class='dintro'><strong>"+d.found+" filed log"+(d.found===1?"":"s")+"</strong>"+
       (d.geologicCount?", "+d.geologicCount+" of them geologic logs (richer detail)":"")+
       ". "+d.note+"</p>"+
-    "<table><thead><tr><th class='n'>Away</th><th>Owner</th><th>Water right</th>"+
+    "<table class='stack'><thead><tr><th class='n'>Away</th><th>Owner</th><th>Water right</th>"+
     "<th>Type</th><th>Document</th></tr></thead><tbody>"+rows+"</tbody></table>"+
     "<div class='src'>Source: Utah Division of Water Rights well log index.</div></div>";
 }
@@ -1378,6 +1436,101 @@ function rainPanelHtml(){
     "</div>";
 }
 
+/* Collapse the evidence panels. Everything still renders — the page just stops
+   presenting six findings at equal weight. The first panel opens; anything
+   carrying a warning opens too, because a collapsed dry-hole notice is worse
+   than no notice at all. Idempotent, since render() runs on every control
+   change while the panels persist. */
+function makeCollapsible(host){
+  if(!host) return;
+  [...host.children].forEach((el,i)=>{
+    if(el.tagName==="DETAILS" || !el.classList.contains("wells")) return;
+    const hdr=el.querySelector(".maphdr");
+    const title=hdr ? hdr.textContent.trim() : "Details";
+    const warn=el.querySelector(".b-err");
+    const rowCount=el.querySelectorAll("tbody tr").length;
+
+    const d=document.createElement("details");
+    d.className="pan";
+    d.open = i===0 || !!warn;
+    const s=document.createElement("summary");
+    s.innerHTML = title + (warn
+      ? "<span class='flag'>needs attention</span>"
+      : rowCount ? "<span class='cnt'>"+rowCount+"</span>" : "");
+    const body=document.createElement("div");
+    body.className="body";
+    el.replaceWith(d);
+    d.appendChild(s); d.appendChild(body); body.appendChild(el);
+  });
+}
+
+/* One plain-English answer, above everything. Built only from what was actually
+   found — no lookup, no verdict. */
+function renderTopVerdict(){
+  const box=$("topVerdict");
+  if(!box) return;
+  const L=state.local, W=state.rights, D=state.utDepths, ran=!!(L||W||D||state.parcel);
+  if(!ran){ box.style.display="none"; return; }
+  box.style.display="";
+
+  const risks=[];
+  let tone="tv-ok", head, body;
+
+  if(state.region==="UT"){
+    const dom = W ? W.domesticCount : null;
+    if(dom===0){
+      tone="tv-bad";
+      head="No domestic water right here.";
+      body="Utah will not let you drill for a home without one, and none of the rights near this "+
+           "parcel are domestic. A well is not the path — you would need to buy and transfer an "+
+           "existing right, connect to a public system, or haul.";
+    }else if(dom>0){
+      head=dom+" domestic right"+(dom===1?"":"s")+" nearby.";
+      body="Water is obtainable in this area. Whether it comes with <em>this</em> parcel is a title "+
+           "question, not a data question — the rights below are candidates to check, not proof.";
+    }else{
+      tone="tv-warn"; head="Water rights unknown."; body="The rights lookup did not return.";
+    }
+    if(D && D.dryHoleCount){
+      tone = tone==="tv-bad" ? tone : "tv-warn";
+      risks.push("<b>"+D.dryHoleCount+" dry hole"+(D.dryHoleCount===1?"":"s")+" on record nearby.</b> "+
+        "Someone drilled here and got nothing.");
+    }
+    if(D && D.wells){
+      const ab=D.wells.filter(w=>(w.comments||[]).some(c=>/abandon/i.test(c)));
+      if(ab.length) risks.push("<b>A nearby well is being plugged and abandoned.</b> "+
+        "If a shared system serves this parcel, confirm it is not that one.");
+      const shared=D.wells.filter(w=>w.waterRights && w.waterRights.length>=10);
+      if(shared.length) risks.push("<b>One well nearby carries "+
+        Math.max(...shared.map(w=>w.waterRights.length))+" separate water rights.</b> "+
+        "That is a shared system — ask what happens when it fails.");
+    }
+    if(D && D.medianDepthFt!=null){
+      risks.push("Nearby wells run <b>"+D.minDepthFt+"–"+D.maxDepthFt+" ft</b>, median "+
+        D.medianDepthFt+" ft.");
+    }
+  }else{
+    if(L){
+      head="Wells nearby average "+Math.round(L.med||L.avg)+" ft.";
+      body="That depth drives the cost estimate below, drawn from "+L.n+" wells within "+
+           L.miles+" miles rather than a county-wide average.";
+      if(L.sd/(L.med||L.avg) > 0.5){
+        tone="tv-warn";
+        risks.push("<b>Depths vary widely here.</b> Budget nearer the deep end than the median.");
+      }
+    }else{
+      tone="tv-warn";
+      head="Using county records, not local ones.";
+      body="No wells found close enough to your point, so the estimate below comes from the whole "+
+           "county. Treat it as a starting range, not a quote.";
+    }
+  }
+
+  box.className="topv "+tone;
+  box.innerHTML="<h3>"+head+"</h3><p>"+body+"</p>"+
+    (risks.length?"<ul class='risks'><li>"+risks.join("</li><li>")+"</li></ul>":"");
+}
+
 function render(){
   const cty=COUNTIES[state.county];
   const L=state.local;
@@ -1488,6 +1641,8 @@ function render(){
       "costs. Check the water rights above first — a cost estimate is worthless without one.";
     $("lines").innerHTML = "";
     $("assumptions").innerHTML = "";
+    renderTopVerdict();
+    makeCollapsible($("wellList"));
     return;
   }
   $("waterBig").style.fontSize = "";
@@ -1582,6 +1737,9 @@ function render(){
     rainPanelHtml()+
     "<p style='margin-top:10px'>Water assumption: "+wDetail+
     ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
+
+  renderTopVerdict();
+  makeCollapsible($("wellList"));
 }
 
 $("leadForm").addEventListener("submit",async e=>{
