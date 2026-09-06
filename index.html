@@ -103,6 +103,28 @@
     text-transform:none;font-size:12px;color:#6b7360}
   details.pan>summary .flag{margin-left:auto;font-weight:800;letter-spacing:0;
     text-transform:none;font-size:12px;color:#a3341f}
+  /* The one sentence most readers need and would otherwise have to infer. */
+  .swing{margin-top:12px;padding:12px 14px;border-radius:9px;font-size:14px;line-height:1.55;
+    background:rgba(91,143,185,.10);border-left:3px solid #5b8fb9;color:var(--ink)}
+  .swing:empty{display:none}
+
+  /* Worked-example strip. Shown only before a real lookup. */
+  .demo{margin-top:16px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;
+    background:var(--panel2)}
+  .demoHd{font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .demoSub{margin:5px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+  .demoBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  @media (max-width:700px){ .demoBtns{grid-template-columns:1fr} }
+  .demoBtn{text-align:left;cursor:pointer;padding:12px 14px;border-radius:10px;
+    border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
+  .demoBtn b{display:block;font-size:14.5px;font-weight:800;margin-bottom:3px}
+  .demoBtn span{display:block;font-size:12.5px;color:var(--muted);line-height:1.45}
+  .demoBtn:hover{border-color:var(--accent)}
+  .demoBtn.ok b{color:#8fbf6a}
+  .demoBtn.bad b{color:#d98b74}
+  .demoBtn:disabled{opacity:.55;cursor:default}
+  .demoFoot{margin:11px 0 0;font-size:12.5px;color:var(--muted)}
+
   /* Background note in the header, folded away by default. */
   details.bg{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
   details.bg>summary{cursor:pointer;list-style:none;font-size:13px;font-weight:700;
@@ -280,6 +302,30 @@
   </details>
 </header>
 
+<!-- A cold visitor has no parcel to type in and no reason to trust the output.
+     Two real parcels, four miles apart, make the point faster than any copy:
+     one where water is routine, one where it may be unobtainable. Hidden the
+     moment a real lookup runs. -->
+<div class="demo" id="demoStrip">
+  <div class="demoHd">Never used this? Run a real parcel.</div>
+  <p class="demoSub">Two parcels in Iron County, Utah — four miles apart. Septic and power cost
+    about the same on both. Water is the difference between a build and a write-off.</p>
+  <div class="demoBtns">
+    <button class="demoBtn ok" data-region="UT" data-county="Iron" data-price="8000"
+            data-coords="37.657426, -113.164702" data-radius="3219">
+      <b>A parcel where water works</b>
+      <span>41 domestic rights nearby · wells 222–610 ft · no dry holes</span>
+    </button>
+    <button class="demoBtn bad" data-region="UT" data-county="Iron" data-price="8000"
+            data-coords="37.65504, -113.09533" data-radius="8047">
+      <b>A parcel where it may not</b>
+      <span>Zero domestic rights · a dry hole 0.8 mi away · closed basin</span>
+    </button>
+  </div>
+  <p class="demoFoot">Both are real coordinates and the numbers come from state records, live.
+    Neither is a recommendation — and neither is a quote.</p>
+</div>
+
 <div class="grid">
   <div class="card">
     <h2>Your parcel</h2>
@@ -399,6 +445,7 @@
     <thead><tr><th>Item</th><th class="n">Low</th><th class="n">Likely</th><th class="n">High</th></tr></thead>
     <tbody id="lines"></tbody>
   </table>
+  <div class="swing" id="swingNote"></div>
   <div class="note" id="assumptions"></div>
 </div>
 
@@ -658,6 +705,7 @@ function applyState(code){
 
   // Clear anything from the other state.
   state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.drillers=null;
+  state.utLogs=null; state.utDepths=null;
   $("coords").value=""; $("lookupMsg").innerHTML=""; $("wellList").innerHTML="";
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
   render();
@@ -666,6 +714,39 @@ function applyState(code){
 $("stateSeg").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   applyState(b.dataset.v);
+});
+
+/* Run one of the worked examples. Deliberately drives the same controls a user
+   would touch rather than calling lookup() with hidden arguments — so what they
+   watch happen is exactly what they can reproduce themselves afterwards. */
+$("demoStrip").addEventListener("click", async e=>{
+  const b=e.target.closest(".demoBtn"); if(!b) return;
+  const btns=[...$("demoStrip").querySelectorAll(".demoBtn")];
+  btns.forEach(x=>x.disabled=true);
+  b.querySelector("span").textContent="Running the lookup…";
+
+  applyState(b.dataset.region);                 // clears the other state's data
+  $("county").value = b.dataset.county;
+  $("county").dispatchEvent(new Event("change",{bubbles:true}));
+  $("price").value  = b.dataset.price;
+  $("radius").value = b.dataset.radius;
+  $("coords").value = b.dataset.coords;
+
+  // applyState wipes the coords field, so this has to come after it.
+  await new Promise(r=>setTimeout(r,60));
+  $("coords").value = b.dataset.coords;
+  $("goBtn").click();
+
+  // Leave the strip up until results exist, then retire it — it has done its job
+  // and would otherwise compete with the user's own parcel.
+  const done=setInterval(()=>{
+    if($("wellList").children.length){
+      clearInterval(done);
+      $("demoStrip").style.display="none";
+      $("topVerdict").scrollIntoView({behavior:"smooth",block:"start"});
+    }
+  },400);
+  setTimeout(()=>{ clearInterval(done); btns.forEach(x=>x.disabled=false); }, 25000);
 });
 
 function syncModeAvailability(){
@@ -837,6 +918,10 @@ async function lookup(){
     msg.innerHTML='<div class="banner b-err">That point is outside Arizona and Utah — the two states this tool has data for.</div>';
     return;
   }
+
+  // Once anything real has been looked up, the worked example has served its
+  // purpose and only competes for attention.
+  const demo=$("demoStrip"); if(demo) demo.style.display="none";
 
   const dist=$("radius").value;
   const btn=$("goBtn");btn.disabled=true;btn.textContent="Looking…";
@@ -1743,6 +1828,23 @@ function render(){
     "</b></td><td class='n'>"+money(highs[i])+"</td></tr>").join("")+
    "<tr><td><strong>Total</strong></td><td class='n'>"+money(tLow)+"</td><td class='n'><b>"+money(tMid)+
    "</b></td><td class='n'>"+money(tHigh)+"</td></tr>";
+
+  /* Name the swing explicitly. The table shows every line's range, but a reader
+     scanning totals will not notice that one line accounts for most of the
+     uncertainty — and that line is the only one this tool can actually narrow
+     with local records. */
+  const swing = i => highs[i]-lows[i];
+  const spreads = [swing(1), swing(2), swing(3), swing(4)];
+  const waterShare = spreads[0] / (spreads.reduce((a,b)=>a+b,0) || 1);
+  $("swingNote").innerHTML = state.water!=="well" ? "" :
+    "<strong>Water is the line that moves.</strong> It swings "+money(swing(1))+
+    " between the low and high case — "+Math.round(waterShare*100)+
+    "% of all the uncertainty in this total. Septic, power and access are comparatively "+
+    "predictable. That is why this tool spends its effort on water and treats the rest as "+
+    "published ranges."+
+    (usingLocal
+      ? " Yours is narrowed using "+L.n+" wells within "+L.miles+" miles rather than a county average."
+      : " Narrow it by running your actual coordinates above.");
 
   const parcelLines=[];
   if(state.water==="well") parcelLines.push(usingLocal?"water (wells within "+L.miles+" miles)":"water (county well records)");
