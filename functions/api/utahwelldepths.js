@@ -31,9 +31,61 @@ const LOGS = "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/
 const WLBROWSE = "https://waterrights.utah.gov/wellinfo/welldrilling/wlbrowse.asp?WIN=";
 
 const TIMEOUT_MS = 8000;
-const MAX_WELLS = 14;               // subrequest budget, and enough for a median
+const MAX_WELLS = 10;               // enough for a median, gentler on the source
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // filed logs do not change
-const SCHEMA = "v1";
+const SCHEMA = "v2";                // v2 — per-WIN caching, throttled fetching
+
+/* Politeness settings. waterrights.utah.gov is a small state server, and firing
+   fourteen simultaneous requests at it per lookup got us 503s — deservedly.
+   Three at a time, cached hard per well, with a UA that says who we are and how
+   to reach us. A filed well log never changes, so the cache does most of the
+   work: the second visitor to any area costs the state nothing. */
+const CONCURRENCY = 3;
+const RETRY_DELAYS = [400, 1200];   // on 429/503 only
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; well log lookup; contact via site)";
+const WELL_CACHE_SECONDS = 60 * 60 * 24 * 180;   // six months per well page
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* Fetch one well log page, cached at the edge by WIN. Retries only on the
+   status codes that mean "slow down", never on a genuine error. */
+async function fetchWellPage(win, signal) {
+  const cache = caches.default;
+  const key = `https://utwell-cache/${SCHEMA}/${win}`;
+  const hit = await cache.match(key);
+  if (hit) return { html: await hit.text(), cached: true };
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    const r = await fetch(WLBROWSE + win, { signal, headers: { "User-Agent": UA } });
+    if (r.ok) {
+      const html = await r.text();
+      await cache.put(key, new Response(html, {
+        headers: { "Content-Type": "text/html", "Cache-Control": `public, max-age=${WELL_CACHE_SECONDS}` }
+      }));
+      return { html, cached: false };
+    }
+    if ((r.status === 503 || r.status === 429) && attempt < RETRY_DELAYS.length) {
+      await sleep(RETRY_DELAYS[attempt]);
+      continue;
+    }
+    throw new Error("well log page returned " + r.status);
+  }
+  throw new Error("well log page unavailable");
+}
+
+/* Run tasks a few at a time instead of all at once. */
+async function pooled(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const idx = i++;
+      if (idx >= items.length) return;
+      out[idx] = await fn(items[idx], idx);
+    }
+  }));
+  return out;
+}
 
 const json = (b, s = 200, cacheable = false) =>
   new Response(JSON.stringify(b), {
@@ -226,7 +278,7 @@ export async function onRequestGet({ request }) {
   const dbg = url.searchParams.get("debug");
   if (dbg) {
     try {
-      const r = await fetch(WLBROWSE + encodeURIComponent(dbg));
+      const r = await fetch(WLBROWSE + encodeURIComponent(dbg), { headers: { "User-Agent": UA } });
       const html = await r.text();
       return json({
         ok: r.ok, debug: true, win: dbg, httpStatus: r.status,
@@ -330,18 +382,20 @@ export async function onRequestGet({ request }) {
   const distinctWellCount = unique.length;
   const targets = unique.slice(0, MAX_WELLS);
 
-  // 2. Fetch the log pages in parallel. One failure must not sink the batch.
+  // 2. Read the log pages a few at a time, cached per well. One failure must
+  //    not sink the batch — a partial answer beats none.
   const ctl2 = new AbortController();
-  const t2 = setTimeout(() => ctl2.abort(), TIMEOUT_MS);
-  const fetched = await Promise.all(targets.map(async w => {
+  const t2 = setTimeout(() => ctl2.abort(), TIMEOUT_MS * 3);
+  let cacheHits = 0;
+  const fetched = await pooled(targets, CONCURRENCY, async w => {
     try {
-      const r = await fetch(WLBROWSE + w.win, { signal: ctl2.signal });
-      if (!r.ok) return { ...w, fetchFailed: true };
-      return { ...w, ...parseWell(await r.text(), w.win) };
-    } catch (_) {
-      return { ...w, fetchFailed: true };
+      const { html, cached } = await fetchWellPage(w.win, ctl2.signal);
+      if (cached) cacheHits++;
+      return { ...w, ...parseWell(html, w.win) };
+    } catch (e) {
+      return { ...w, fetchFailed: true, fetchError: String(e.message || e) };
     }
-  }));
+  });
   clearTimeout(t2);
 
   const parsed = fetched.filter(w => !w.fetchFailed);
@@ -371,6 +425,10 @@ export async function onRequestGet({ request }) {
     indexedCount,
     distinctWellCount,
     inspected: parsed.length,
+    // Visible so a source outage is never mistaken for "no wells here".
+    fetchFailedCount: fetched.filter(w => w.fetchFailed).length,
+    fetchErrors: [...new Set(fetched.filter(w => w.fetchFailed).map(w => w.fetchError))].slice(0, 3),
+    cacheHits,
     nonProductionCount: classified.filter(w => w.nonProduction).length,
     geothermalCount: classified.filter(w => w.kind === "geothermal").length,
     monitoringCount: classified.filter(w => w.kind === "monitoring").length,

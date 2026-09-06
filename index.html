@@ -1376,8 +1376,16 @@ function utDepthsHtml(d){
       " Someone paid to drill here and got nothing. That is the risk this page exists to show you.</div>";
   }
 
+  // Utah's server refusing us looks identical to an empty area unless we say so.
+  const outage = d.fetchFailedCount
+    ? "<div class='banner b-thin' style='margin:8px 0'>Utah's well log server did not answer for "+
+      d.fetchFailedCount+" of the "+(d.fetchFailedCount+d.inspected)+" wells we asked about"+
+      (/503|429/.test((d.fetchErrors||[]).join(" "))?" (it is rate-limiting or temporarily down)":"")+
+      ". The figures below are from the ones that did answer — try again in a few minutes for the rest.</div>"
+    : "";
+
   if(d.medianDepthFt==null){
-    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Well depths nearby</div>"+dry+
+    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Well depths nearby</div>"+dry+outage+
       "<p class='dintro'>Found "+d.distinctWellCount+" well"+(d.distinctWellCount===1?"":"s")+
       " within "+d.scope.radiusMiles+" miles, but none carry a usable depth"+
       (d.supplyWellsMissingDepth?" — "+d.supplyWellsMissingDepth+" predate Utah's 1991 computerised records":"")+
@@ -1404,7 +1412,7 @@ function utDepthsHtml(d){
     : "";
 
   return "<div class='wells' style='margin-top:12px'>"+
-    "<div class='maphdr'>Well depths within "+d.scope.radiusMiles+" miles</div>"+dry+
+    "<div class='maphdr'>Well depths within "+d.scope.radiusMiles+" miles</div>"+dry+outage+
     "<p class='dintro'>Read from <strong>"+d.inspected+"</strong> filed well logs ("+
       d.distinctWellCount+" distinct wells indexed nearby). Median depth <strong>"+
       money(d.medianDepthFt)+" ft</strong>, range "+money(d.minDepthFt)+"–"+money(d.maxDepthFt)+" ft"+
