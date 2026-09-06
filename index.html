@@ -30,6 +30,12 @@
   select,input[type=number],input[type=email],input[type=text]{width:100%;background:var(--panel2);color:var(--ink);
     border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:15px}
   select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  /* Currency prefix sits inside the field so the number lines up with the $. */
+  .money{position:relative}
+  .money>span{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:var(--muted);font-size:15px;pointer-events:none}
+  .money>input[type=number]{padding-left:26px}
+  .money:focus-within>span{color:var(--accent)}
   .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
   .seg button{flex:1;min-width:104px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);
     border-radius:9px;padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer}
@@ -334,7 +340,7 @@
     <select id="county"></select>
 
     <label for="price">Land price</label>
-    <input type="number" id="price" value="8000" min="0" step="500">
+    <div class="money"><span>$</span><input type="number" id="price" value="8000" min="0" step="500"></div>
     <div class="note">The asking price, or your offer — whichever you're testing. This is the
       one number you control, and usually the smallest part of the total.</div>
 
