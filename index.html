@@ -107,17 +107,23 @@
   details.pan .body .wells{border:0;background:none;padding:0;margin:0;max-height:none}
   details.pan .body .maphdr{display:none}
 
-  /* The answer, before any of the evidence. */
-  .topv{margin:14px 0 0;padding:16px 18px;border-radius:12px;border:1px solid;line-height:1.5}
-  .topv h3{margin:0 0 6px;font-size:19px;font-weight:800;letter-spacing:-.01em}
-  .topv p{margin:0;font-size:14.5px}
-  .topv .risks{margin:10px 0 0;padding:0;list-style:none;font-size:14px}
+  /* The answer, before any of the evidence. These panels are light on a dark
+     page, so every text colour has to be set explicitly — inheriting the
+     theme's pale ink would render them invisible. */
+  .topv{margin:14px 0 0;padding:16px 18px;border-radius:12px;border:1px solid;
+    line-height:1.5;color:#1c1f18}
+  .topv h3{margin:0 0 6px;font-size:19px;font-weight:800;letter-spacing:-.01em;color:#14170f}
+  .topv p{margin:0;font-size:14.5px;color:#3a4033}
+  .topv em{color:#3a4033;font-style:italic}
+  .topv .risks{margin:11px 0 0;padding:11px 0 0;list-style:none;font-size:14px;
+    border-top:1px solid rgba(0,0,0,.10);color:#3a4033}
   .topv .risks li{padding:5px 0 0}
-  .topv .risks li b{color:#a3341f}
-  .tv-ok{background:#f0f5ea;border-color:#c3d6b0}
-  .tv-warn{background:#fdf6e6;border-color:#e6d3a2}
-  .tv-bad{background:#fbeeea;border-color:#e8bfb3}
-  .tv-idle{background:#f5f5f0;border-color:#dfe0d6;color:#5d6552}
+  .topv .risks li b{color:#8c2b18;font-weight:800}
+  .tv-ok{background:#eef4e7;border-color:#b9cfa3}
+  .tv-warn{background:#fbf3e2;border-color:#e0cb96}
+  .tv-bad{background:#f9e9e4;border-color:#e2b3a4}
+  .tv-idle{background:#f2f2ec;border-color:#dcddd2}
+  .tv-bad h3{color:#7d2312}
 
   /* Wide data tables become stacked cards on narrow screens. Seven columns of
      water rights cannot survive a 360px phone, and horizontal scrolling hides
@@ -546,10 +552,13 @@ const STATES = {
            "in Iron County the State Engineer has stopped issuing new ones. So the binding question isn't depth — "+
            "it's whether a right already exists that you can use. This shows the points of diversion on record "+
            "near your parcel, what they're approved for, and how senior they are.",
+    // Deliberately no longer asserts what is near any particular town — the
+    // lookup answers that per point, and a static claim that contradicts the
+    // live result destroys trust in both.
     detail: "Cedar Valley in Iron County has been a <strong>critical management area</strong> since 2021 — "+
-            "withdrawals ran 28,000 acre-feet against a 21,000 safe yield. Near Cedar City there are live "+
-            "irrigation, stock and municipal rights going back to 1870 decrees, and <strong>no domestic rights "+
-            "at all</strong>. That pattern is what a closed basin looks like.",
+            "withdrawals ran 28,000 acre-feet against a 21,000 safe yield. Conditions change sharply over "+
+            "a few miles: some parts of the valley have dozens of live domestic rights, others have none. "+
+            "Run your actual coordinates rather than trusting a figure for the area.",
     missing: "Depths here are read from the individual filed well logs, one at a time — Utah's map layer "+
              "carries only an index, so the numbers come from a page deeper. Coverage starts in 1991, when "+
              "the state computerised its records; older wells appear without depths. Yield is not filed at "+
