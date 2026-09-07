@@ -78,6 +78,11 @@
   select,input[type=number],input[type=email],input[type=text]{width:100%;background:var(--panel2);color:var(--ink);
     border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:15px}
   select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  /* Placeholders were inheriting full-strength ink, so an empty field looked
+     filled in. A hint must never be mistakable for an answer. */
+  ::placeholder{color:var(--muted);opacity:.72;font-style:italic}
+  input:placeholder-shown{background:var(--panel2)}
+  input:not(:placeholder-shown){background:var(--panel);border-color:var(--accent)}
   /* Currency prefix sits inside the field so the number lines up with the $. */
   .money{position:relative}
   .money>span{position:absolute;left:12px;top:50%;transform:translateY(-50%);
@@ -480,7 +485,7 @@
     <select id="county"></select>
 
     <label for="price">Land price</label>
-    <div class="money"><span>$</span><input type="number" id="price" placeholder="8,000" min="0" step="500"
+    <div class="money"><span>$</span><input type="number" id="price" placeholder="e.g. 8,000" min="0" step="500"
       autocomplete="off"></div>
     <div class="note">The asking price, or your offer — whichever you're testing. This is the
       one number you control, and usually the smallest part of the total.</div>
@@ -514,7 +519,7 @@
     </div>
 
     <label for="years">Years to compare (hauling adds up)</label>
-    <input type="number" id="years" placeholder="10" min="1" max="30" autocomplete="off">
+    <input type="number" id="years" placeholder="e.g. 10" min="1" max="30" autocomplete="off">
   </div>
 
   <div class="card">
