@@ -7,6 +7,8 @@
 <meta name="description" content="Search Arizona by well depth. Built from 163,719 filed well records, aggregated into 1.4-mile cells — find the areas where water is close to the surface before you pick a parcel.">
 <meta property="og:title" content="Where is water shallow in Arizona?">
 <meta property="og:description" content="Search Arizona by well depth, not by listing. 163,719 filed well records aggregated by area.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   :root{
     --bg:#f7f7f2; --panel:#ffffff; --panel2:#f1f2ea; --line:#dcdfd0;
@@ -44,8 +46,29 @@
   .summary{margin-top:16px;padding:14px 16px;border-radius:10px;background:var(--panel2);
     border:1px solid var(--line);font-size:15px;line-height:1.5}
   .summary b{font-size:19px}
-  svg.map{width:100%;height:auto;display:block;background:var(--panel2);
-    border:1px solid var(--line);border-radius:12px;margin-top:16px}
+  .map{height:min(70vh,620px);border:1px solid var(--line);border-radius:12px;margin-top:12px;
+    background:var(--panel2)}
+  .mapTools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  .seg{display:flex;gap:6px}
+  .seg button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--accent-fill);color:var(--on-accent);
+    border-color:var(--accent-fill)}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);
+    margin:0;font-weight:600;cursor:pointer}
+  .chk input{width:auto}
+  /* Leaflet's own popup chrome, themed. */
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);
+    box-shadow:0 2px 14px rgba(0,0,0,.25)}
+  .leaflet-popup-content{margin:12px 14px;font:14px/1.5 ui-sans-serif,system-ui}
+  .leaflet-container{border-radius:12px;font:inherit}
+  .pop b{font-size:16px}
+  .pop .popRow{display:flex;justify-content:space-between;gap:14px;padding:3px 0;
+    border-bottom:1px solid var(--line);font-size:13px}
+  .pop .popRow:last-of-type{border-bottom:0}
+  .pop .popRow span{color:var(--muted)}
+  .pop button{margin-top:9px;width:100%;background:var(--info-fill);color:var(--on-info);
+    border:0;border-radius:8px;padding:8px;font-weight:700;font-size:13px;cursor:pointer}
   .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:10px}
   .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px}
   table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
@@ -101,14 +124,22 @@
     </div>
   </div>
   <div class="summary" id="summary">Loading well records…</div>
-  <svg class="map" id="map" viewBox="0 0 620 700" role="img" aria-label="Map of Arizona well depths"></svg>
+  <div class="mapTools">
+    <div class="seg" id="baseSeg">
+      <button data-v="sat" aria-pressed="true">Satellite</button>
+      <button data-v="topo" aria-pressed="false">Terrain</button>
+      <button data-v="street" aria-pressed="false">Street</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="showAll"> Show areas that don't match</label>
+  </div>
+  <div id="map" class="map"></div>
   <div class="legend">
     <span><i style="background:#2f7d4f"></i>Under 150 ft</span>
     <span><i style="background:#7fa650"></i>150–300 ft</span>
     <span><i style="background:#c8a24a"></i>300–600 ft</span>
     <span><i style="background:#d3742f"></i>600–1,000 ft</span>
     <span><i style="background:#a33d1e"></i>Over 1,000 ft</span>
-    <span style="opacity:.5"><i style="background:currentColor;opacity:.25"></i>Filtered out</span>
+    <span style="opacity:.6"><i style="background:#888;opacity:.4"></i>Doesn't match filter</span>
   </div>
   <div class="note" id="mapNote"></div>
 </div>
@@ -141,6 +172,9 @@
 </footer>
 
 </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -155,93 +189,103 @@ function applyTheme(t){
 $("themeBtn").onclick = () =>
   applyTheme(document.documentElement.getAttribute("data-theme")==="dark" ? "light" : "dark");
 
-/* Arizona's bounding box, used to project cell centres into the SVG. */
-const BOX = { n:37.05, s:31.30, w:-114.85, e:-109.00 };
-const W = 620, H = 700, PAD = 14;
-const px = lon => PAD + (lon - BOX.w) / (BOX.e - BOX.w) * (W - PAD*2);
-const py = lat => PAD + (BOX.n - lat) / (BOX.n - BOX.s) * (H - PAD*2);
+/* Leaflet. Loaded from CDN with SRI; the page degrades to a message rather
+   than a blank box if it fails. Esri World Imagery and USGS topo are both
+   key-free, which keeps this deployable with no account and no billing. */
+const CELL = 0.02;          // grid spacing in degrees, from the data _meta
+const HALF = CELL / 2;
 
-// Depth bands. Deliberately coarse — five buckets is as much precision as a
-// median over a 1.4-mile cell can honestly carry.
 const BANDS = [[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
 const colour = d => BANDS.find(b => d <= b[0])[1];
 
-/* A scatter of dots with no coastline is unreadable — "35.00, -110.64" means
-   nothing without something to place it against. Approximate state outline,
-   plus towns people actually use to orient in rural Arizona. */
-const AZ_OUTLINE = [
-  [37.00,-114.05],[37.00,-109.045],[31.332,-109.045],[31.332,-111.07],[32.49,-114.81],
-  [32.72,-114.72],[33.03,-114.52],[33.42,-114.52],[34.26,-114.14],[34.46,-114.34],
-  [34.72,-114.50],[35.00,-114.63],[35.61,-114.68],[36.14,-114.05]
-];
-const AZ_TOWNS = [
-  ["Phoenix",33.45,-112.07],["Tucson",32.22,-110.97],["Flagstaff",35.20,-111.65],
-  ["Kingman",35.19,-114.05],["Yuma",32.69,-114.63],["Prescott",34.54,-112.47],
-  ["Show Low",34.25,-110.03],["Page",36.91,-111.46],["Lake Havasu",34.48,-114.32],
-  ["Safford",32.83,-109.71],["Payson",34.23,-111.32],["Sierra Vista",31.55,-110.28]
-];
+const BASEMAPS = {
+  sat: { url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+         attr:"Imagery: Esri, Maxar, Earthstar Geographics", max:18 },
+  topo:{ url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+         attr:"USGS The National Map", max:16 },
+  street:{ url:"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+         attr:"&copy; OpenStreetMap contributors &copy; CARTO", max:19 }
+};
 
-// Outline goes under the data; town labels go over it so they stay readable
-// where dots are dense.
-function stateOutline(){
-  const path = AZ_OUTLINE.map((p,i)=>
-    (i?"L":"M")+px(p[1]).toFixed(1)+" "+py(p[0]).toFixed(1)).join(" ")+" Z";
-  return `<path d="${path}" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".35"/>`;
-}
-function townLabels(){
-  return AZ_TOWNS.map(([n,la,lo])=>{
-    const x=px(lo), y=py(la);
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" fill="var(--panel2)" `+
-           `stroke="currentColor" stroke-width="1.2" opacity=".7"/>`+
-           `<text x="${(x+5).toFixed(1)}" y="${(y+3.5).toFixed(1)}" font-size="9.5" `+
-           `fill="currentColor" opacity=".72" paint-order="stroke" stroke="var(--panel2)" `+
-           `stroke-width="2.5" font-family="ui-sans-serif,system-ui">${n}</text>`;
-  }).join("");
-}
-
-let DATA = null;
-
+let MAP=null, LAYER=null, BASE=null, DATA=null;
 const fmt = n => n==null ? "—" : n.toLocaleString();
 
+function initMap(){
+  MAP = L.map("map", { preferCanvas:true, zoomControl:true })
+         .fitBounds([[31.30,-114.85],[37.05,-109.00]]);
+  setBase("sat");
+  LAYER = L.layerGroup().addTo(MAP);
+  L.control.scale({imperial:true, metric:false}).addTo(MAP);
+}
+
+function setBase(k){
+  const b = BASEMAPS[k];
+  if(BASE) MAP.removeLayer(BASE);
+  BASE = L.tileLayer(b.url, { attribution:b.attr, maxZoom:b.max, maxNativeZoom:b.max }).addTo(MAP);
+  [...document.querySelectorAll("#baseSeg button")]
+    .forEach(x => x.setAttribute("aria-pressed", x.dataset.v===k));
+}
+
+/* Cells are drawn as the squares they actually are. A circle implies a point
+   measurement; this data is an average over an area, and the shape should say
+   so. Canvas rendering keeps 8,588 rectangles interactive. */
+function cellPopup(c, county){
+  return `<div class="pop"><b>${fmt(c[3])} ft</b> typical depth`+
+    `<div style="color:var(--muted);font-size:12.5px;margin:2px 0 8px">`+
+      `${county} County · ${c[0].toFixed(3)}, ${c[1].toFixed(3)}</div>`+
+    `<div class="popRow"><span>Shallowest / deepest</span><b>${fmt(c[4])}–${fmt(c[5])} ft</b></div>`+
+    `<div class="popRow"><span>Depth to water</span><b>${c[6]==null?"not recorded":fmt(c[6])+" ft"}</b></div>`+
+    `<div class="popRow"><span>Wells on record</span><b>${fmt(c[2])}</b></div>`+
+    `<div class="popRow"><span>Domestic wells</span><b>${fmt(c[7])}</b></div>`+
+    `<button class="goBtn" data-lat="${c[0]}" data-lon="${c[1]}">Full report on this spot</button>`+
+  `</div>`;
+}
+
 function render(){
-  if(!DATA) return;
-  const maxD  = +$("maxDepth").value;
-  const minW  = +$("minWells").value;
-  const county = $("county").value;
+  if(!DATA || !MAP) return;
+  const maxD=+$("maxDepth").value, minW=+$("minWells").value, county=$("county").value;
+  const showAll=$("showAll").checked;
 
   $("maxDepthVal").textContent = fmt(maxD)+" ft";
   $("minWellsVal").textContent = minW+" well"+(minW===1?"":"s");
 
   const all = DATA.cells;
-  const match = all.filter(c =>
-    c[3] <= maxD && c[2] >= minW &&
+  const match = all.filter(c => c[3] <= maxD && c[2] >= minW &&
     (county==="all" || DATA.counties[c[8]] === county));
-
-  // Map: every cell is drawn, but non-matching ones fade back so the shape of
-  // the state stays legible instead of the map emptying out as you filter.
-  // Set membership, not Array.includes — includes() inside a map over 8,588
-  // cells is quadratic and made every slider drag stutter.
   const hits = new Set(match);
-  const dots = all.map(c => {
+
+  LAYER.clearLayers();
+  const draw = showAll ? all : match;
+  draw.forEach(c => {
     const hit = hits.has(c);
-    const r = hit ? Math.min(4.2, 1.5 + Math.log10(c[2])*1.5) : 1.4;
-    return `<circle cx="${px(c[1]).toFixed(1)}" cy="${py(c[0]).toFixed(1)}" r="${r.toFixed(1)}" `+
-           `fill="${hit ? colour(c[3]) : "currentColor"}" opacity="${hit ? .92 : .18}"/>`;
-  }).join("");
-  $("map").innerHTML = stateOutline() + dots + townLabels();
+    L.rectangle([[c[0]-HALF, c[1]-HALF],[c[0]+HALF, c[1]+HALF]], {
+      stroke:false,
+      fillColor: hit ? colour(c[3]) : "#888",
+      fillOpacity: hit ? .62 : .18,
+      interactive: hit
+    }).addTo(LAYER).bindPopup(() => cellPopup(c, DATA.counties[c[8]]));
+  });
+
+  // Frame the results, so filtering to one county actually takes you there.
+  if(match.length && match.length < all.length){
+    const la=match.map(c=>c[0]), lo=match.map(c=>c[1]);
+    MAP.fitBounds([[Math.min(...la)-.1, Math.min(...lo)-.1],
+                   [Math.max(...la)+.1, Math.max(...lo)+.1]], {padding:[20,20], maxZoom:11});
+  }
 
   const shallow = match.slice().sort((a,b) => a[3]-b[3] || b[2]-a[2]);
-  const acres = match.length * 1.4 * 1.4;   // cells are ~1.4 mi square
+  const sqMi = match.length * 1.4 * 1.4;
   $("summary").innerHTML = match.length
-    ? `<b>${fmt(match.length)}</b> areas match — roughly <b>${fmt(Math.round(acres))}</b> square miles `+
-      `of Arizona where the typical well is ${fmt(maxD)} ft or less`+
+    ? `<b>${fmt(match.length)}</b> areas match — roughly <b>${fmt(Math.round(sqMi))}</b> square miles `+
+      `where the typical well is ${fmt(maxD)} ft or less`+
       (county==="all" ? "" : ` in ${county} County`)+`. `+
-      `The shallowest is <b>${fmt(shallow[0][3])} ft</b>.`
+      `The shallowest is <b>${fmt(shallow[0][3])} ft</b>. Click any square for its records.`
     : `No areas match. Try a greater depth`+(county==="all"?"":`, or widen from ${county} County`)+`.`;
 
   $("mapNote").textContent =
-    `Showing ${fmt(match.length)} of ${fmt(all.length)} mapped areas. Faded dots are areas with `+
-    `records that don't match your filter. Blank space is no data, not shallow water.`;
+    `${fmt(match.length)} of ${fmt(all.length)} mapped areas shown. Each square is about 1.4 miles `+
+    `across and holds at least ${DATA._meta.minWellsPerCell} filed wells. Unshaded ground means no `+
+    `records, not shallow water.`;
 
   $("rows").innerHTML = shallow.slice(0,40).map(c => {
     const co = DATA.counties[c[8]];
@@ -264,7 +308,18 @@ document.addEventListener("click", e => {
   location.href = `/?lat=${b.dataset.lat}&lon=${b.dataset.lon}`;
 });
 
+$("baseSeg").addEventListener("click", e => {
+  const b=e.target.closest("button"); if(b) setBase(b.dataset.v);
+});
+$("showAll").addEventListener("change", render);
+
 ["maxDepth","minWells","county"].forEach(id => $(id).addEventListener("input", render));
+
+if(typeof L === "undefined"){
+  $("summary").textContent = "The map library could not be loaded. The area list below still works.";
+}else{
+  initMap();
+}
 
 fetch("/data/az-depth-grid.json")
   .then(r => r.json())
