@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where is water shallow in Arizona? — Build Off Grid</title>
+<meta name="description" content="Search Arizona by well depth. Built from 163,719 filed well records, aggregated into 1.4-mile cells — find the areas where water is close to the surface before you pick a parcel.">
+<meta property="og:title" content="Where is water shallow in Arizona?">
+<meta property="og:description" content="Search Arizona by well depth, not by listing. 163,719 filed well records aggregated by area.">
+<style>
+  :root{
+    --bg:#f7f7f2; --panel:#ffffff; --panel2:#f1f2ea; --line:#dcdfd0;
+    --ink:#1a1d15; --muted:#61684f; --accent:#8a6d1f; --accent-fill:#8a6d1f; --on-accent:#fff;
+    --info-fill:#2f6489; --on-info:#fff;
+    --shadow:0 1px 2px rgba(20,25,15,.06), 0 2px 10px rgba(20,25,15,.04);
+    color-scheme:light;
+  }
+  html[data-theme="dark"]{
+    --bg:#12140f; --panel:#1b1e17; --panel2:#232720; --line:#333a2c;
+    --ink:#eef0e6; --muted:#a3ab93; --accent:#c8a24a; --accent-fill:#c8a24a; --on-accent:#1a1a12;
+    --info-fill:#5b8fb9; --on-info:#0d1218; --shadow:none; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:24px;position:relative}
+  .kicker{color:var(--accent);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:700}
+  h1{margin:10px 0 8px;font-size:clamp(26px,4vw,38px);line-height:1.15;letter-spacing:-.02em}
+  .sub{color:var(--muted);max-width:64ch;margin:0}
+  a{color:var(--accent)}
+  .themeBtn{position:absolute;top:0;right:0;background:var(--panel);color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;
+    font-weight:700;cursor:pointer}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;
+    box-shadow:var(--shadow);margin-top:18px}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
+  select,input[type=range]{width:100%}
+  select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:9px;padding:11px 12px;font-size:15px}
+  .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+  @media(max-width:760px){.controls{grid-template-columns:1fr}}
+  .val{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+  .summary{margin-top:16px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+    border:1px solid var(--line);font-size:15px;line-height:1.5}
+  .summary b{font-size:19px}
+  svg.map{width:100%;height:auto;display:block;background:var(--panel2);
+    border:1px solid var(--line);border-radius:12px;margin-top:16px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .goBtn{background:var(--info-fill);color:var(--on-info);border:0;border-radius:8px;
+    padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .note{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.55}
+  footer{margin-top:36px;padding-top:20px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:12.5px;line-height:1.6}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);
+    border-radius:99px;padding:3px 10px;font-size:11.5px;margin-right:6px}
+  @media (max-width:620px){
+    table.stack{display:block}
+    table.stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    table.stack tbody,table.stack tr,table.stack td{display:block;width:auto}
+    table.stack tr{border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+      margin:0 0 8px;background:var(--panel)}
+    table.stack td{border:0;padding:2px 0;text-align:left !important;display:flex;gap:10px}
+    table.stack td:before{content:attr(data-label);flex:0 0 44%;font-size:11px;font-weight:700;
+      letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <button class="themeBtn" id="themeBtn" type="button">Dark</button>
+  <div class="kicker">Build Off Grid · Arizona</div>
+  <h1>Where is water shallow in Arizona?</h1>
+  <p class="sub">Most land tools let you search by price and acreage. None let you search by the thing
+  that decides whether the land is usable. This is every area of Arizona ranked by how deep the wells
+  actually go, built from <strong>163,719 filed well records</strong>.</p>
+  <p class="sub" style="margin-top:10px">Pick a depth you can afford to drill, and see where that
+  buys you something. Then <a href="/">check a specific parcel</a>.</p>
+</header>
+
+<div class="card">
+  <div class="controls">
+    <div>
+      <label for="county">County</label>
+      <select id="county"></select>
+    </div>
+    <div>
+      <label for="maxDepth">Wells no deeper than <span class="val" id="maxDepthVal">300 ft</span></label>
+      <input type="range" id="maxDepth" min="50" max="1500" step="25" value="300">
+    </div>
+    <div>
+      <label for="minWells">At least <span class="val" id="minWellsVal">3 wells</span> on record</label>
+      <input type="range" id="minWells" min="3" max="40" step="1" value="3">
+    </div>
+  </div>
+  <div class="summary" id="summary">Loading well records…</div>
+  <svg class="map" id="map" viewBox="0 0 620 700" role="img" aria-label="Map of Arizona well depths"></svg>
+  <div class="legend">
+    <span><i style="background:#2f7d4f"></i>Under 150 ft</span>
+    <span><i style="background:#7fa650"></i>150–300 ft</span>
+    <span><i style="background:#c8a24a"></i>300–600 ft</span>
+    <span><i style="background:#d3742f"></i>600–1,000 ft</span>
+    <span><i style="background:#a33d1e"></i>Over 1,000 ft</span>
+    <span style="opacity:.5"><i style="background:currentColor;opacity:.25"></i>Filtered out</span>
+  </div>
+  <div class="note" id="mapNote"></div>
+</div>
+
+<div class="card">
+  <h2 style="margin:0 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)">
+    Shallowest areas matching your filter</h2>
+  <p class="note" style="margin-top:0">Ranked by median depth. Each row is a 1.4-mile cell —
+    an area, not a parcel. Open one to run the full report on that point.</p>
+  <table class="stack"><thead><tr>
+    <th>Area</th><th class="n">Median depth</th><th class="n">Range</th>
+    <th class="n">To water</th><th class="n">Wells</th><th></th>
+  </tr></thead><tbody id="rows"></tbody></table>
+</div>
+
+<footer>
+  <span class="pill">163,719 wells with usable depth</span>
+  <span class="pill">1.4-mile cells</span>
+  <span class="pill">ADWR Wells55 registry</span>
+  <p><strong>How to read this.</strong> Each cell is roughly 1.4 miles across and shows the
+  <em>median</em> depth of wells filed inside it. Cells holding fewer than three wells are left out
+  entirely rather than smoothed over — a median drawn from one or two wells is an anecdote, and
+  interpolating across empty desert would invent confidence that the records don't support. Blank
+  areas on this map mean <em>no data</em>, not shallow water.</p>
+  <p>A neighbouring well is not a promise about your parcel. Depth can change by hundreds of feet
+  inside a single section, and drilling outcomes depend on local geology and luck. Use this to
+  narrow where to look, then get a quote from a licensed driller before you buy.</p>
+  <p>Source: Arizona Department of Water Resources, Wells55 registry (2024 full export).
+  Depths filtered to 20–5,000 ft to exclude data-entry errors and boreholes.</p>
+</footer>
+
+</div>
+<script>
+const $ = id => document.getElementById(id);
+
+/* Theme, shared behaviour with the main app. */
+function applyTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  $("themeBtn").textContent = t==="dark" ? "Light" : "Dark";
+  try{ localStorage.setItem("bog-theme", t); }catch(_){}
+}
+(function(){ let s=null; try{ s=localStorage.getItem("bog-theme"); }catch(_){}
+  applyTheme(s==="dark" ? "dark" : "light"); })();
+$("themeBtn").onclick = () =>
+  applyTheme(document.documentElement.getAttribute("data-theme")==="dark" ? "light" : "dark");
+
+/* Arizona's bounding box, used to project cell centres into the SVG. */
+const BOX = { n:37.05, s:31.30, w:-114.85, e:-109.00 };
+const W = 620, H = 700, PAD = 14;
+const px = lon => PAD + (lon - BOX.w) / (BOX.e - BOX.w) * (W - PAD*2);
+const py = lat => PAD + (BOX.n - lat) / (BOX.n - BOX.s) * (H - PAD*2);
+
+// Depth bands. Deliberately coarse — five buckets is as much precision as a
+// median over a 1.4-mile cell can honestly carry.
+const BANDS = [[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
+const colour = d => BANDS.find(b => d <= b[0])[1];
+
+let DATA = null;
+
+const fmt = n => n==null ? "—" : n.toLocaleString();
+
+function render(){
+  if(!DATA) return;
+  const maxD  = +$("maxDepth").value;
+  const minW  = +$("minWells").value;
+  const county = $("county").value;
+
+  $("maxDepthVal").textContent = fmt(maxD)+" ft";
+  $("minWellsVal").textContent = minW+" well"+(minW===1?"":"s");
+
+  const all = DATA.cells;
+  const match = all.filter(c =>
+    c[3] <= maxD && c[2] >= minW &&
+    (county==="all" || DATA.counties[c[8]] === county));
+
+  // Map: every cell is drawn, but non-matching ones fade back so the shape of
+  // the state stays legible instead of the map emptying out as you filter.
+  const dots = all.map(c => {
+    const hit = match.includes(c);
+    const r = hit ? Math.min(4.2, 1.5 + Math.log10(c[2])*1.5) : 1.3;
+    return `<circle cx="${px(c[1]).toFixed(1)}" cy="${py(c[0]).toFixed(1)}" r="${r.toFixed(1)}" `+
+           `fill="${hit ? colour(c[3]) : "currentColor"}" opacity="${hit ? .92 : .12}"/>`;
+  }).join("");
+  $("map").innerHTML = dots;
+
+  const shallow = match.slice().sort((a,b) => a[3]-b[3] || b[2]-a[2]);
+  const acres = match.length * 1.4 * 1.4;   // cells are ~1.4 mi square
+  $("summary").innerHTML = match.length
+    ? `<b>${fmt(match.length)}</b> areas match — roughly <b>${fmt(Math.round(acres))}</b> square miles `+
+      `of Arizona where the typical well is ${fmt(maxD)} ft or less`+
+      (county==="all" ? "" : ` in ${county} County`)+`. `+
+      `The shallowest is <b>${fmt(shallow[0][3])} ft</b>.`
+    : `No areas match. Try a greater depth`+(county==="all"?"":`, or widen from ${county} County`)+`.`;
+
+  $("mapNote").textContent =
+    `Showing ${fmt(match.length)} of ${fmt(all.length)} mapped areas. Faded dots are areas with `+
+    `records that don't match your filter. Blank space is no data, not shallow water.`;
+
+  $("rows").innerHTML = shallow.slice(0,40).map(c => {
+    const co = DATA.counties[c[8]];
+    return `<tr>`+
+      `<td data-label="Area">${c[0].toFixed(2)}, ${c[1].toFixed(2)}<br>`+
+        `<span style="color:var(--muted);font-size:12px">${co} County`+
+        (c[7] ? ` · ${c[7]} domestic` : "")+`</span></td>`+
+      `<td class="n" data-label="Median depth"><b>${fmt(c[3])} ft</b></td>`+
+      `<td class="n" data-label="Range">${fmt(c[4])}–${fmt(c[5])} ft</td>`+
+      `<td class="n" data-label="To water">${c[6]==null?"—":fmt(c[6])+" ft"}</td>`+
+      `<td class="n" data-label="Wells">${fmt(c[2])}</td>`+
+      `<td data-label=""><button class="goBtn" data-lat="${c[0]}" data-lon="${c[1]}">Full report</button></td>`+
+    `</tr>`;
+  }).join("");
+}
+
+// Hand the point to the main tool, which does the real per-parcel work.
+document.addEventListener("click", e => {
+  const b = e.target.closest(".goBtn"); if(!b) return;
+  location.href = `/?lat=${b.dataset.lat}&lon=${b.dataset.lon}`;
+});
+
+["maxDepth","minWells","county"].forEach(id => $(id).addEventListener("input", render));
+
+fetch("/data/az-depth-grid.json")
+  .then(r => r.json())
+  .then(j => {
+    DATA = j;
+    const counties = [...j.counties].sort();
+    $("county").innerHTML = "<option value='all'>All Arizona</option>" +
+      counties.map(c => `<option>${c}</option>`).join("");
+    render();
+  })
+  .catch(e => { $("summary").textContent = "Could not load the well data: " + (e.message||e); });
+</script>
+</body>
+</html>

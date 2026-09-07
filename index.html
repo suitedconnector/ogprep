@@ -221,6 +221,13 @@
     .cmpRow.sel{outline:1px solid rgba(200,162,74,.35)}
   }
 
+  /* Link to the area finder — the inverse of this page's question. */
+  .crossLink{margin-top:12px;padding:10px 14px;border-radius:10px;font-size:13.5px;
+    background:var(--panel2);border:1px solid var(--line);display:inline-flex;gap:8px;
+    flex-wrap:wrap;color:var(--muted)}
+  .crossLink a{font-weight:700;text-decoration:none}
+  .crossLink a:hover{text-decoration:underline}
+
   /* One line under the state toggle explaining why the question changes. */
   .stateWhy{margin-top:9px;font-size:13.5px;line-height:1.5;color:var(--muted);max-width:62ch}
   .stateWhy strong{color:var(--ink)}
@@ -442,6 +449,12 @@
   </div>
   <!-- The toggle changes the question, not just the dataset. Worth one line. -->
   <div class="stateWhy" id="stateWhy"></div>
+  <!-- The inverse question. Someone who hasn't chosen land yet needs this
+       first, and it is the thing no land site offers. -->
+  <div class="crossLink" id="crossLink">
+    Haven't picked a parcel yet?
+    <a href="/find.html">Search Arizona by well depth →</a>
+  </div>
   <h1 id="headline">Will you hit water — and what will it cost?</h1>
   <p class="sub" id="headIntro"></p>
   <!-- Background moved behind a toggle. It is worth reading once and never
@@ -899,6 +912,9 @@ function applyState(code){
     "state records. Neither is a recommendation — and neither is a quote.</p>";
   $("demoStrip").style.display = $("wellList").children.length ? "none" : "";
 
+  // The depth grid is Arizona-only until Utah's bulk well export is unlocked.
+  $("crossLink").style.display = code==="AZ" ? "" : "none";
+
   $("stateWhy").innerHTML = code==="AZ"
     ? "In Arizona you may drill a domestic well on your own land without buying a water right, "+
       "so the question is <strong>what it costs</strong>."
@@ -963,6 +979,23 @@ function applyState(code){
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
   render();
 }
+
+/* Arrive from the area finder with a point already chosen. The finder answers
+   "where should I look"; this page answers "what about exactly here", so the
+   handoff has to carry the coordinates and run itself. */
+(function fromFinder(){
+  const q = new URLSearchParams(location.search);
+  const la = parseFloat(q.get("lat")), lo = parseFloat(q.get("lon"));
+  if(!isFinite(la) || !isFinite(lo)) return;
+  const inUT = la>=36.9 && la<=42.1 && lo>=-114.1 && lo<=-108.9;
+  setTimeout(()=>{
+    if(inUT){ [...$("stateSeg").children].find(b=>b.dataset.v==="UT")?.click(); }
+    const coordsBtn=[...$("modeSeg").children].find(b=>b.dataset.v==="coords");
+    if(coordsBtn) coordsBtn.click();
+    $("coords").value = la+", "+lo;
+    $("goBtn").click();
+  }, 120);
+})();
 
 /* Browsers restore form values across reloads and back-navigation, which puts
    numbers back into fields we deliberately left empty — indistinguishable from
