@@ -46,6 +46,9 @@
   .summary{margin-top:16px;padding:14px 16px;border-radius:10px;background:var(--panel2);
     border:1px solid var(--line);font-size:15px;line-height:1.5}
   .summary b{font-size:19px}
+  /* Ghosting the basemap, not the data. Filtering the tile pane alone leaves
+     the overlay canvas at full saturation, which is the whole point. */
+  .map.dim .leaflet-tile-pane{filter:grayscale(.85) brightness(1.14) contrast(.78) opacity(.62)}
   .map{height:min(70vh,620px);border:1px solid var(--line);border-radius:12px;margin-top:12px;
     background:var(--panel2)}
   .mapTools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
@@ -130,16 +133,19 @@
       <button data-v="topo" aria-pressed="false">Terrain</button>
       <button data-v="street" aria-pressed="false">Street</button>
     </div>
+    <label class="chk"><input type="checkbox" id="dimBase" checked> Dim the basemap</label>
     <label class="chk"><input type="checkbox" id="showAll"> Show areas that don't match</label>
   </div>
   <div id="map" class="map"></div>
   <div class="legend">
-    <span><i style="background:#2f7d4f"></i>Under 150 ft</span>
-    <span><i style="background:#7fa650"></i>150–300 ft</span>
-    <span><i style="background:#c8a24a"></i>300–600 ft</span>
-    <span><i style="background:#d3742f"></i>600–1,000 ft</span>
-    <span><i style="background:#a33d1e"></i>Over 1,000 ft</span>
+    <span><i style="background:#00b34a"></i>Under 150 ft</span>
+    <span><i style="background:#9ede1f"></i>150–300 ft</span>
+    <span><i style="background:#ffd000"></i>300–600 ft</span>
+    <span><i style="background:#ff7a00"></i>600–1,000 ft</span>
+    <span><i style="background:#e0231a"></i>Over 1,000 ft</span>
     <span style="opacity:.6"><i style="background:#888;opacity:.4"></i>Doesn't match filter</span>
+    <span style="width:100%;opacity:.75;margin-top:2px">Each square is a
+      <strong>1.4-mile area</strong> of averaged well records &mdash; not a parcel.</span>
   </div>
   <div class="note" id="mapNote"></div>
 </div>
@@ -195,7 +201,10 @@ $("themeBtn").onclick = () =>
 const CELL = 0.02;          // grid spacing in degrees, from the data _meta
 const HALF = CELL / 2;
 
-const BANDS = [[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
+/* Chosen to survive an aerial photograph. Natural terrain is olive, tan and
+   grey-green, so the ramp runs through saturated hues that essentially never
+   occur in it, and every cell carries a thin white edge. */
+const BANDS = [[150,"#00b34a"],[300,"#9ede1f"],[600,"#ffd000"],[1000,"#ff7a00"],[1e9,"#e0231a"]];
 const colour = d => BANDS.find(b => d <= b[0])[1];
 
 /* All three from providers that serve tiles without a key or an account.
@@ -221,6 +230,7 @@ function initMap(){
   // Overlay pane, explicitly above tiles. Canvas overlays occasionally end up
   // painted under the basemap when the container is sized by CSS after init.
   LAYER = L.layerGroup().addTo(MAP);
+  $("map").classList.add("dim");
   L.control.scale({imperial:true, metric:false}).addTo(MAP);
 
   // Leaflet measures its container once. Ours is sized with min(70vh,620px),
@@ -275,9 +285,11 @@ function render(){
   draw.forEach(c => {
     const hit = hits.has(c);
     const rect = L.rectangle([[c[0]-HALF, c[1]-HALF],[c[0]+HALF, c[1]+HALF]], {
-      stroke:false,
+      // A hairline edge stops adjacent cells merging into one blob and keeps
+      // single cells visible against busy imagery when zoomed out.
+      stroke: hit, color:"#fff", weight:.6, opacity:.55,
       fillColor: hit ? colour(c[3]) : "#888",
-      fillOpacity: hit ? .62 : .18,
+      fillOpacity: hit ? .78 : .16,
       interactive: hit
     });
     rect.addTo(LAYER);
@@ -334,6 +346,8 @@ $("baseSeg").addEventListener("click", e => {
   const b=e.target.closest("button"); if(b) setBase(b.dataset.v);
 });
 $("showAll").addEventListener("change", render);
+$("dimBase").addEventListener("change", e =>
+  $("map").classList.toggle("dim", e.target.checked));
 
 ["maxDepth","minWells","county"].forEach(id => $(id).addEventListener("input", render));
 

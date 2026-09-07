@@ -146,7 +146,7 @@
   .b-thin{background:rgba(211,116,47,.14);border:1px solid var(--warn)}
   .b-err{background:rgba(193,80,46,.16);border:1px solid var(--bad)}
   /* The well report reads as a light document inside the dark app. */
-  .wells{max-height:460px;overflow:auto;margin-top:10px;background:var(--paper);color:var(--paper-ink);
+  .wells{max-height:none;overflow:visible;margin-top:10px;background:var(--paper);color:var(--paper-ink);
     border:1px solid var(--paper-line);border-radius:10px;padding:12px}
   .wells table{color:var(--paper-ink)}
   .wells th{color:var(--paper-muted);border-bottom-color:var(--paper-line)}
@@ -293,7 +293,7 @@
   #resultsHost{margin-top:16px}
   #resultsHost table{width:100%;table-layout:auto}
   #resultsHost td,#resultsHost th{white-space:normal}
-  details.pan .body{max-height:560px;overflow:auto;padding:0 13px 13px;color:var(--paper-ink)}
+  details.pan .body{max-height:none;overflow:visible;padding:0 13px 13px;color:var(--paper-ink)}
   details.pan .body .wells{border:0;background:none;padding:0;margin:0;max-height:none}
   details.pan .body .maphdr{display:none}
 
@@ -339,6 +339,7 @@
   .maphdr{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
     color:var(--paper-muted);margin-bottom:8px}
   /* Leaflet well map, replacing the old inline SVG scatter. */
+  .wellMapBox.dim .leaflet-tile-pane{filter:grayscale(.85) brightness(1.14) contrast(.78) opacity(.62)}
   .wellMapBox{height:min(56vh,430px);border-radius:9px;border:1px solid var(--paper-line);
     margin-top:8px;background:var(--paper-alt)}
   .wmTools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
@@ -1384,7 +1385,10 @@ async function lookup(){
         "<table><thead><tr><th>#</th><th>Use</th><th>Drilled</th><th class='n'>Depth</th>"+
         "<th class='n'>Away</th><th class='n'>To water</th></tr></thead><tbody>"+rows+"</tbody></table>"+
         "<div class='src'>Source: ADWR Groundwater Site Inventory"+(j.cached?" (cached)":", queried live")+".</div>";
-      buildWellMap(j,lat,lng);
+      // Deferred: makeCollapsible() relocates this node into a <details>
+      // wrapper during render(), and a Leaflet map does not survive being
+      // moved. Stash the data and build once the DOM has settled.
+      state.pendingWellMap = {j, lat, lng};
     }
   }catch(err){
     state.local=null;
@@ -1430,7 +1434,8 @@ const WM_BASEMAPS = {
   street:{ url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
            attr:"Esri, HERE, Garmin, OpenStreetMap contributors", max:19 }
 };
-const WM_BANDS=[[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
+// Same ramp as the area finder, chosen to stay visible on aerial imagery.
+const WM_BANDS=[[150,"#00b34a"],[300,"#9ede1f"],[600,"#ffd000"],[1000,"#ff7a00"],[1e9,"#e0231a"]];
 const wmColour = d => WM_BANDS.find(b => d <= b[0])[1];
 
 function wellMapHtml(j,lat,lng){
@@ -1442,14 +1447,15 @@ function wellMapHtml(j,lat,lng){
       "<button data-v='sat' aria-pressed='true'>Satellite</button>"+
       "<button data-v='topo' aria-pressed='false'>Terrain</button>"+
       "<button data-v='street' aria-pressed='false'>Street</button>"+
-    "</div></div>"+
+    "</div>"+
+    "<label class='chk'><input type='checkbox' id='wmDim' checked> Dim the basemap</label></div>"+
     "<div id='wellMap' class='wellMapBox'></div>"+
     "<div class='wmLegend'>"+
-      "<span><i style='background:#2f7d4f'></i>&lt;150 ft</span>"+
-      "<span><i style='background:#7fa650'></i>150–300</span>"+
-      "<span><i style='background:#c8a24a'></i>300–600</span>"+
-      "<span><i style='background:#d3742f'></i>600–1,000</span>"+
-      "<span><i style='background:#a33d1e'></i>&gt;1,000 ft</span>"+
+      "<span><i style='background:#00b34a'></i>&lt;150 ft</span>"+
+      "<span><i style='background:#9ede1f'></i>150–300</span>"+
+      "<span><i style='background:#ffd000'></i>300–600</span>"+
+      "<span><i style='background:#ff7a00'></i>600–1,000</span>"+
+      "<span><i style='background:#e0231a'></i>&gt;1,000 ft</span>"+
       "<span><i style='background:none;border:2px solid #c8a24a'></i>your parcel</span>"+
     "</div>"+
     "<div class='src'>"+pts.length+" of "+(j.withDepth||pts.length)+" wells have mapped coordinates. "+
@@ -1472,6 +1478,7 @@ function buildWellMap(j, lat, lng){
   if(WELLMAP){ WELLMAP.remove(); WELLMAP=null; WELLBASE=null; }
 
   WELLMAP=L.map(host,{preferCanvas:true, scrollWheelZoom:false});
+  host.classList.toggle("dim", !$("wmDim") || $("wmDim").checked);
   wmSetBase("sat");
   L.control.scale({imperial:true,metric:false}).addTo(WELLMAP);
 
@@ -1492,7 +1499,7 @@ function buildWellMap(j, lat, lng){
   pts.forEach(w=>{
     L.circleMarker([w.lat,w.lon],{
       radius: Math.min(11, 4 + Math.log10(Math.max(w.depth,10))*2.4),
-      color:"#fff", weight:1, fillColor:wmColour(w.depth), fillOpacity:.85
+      color:"#fff", weight:1.4, fillColor:wmColour(w.depth), fillOpacity:.92
     }).addTo(group).bindPopup(
       "<div class='pop'><b>"+w.depth.toLocaleString()+" ft</b> deep"+
       "<div class='popRow'><span>Depth to water</span><b>"+
@@ -1517,6 +1524,17 @@ document.addEventListener("click",e=>{
   const b=e.target.closest("#wmSeg button"); if(!b || !WELLMAP) return;
   wmSetBase(b.dataset.v);
 });
+document.addEventListener("change",e=>{
+  if(e.target.id!=="wmDim") return;
+  const host=$("wellMap"); if(host) host.classList.toggle("dim", e.target.checked);
+});
+
+// Opening a collapsed panel gives the map its first real height.
+document.addEventListener("toggle", e => {
+  if(e.target.tagName==="DETAILS" && e.target.open && WELLMAP){
+    setTimeout(()=>WELLMAP.invalidateSize({animate:false}), 50);
+  }
+}, true);
 
 function parcelHtml(p){
   const money=v=>v==null?"—":"$"+v.toLocaleString();
@@ -1666,12 +1684,15 @@ function makeCollapsible(host){
     if(el.tagName==="DETAILS" || !el.classList.contains("wells")) return;
     const hdr=el.querySelector(".maphdr");
     const title=hdr ? hdr.textContent.trim() : "Details";
+    // A panel containing a map must start open — Leaflet cannot measure a
+    // container inside a closed <details>.
+    const hasMap=!!el.querySelector("#wellMap");
     const warn=el.querySelector(".b-err");
     const rowCount=el.querySelectorAll("tbody tr").length;
 
     const d=document.createElement("details");
     d.className="pan";
-    d.open = i===0 || !!warn;
+    d.open = i===0 || !!warn || hasMap;
     const s=document.createElement("summary");
     s.innerHTML = title + (warn
       ? "<span class='flag'>needs attention</span>"
@@ -2001,6 +2022,7 @@ function render(){
     renderTopVerdict();
     makeCollapsible($("wellList"));
     renderCtaDrillers();
+    flushWellMap();
     return;
   }
 
@@ -2155,6 +2177,17 @@ function render(){
   renderTopVerdict();
   makeCollapsible($("wellList"));
   renderCtaDrillers();
+  flushWellMap();
+}
+
+/* The map is built here rather than when its markup is written, because
+   makeCollapsible moves that markup into a <details> wrapper first, and a
+   Leaflet instance whose container is reparented ends up measuring zero. */
+function flushWellMap(){
+  const p = state.pendingWellMap;
+  if(!p || !$("wellMap")) return;
+  state.pendingWellMap = null;
+  buildWellMap(p.j, p.lat, p.lng);
 }
 
 /* Refer to the driller list rather than reprinting it. The full table already
