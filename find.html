@@ -49,8 +49,14 @@
   /* Ghosting the basemap, not the data. Filtering the tile pane alone leaves
      the overlay canvas at full saturation, which is the whole point. */
   .map.dim .leaflet-tile-pane{filter:grayscale(.85) brightness(1.14) contrast(.78) opacity(.62)}
-  .map{height:min(70vh,620px);border:1px solid var(--line);border-radius:12px;margin-top:12px;
+  /* Fixed pixel height, not vh. Any context that reports a zero viewport —
+     embedded views, some in-app browsers, print — collapses a vh-sized map to
+     nothing, and a map that sometimes has no height is worse than one that is
+     occasionally the wrong size. */
+  .map{height:560px;border:1px solid var(--line);border-radius:12px;margin-top:12px;
     background:var(--panel2)}
+  @media(max-width:760px){ .map{height:420px} }
+  @media(max-width:480px){ .map{height:340px} }
   .mapTools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
   .seg{display:flex;gap:6px}
   .seg button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);

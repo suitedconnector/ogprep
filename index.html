@@ -238,6 +238,9 @@
   .stateWhy strong{color:var(--ink)}
 
   /* Column key under the cost table. */
+  /* Shown instead of a header-only table when no plans are chosen yet. */
+  .emptyLines{padding:16px;border:1px dashed var(--line);border-radius:10px;margin-top:8px;
+    color:var(--muted);font-size:13.5px;text-align:center}
   .colkey{margin-top:10px;display:grid;gap:5px;font-size:13px;line-height:1.45;color:var(--muted)}
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
@@ -344,8 +347,11 @@
     color:var(--paper-muted);margin-bottom:8px}
   /* Leaflet well map, replacing the old inline SVG scatter. */
   .wellMapBox.dim .leaflet-tile-pane{filter:grayscale(.85) brightness(1.14) contrast(.78) opacity(.62)}
-  .wellMapBox{height:min(56vh,430px);border-radius:9px;border:1px solid var(--paper-line);
+  /* Fixed height for the same reason as the finder map: vh is unreliable in
+     embedded and in-app browsers. */
+  .wellMapBox{height:420px;border-radius:9px;border:1px solid var(--paper-line);
     margin-top:8px;background:var(--paper-alt)}
+  @media(max-width:760px){ .wellMapBox{height:340px} }
   .wmTools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
   .seg.wmSeg{display:flex;gap:6px;margin:0}
   .seg.wmSeg button{flex:0 0 auto;min-width:0;background:var(--paper-alt);color:var(--paper-ink);
@@ -389,20 +395,6 @@
   .dcity{font-weight:500;font-size:11.5px;color:var(--paper-muted);white-space:nowrap}
   .dstats{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--paper-muted);margin-top:4px}
   .dstats b{color:var(--paper-ink)}
-  .dquote{margin-top:8px;background:#8a6d1f;color:#fff;border:0;border-radius:7px;
-    padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer}
-  .dquote:disabled{background:#7fa650;cursor:default}
-  .qform{margin-top:10px;padding:11px;border-radius:8px;background:#fff;border:1px solid var(--paper-line)}
-  .qfields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
-  @media(max-width:640px){.qfields{grid-template-columns:1fr}}
-  .qform input,.qform textarea{width:100%;background:#fff;color:var(--paper-ink);border:1px solid var(--paper-line);
-    border-radius:6px;padding:8px 9px;font-size:13px;font-family:inherit}
-  .qform textarea{margin-top:7px;resize:vertical}
-  .qsend{margin-top:8px;background:var(--paper-ink);color:var(--paper);border:0;border-radius:7px;
-    padding:8px 16px;font-size:12.5px;font-weight:800;cursor:pointer}
-  .qsend:disabled{opacity:.6;cursor:default}
-  .qnote{font-size:11.5px;color:var(--paper-muted);margin-top:8px;line-height:1.5}
-  .qresult{margin-top:7px;font-size:12.5px}
   .qerr{color:#a8391c;font-weight:600}
   .qok{font-size:13px;font-weight:700;color:#4d6b2f;padding:4px 0}
   .drillers .src{color:var(--paper-muted);margin-top:10px}
@@ -630,6 +622,8 @@
     </tr></thead>
     <tbody id="lines"></tbody>
   </table>
+  <div class="emptyLines" id="emptyLines">Choose a water, wastewater and power plan
+    and this fills in with your numbers.</div>
   <!-- "Likely" gets read as a quote. It isn't one, and the gap between it and
        High is where people get hurt. Said once, plainly, under the table. -->
   <div class="colkey">
@@ -1777,21 +1771,7 @@ function drillersHtml(d){
         (x.medianYieldGpm?"<span>~<b>"+x.medianYieldGpm+" gpm</b></span>":"")+
         (x.firstYear?"<span>"+x.firstYear+"–"+x.lastYear+"</span>":"")+
       "</div>"+
-      "<button type='button' class='dquote' data-q='"+id+"' data-driller=\""+
-        x.name.replace(/"/g,"&quot;")+"\" data-licence='"+x.licence+"'>Request a quote</button>"+
-      "<div class='qform' id='"+id+"' hidden>"+
-        "<div class='qfields'>"+
-          "<input type='text'  placeholder='Your name'  data-f='name'>"+
-          "<input type='email' placeholder='Email'      data-f='email'>"+
-          "<input type='tel'   placeholder='Phone'      data-f='phone'>"+
-        "</div>"+
-        "<textarea placeholder='Anything they should know? (optional)' rows='2' data-f='note'></textarea>"+
-        "<button type='button' class='qsend'>Send request</button>"+
-        "<div class='qnote'>We'll pass your details to "+x.name+
-          " along with the well data for your location. They contact you directly — "+
-          "we can't promise a reply, and nothing is charged either way.</div>"+
-        "<div class='qresult'></div>"+
-      "</div>"+
+
     "</div>";
   }).join("");
   return "<div class='drillers'>"+
@@ -2285,6 +2265,9 @@ function render(){
     $("lines").innerHTML = "";
     $("assumptions").innerHTML = "";
     $("swingNote").innerHTML = "";
+    $("lines").closest("table").style.display = "none";
+    document.querySelector(".colkey").style.display = "none";
+    $("emptyLines").style.display = "";
     $("verdict").className = "verdict v-warn";
     $("verdict").innerHTML =
       "<strong>Still needed:</strong> "+
@@ -2412,6 +2395,10 @@ function render(){
   const swing = i => highs[i]-lows[i];
   const spreads = [swing(1), swing(2), swing(3), swing(4)];
   const waterShare = spreads[0] / (spreads.reduce((a,b)=>a+b,0) || 1);
+  $("lines").closest("table").style.display = "";
+  document.querySelector(".colkey").style.display = "";
+  $("emptyLines").style.display = "none";
+
   $("swingNote").innerHTML = state.water!=="well" ? "" :
     "<strong>Water is the line that moves.</strong> It swings "+money(swing(1))+
     " between the low and high case — "+Math.round(waterShare*100)+
@@ -2472,7 +2459,9 @@ function renderCtaDrillers(){
     count = new Set(state.utDepths.wells
       .filter(w=>!w.nonProduction && w.driller).map(w=>w.driller)).size;
   }else if(state.drillers && state.drillers.drillers){
-    count = state.drillers.drillers.length;
+    // Only currently licensed drillers — the retired licences appear on old
+    // wells but cannot take work, and promising to contact them is a lie.
+    count = state.drillers.drillers.filter(d=>d.name).length;
   }
   if(!count){ box.innerHTML=""; return; }
   box.innerHTML="<div class='ctaDr'><span>Your request goes to the <b>"+count+
