@@ -1536,6 +1536,240 @@ document.addEventListener("toggle", e => {
   }
 }, true);
 
+/* Restored: these were removed by accident when the well map was rewritten. */
+function localFromUtah(d){
+  if(!d || !d.ok) return null;
+  const depths = (d.wells||[])
+    .filter(w => !w.nonProduction && !w.dryHole && w.depthFt!=null && w.depthFt>20)
+    .map(w => w.depthFt);
+  // Three wells is the floor. Below that a median is an anecdote wearing a
+  // statistic's clothes, and the county fallback would be no better.
+  if(depths.length < 3) return null;
+
+  const avg = depths.reduce((a,b)=>a+b,0)/depths.length;
+  const sd  = Math.sqrt(depths.reduce((s,v)=>s+(v-avg)**2,0)/depths.length) || avg*0.35;
+  return {
+    n: depths.length,
+    med: d.medianDepthFt!=null ? d.medianDepthFt : Math.round(avg),
+    avg, sd,
+    min: Math.min(...depths),
+    max: Math.max(...depths),
+    dtw: d.medianStaticWaterLevelFt,
+    miles: d.scope ? d.scope.radiusMiles : null,
+    utah: true,
+    dryHoleCount: d.dryHoleCount||0,
+    wlMin: d.minStaticWaterLevelFt, wlMax: d.maxStaticWaterLevelFt
+  };
+}
+
+function utDepthsHtml(d){
+  const money=v=>v==null?"—":v.toLocaleString();
+  const supply=(d.wells||[]).filter(w=>!w.nonProduction);
+
+  let dry="";
+  if(d.dryHoleCount){
+    // The single most consequential fact on the page. It leads.
+    dry = "<div class='banner b-err' style='margin:10px 0'><strong>"+d.dryHoleCount+
+      " dry hole"+(d.dryHoleCount===1?"":"s")+" on record nearby.</strong> "+
+      d.dryHoles.map(h=>"A well at "+(h.miles!=null?h.miles+" mi":"unknown distance")+
+        (h.drilled?", drilled "+h.drilled:"")+", was logged as: "+
+        (h.comments||[]).join("; ")+".").join(" ")+
+      " Someone paid to drill here and got nothing. That is the risk this page exists to show you.</div>";
+  }
+
+  // Utah's server refusing us looks identical to an empty area unless we say so.
+  const outage = d.fetchFailedCount
+    ? "<div class='banner b-thin' style='margin:8px 0'>Utah's well log server did not answer for "+
+      d.fetchFailedCount+" of the "+(d.fetchFailedCount+d.inspected)+" wells we asked about"+
+      (/503|429/.test((d.fetchErrors||[]).join(" "))?" (it is rate-limiting or temporarily down)":"")+
+      ". The figures below are from the ones that did answer — try again in a few minutes for the rest.</div>"
+    : "";
+
+  if(d.medianDepthFt==null){
+    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Well depths nearby</div>"+dry+outage+
+      "<p class='dintro'>Found "+d.distinctWellCount+" well"+(d.distinctWellCount===1?"":"s")+
+      " within "+d.scope.radiusMiles+" miles, but none carry a usable depth"+
+      (d.supplyWellsMissingDepth?" — "+d.supplyWellsMissingDepth+" predate Utah's 1991 computerised records":"")+
+      ". Widen the radius, or open the filed logs below.</p></div>";
+  }
+
+  const rows=supply.slice(0,15).map(w=>
+    "<tr><td class='n' data-label='Distance'>"+(w.miles!=null?w.miles+" mi":"—")+"</td>"+
+    "<td class='n' data-label='Depth'>"+(w.depthFt!=null?money(w.depthFt)+" ft":"—")+"</td>"+
+    "<td class='n' data-label='To water'>"+(w.staticWaterLevelFt!=null
+        ? money(w.staticWaterLevelFt)+" ft"+(w.waterLevelSuspect?" <span title='Filed level is below the bottom of the well — treated as a filing error and excluded from the median.'>⚠</span>":"")
+        : "—")+"</td>"+
+    "<td data-label='Drilled'>"+(w.drilled||"—")+"</td>"+
+    "<td data-label='Driller'>"+(w.driller||"—")+"</td>"+
+    "<td data-label='Notes'>"+(w.dryHole?"<b style='color:#b00'>Dry hole</b>":(w.waterRights&&w.waterRights.length>1
+        ? w.waterRights.length+" rights on this well":"—"))+"</td>"+
+    "<td data-label='Document'><a href='"+w.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
+
+  const wlSpread = (d.minStaticWaterLevelFt!=null && d.maxStaticWaterLevelFt!=null &&
+                    d.maxStaticWaterLevelFt - d.minStaticWaterLevelFt > 100)
+    ? "<p class='dintro'><strong>Depth to water swings "+money(d.minStaticWaterLevelFt)+" to "+
+      money(d.maxStaticWaterLevelFt)+" ft inside this radius.</strong> That is fractured ground, not a "+
+      "consistent water table — two neighbours can get very different wells. Budget toward the deep end.</p>"
+    : "";
+
+  return "<div class='wells' style='margin-top:12px'>"+
+    "<div class='maphdr'>Well depths within "+d.scope.radiusMiles+" miles</div>"+dry+outage+
+    "<p class='dintro'>Read from <strong>"+d.inspected+"</strong> filed well logs ("+
+      d.distinctWellCount+" distinct wells indexed nearby). Median depth <strong>"+
+      money(d.medianDepthFt)+" ft</strong>, range "+money(d.minDepthFt)+"–"+money(d.maxDepthFt)+" ft"+
+      (d.nonProductionCount?". "+d.nonProductionCount+" monitoring or geothermal bore"+
+        (d.nonProductionCount===1?"":"s")+" excluded — they are not drilled for water":"")+".</p>"+
+    wlSpread+
+    "<table class='stack'><thead><tr><th class='n'>Away</th><th class='n'>Depth</th><th class='n'>To water</th>"+
+    "<th>Drilled</th><th>Driller</th><th>Notes</th><th></th></tr></thead><tbody>"+rows+"</tbody></table>"+
+    "<div class='src'>Source: Utah Division of Water Rights, well drilling database — read from the "+
+    "individual filed logs, not the map index.</div></div>";
+}
+
+function utLogsHtml(d){
+  if(!d.logs || !d.logs.length){
+    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
+      "<p class='dintro'>No filed well logs within "+d.scope.radiusMiles+" miles. That may mean nothing has "+
+      "been drilled here, or that older wells were never filed.</p></div>";
+  }
+  const rows=d.logs.slice(0,15).map(l=>
+    "<tr><td class='n' data-label='Distance'>"+(l.miles!=null?l.miles+" mi":"—")+"</td>"+
+    "<td data-label='Owner'>"+(l.owner||"—")+"</td>"+
+    "<td data-label='Water right'>"+(l.waterRight||"—")+"</td>"+
+    "<td data-label='Type'>"+(l.geologic?"<b>Geologic</b>":(l.logType||"Well log"))+"</td>"+
+    "<td data-label='Document'><a href='"+l.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
+  return "<div class='wells' style='margin-top:12px'>"+
+    "<div class='maphdr'>Well logs within "+d.scope.radiusMiles+" miles</div>"+
+    "<p class='dintro'><strong>"+d.found+" filed log"+(d.found===1?"":"s")+"</strong>"+
+      (d.geologicCount?", "+d.geologicCount+" of them geologic logs (richer detail)":"")+
+      ". "+d.note+"</p>"+
+    "<table class='stack'><thead><tr><th class='n'>Away</th><th>Owner</th><th>Water right</th>"+
+    "<th>Type</th><th>Document</th></tr></thead><tbody>"+rows+"</tbody></table>"+
+    "<div class='src'>Source: Utah Division of Water Rights well log index.</div></div>";
+}
+
+/**
+ * Utah water rights near the point. Utah requires an approved right to drill,
+ * so in a closed basin this — not depth — is what decides whether a parcel is
+ * usable. Presented deliberately as evidence to verify, not an answer.
+ */
+function rightsHtml(w){
+  if(!w || !w.rights || !w.rights.length){
+    return "<div class='wells'><div class='maphdr'>Utah water rights</div>"+
+      "<p class='dintro'>No points of diversion found within "+(w&&w.scope?w.scope.radiusMiles:1)+
+      " miles. In a closed basin that usually means there is no existing right to draw on here — "+
+      "worth confirming before assuming a well is possible.</p></div>";
+  }
+  const badge=r=>r.uses.length?r.uses.join(", "):"—";
+  // data-label lets each cell name itself when the table stacks on mobile.
+  const rows=w.rights.slice(0,15).map(r=>
+    "<tr><td data-label='Right'><a href='"+(r.link||"#")+"' target='_blank' rel='noopener'>"+
+      (r.waterRight||"—")+"</a></td>"+
+    "<td data-label='Type'>"+(r.type||"—")+"</td>"+
+    "<td data-label='Status'>"+(r.status||"—")+"</td>"+
+    "<td data-label='Uses'>"+badge(r)+"</td>"+
+    "<td class='n' data-label='Priority'>"+(r.priorityYear||"—")+"</td>"+
+    "<td class='n' data-label='Volume'>"+(r.acreFeet!=null?r.acreFeet+" af":"—")+"</td>"+
+    "<td class='n' data-label='Away'>"+(r.miles!=null?r.miles+" mi":"—")+"</td></tr>").join("");
+
+  const dom = w.domesticCount;
+  const verdict = dom>0
+    ? "<strong>"+dom+" live domestic right"+(dom===1?"":"s")+" nearby.</strong> That is the one that "+
+      "matters for a home — worth checking whether any attaches to this parcel."
+    : "<strong>No live domestic rights within this radius.</strong> Everything here is irrigation, stock "+
+      "or municipal. In a closed basin that is the norm, and it means a home would need an existing "+
+      "right purchased and transferred, a connection to a public system, or hauled water.";
+
+  return "<div class='wells'>"+
+    "<div class='maphdr'>Utah water rights within "+w.scope.radiusMiles+" miles</div>"+
+    "<p class='dintro'>"+w.liveCount+" live of "+w.found+" on record"+
+      (w.monitoringCount?" ("+w.monitoringCount+" monitoring bores excluded)":"")+
+      " · "+w.undergroundCount+" underground · "+w.springCount+" spring · "+w.surfaceCount+" surface</p>"+
+    "<div class='densbox' style='text-align:left'>"+verdict+"</div>"+
+    /* The table below is unreadable without this. "Perfected, 1951, domestic,
+       8 af" is four pieces of jargon in a row, and a buyer who doesn't know
+       what they mean will either ignore the panel or misread it. Folded, so it
+       costs one line once someone has learned it. */
+    "<details class='glossary'><summary>What these columns mean</summary>"+
+    "<div class='gloss'>"+
+      "<p><b>Type</b> — where the water comes from. <em>Underground</em> is a well; "+
+      "<em>Surface</em> a stream or river; <em>Spring</em> a natural outflow. "+
+      "<em>Abandonded Well</em> (Utah's spelling) means the right survives but the hole doesn't — "+
+      "you'd be buying paper and drilling fresh.</p>"+
+      "<p><b>Status</b> — <em>Perfected</em> means the water has been put to use and the right is "+
+      "fully established. <em>Approved</em> means permission was granted but use may not be proven yet. "+
+      "Anything lapsed, forfeited or rejected is filtered out before you see this table.</p>"+
+      "<p><b>Uses</b> — what the water is legally for. A right approved for irrigation or stock "+
+      "<em>does not</em> let you supply a house. <strong>Domestic is the one a home needs.</strong></p>"+
+      "<p><b>Priority</b> — the year the claim was established. Utah is first in time, first in right: "+
+      "in a shortage, an 1870 right gets water before a 2022 right does. Older is stronger.</p>"+
+      "<p><b>Volume</b> — acre-feet per year. One acre-foot is about 326,000 gallons — roughly what a "+
+      "careful off-grid household uses in five to eight years, or a suburban lawn drinks in one.</p>"+
+      "<p class='glossWarn'>None of this proves a right transfers with the land. In Utah water rights "+
+      "are separate property and can be sold away from the ground they once served. Title work is the "+
+      "only way to know.</p>"+
+    "</div></details>"+
+    "<table class='stack'><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
+    "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
+    "<tbody>"+rows+"</tbody></table>"+
+    "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
+    "A diversion near a parcel does not prove the right conveys with that land — water rights are "+
+    "separate property in Utah. Verify with title work.</div></div>";
+}
+
+/**
+ * Drillers who have filed wells near this point. Not a listings page — it is
+ * built from the drilling record itself, so it shows who actually works here
+ * rather than who paid to appear.
+ */
+function drillersHtml(d){
+  if(!d || !d.drillers || !d.drillers.length) return "";
+  // Only currently-licensed companies — a retired licence number is no use to a buyer.
+  const named=d.drillers.filter(x=>x.licensed && x.name);
+  if(!named.length) return "";
+  const retired=d.drillers.length-named.length;
+  const rows=named.slice(0,8).map((x,i)=>{
+    const id="q"+i;
+    return "<div class='drow'>"+
+      "<div class='dname'>"+x.name+
+        (x.city?" <span class='dcity'>"+x.city+"</span>":"")+"</div>"+
+      "<div class='dstats'>"+
+        "<span><b>"+x.wells+"</b> well"+(x.wells===1?"":"s")+" nearby</span>"+
+        "<span>median <b>"+(x.medianDepth?x.medianDepth.toLocaleString()+" ft":"—")+"</b></span>"+
+        (x.medianYieldGpm?"<span>~<b>"+x.medianYieldGpm+" gpm</b></span>":"")+
+        (x.firstYear?"<span>"+x.firstYear+"–"+x.lastYear+"</span>":"")+
+      "</div>"+
+      "<button type='button' class='dquote' data-q='"+id+"' data-driller=\""+
+        x.name.replace(/"/g,"&quot;")+"\" data-licence='"+x.licence+"'>Request a quote</button>"+
+      "<div class='qform' id='"+id+"' hidden>"+
+        "<div class='qfields'>"+
+          "<input type='text'  placeholder='Your name'  data-f='name'>"+
+          "<input type='email' placeholder='Email'      data-f='email'>"+
+          "<input type='tel'   placeholder='Phone'      data-f='phone'>"+
+        "</div>"+
+        "<textarea placeholder='Anything they should know? (optional)' rows='2' data-f='note'></textarea>"+
+        "<button type='button' class='qsend'>Send request</button>"+
+        "<div class='qnote'>We'll pass your details to "+x.name+
+          " along with the well data for your location. They contact you directly — "+
+          "we can't promise a reply, and nothing is charged either way.</div>"+
+        "<div class='qresult'></div>"+
+      "</div>"+
+    "</div>";
+  }).join("");
+  return "<div class='drillers'>"+
+    "<div class='maphdr'>Drillers who have worked near here</div>"+
+    "<p class='dintro'>From "+d.wellsConsidered.toLocaleString()+" filed wells within "+
+      (d.scope.radiusMiles||10)+" miles. This is the drilling record, not a paid listing — "+
+      "it shows who works this ground and how deep their wells go.</p>"+
+    rows+
+    "<div class='src'>Companies from ADWR's licensed driller list; well counts from the Wells55 "+
+    "registry. Filing a well here doesn't mean they're currently taking work."+
+    (retired?" "+retired+" other licence"+(retired===1?" is":"s are")+
+      " on nearby wells but no longer on ADWR's active list — most likely retired.":"")+
+    "</div>"+
+  "</div>";
+}
+
 function parcelHtml(p){
   const money=v=>v==null?"—":"$"+v.toLocaleString();
   const n=p.neighbours;
