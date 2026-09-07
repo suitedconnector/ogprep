@@ -172,6 +172,20 @@
   .expect .expectFoot{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
     font-size:12.5px;color:var(--muted)}
 
+  /* "Still needed" chips, and the flash that shows you where you're going. */
+  .needBtn{background:var(--panel2);color:var(--ink);border:1px solid var(--accent);
+    border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;
+    margin:4px 2px 0 0}
+  .needBtn:hover{background:var(--accent-fill);color:var(--on-accent)}
+  .needWhy{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.5}
+  .flash{animation:flashPulse 1.4s ease-out}
+  @keyframes flashPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(138,109,31,0)}
+    18%{box-shadow:0 0 0 4px rgba(138,109,31,.30)}
+    60%{box-shadow:0 0 0 4px rgba(138,109,31,.18)}
+  }
+  #waterSeg.flash,#septicSeg.flash,#powerSeg.flash{border-radius:9px}
+
   /* Three-way water comparison — the centrepiece. */
   .cmpWrap{margin-top:16px;padding:18px;border-radius:14px;
     background:var(--panel);border:1px solid var(--line)}
@@ -439,9 +453,9 @@
      one where water is routine, one where it may be unobtainable. Hidden the
      moment a real lookup runs. -->
 <div class="demo" id="demoStrip">
-  <div class="demoHd">Never used this? Run a real parcel.</div>
-  <p class="demoSub">Two parcels in Iron County, Utah — four miles apart. Septic and power cost
-    about the same on both. Water is the difference between a build and a write-off.</p>
+  <div class="demoHd">Here's the difference between two parcels in Iron County, Utah</div>
+  <p class="demoSub">Four miles apart. Septic and power cost about the same on both.
+    Water is the difference between a build and a write-off.</p>
   <div class="demoBtns">
     <button class="demoBtn ok" data-region="UT" data-county="Iron" data-price="8000"
             data-coords="37.657426, -113.164702" data-radius="3219">
@@ -466,13 +480,13 @@
     <select id="county"></select>
 
     <label for="price">Land price</label>
-    <div class="money"><span>$</span><input type="number" id="price" value="8000" min="0" step="500"></div>
+    <div class="money"><span>$</span><input type="number" id="price" placeholder="8,000" min="0" step="500"></div>
     <div class="note">The asking price, or your offer — whichever you're testing. This is the
       one number you control, and usually the smallest part of the total.</div>
 
     <label>Water plan</label>
     <div class="seg" id="waterSeg">
-      <button data-v="well" aria-pressed="true">Drill a well</button>
+      <button data-v="well" aria-pressed="false">Drill a well</button>
       <button data-v="haul" aria-pressed="false">Cistern + hauling</button>
       <button data-v="rain" aria-pressed="false">Rainwater catchment</button>
     </div>
@@ -486,20 +500,20 @@
 
     <label>Wastewater</label>
     <div class="seg" id="septicSeg">
-      <button data-v="conv" aria-pressed="true">Conventional septic</button>
+      <button data-v="conv" aria-pressed="false">Conventional septic</button>
       <button data-v="alt" aria-pressed="false">Alternative / ATU</button>
       <button data-v="none" aria-pressed="false">Composting</button>
     </div>
 
     <label>Power</label>
     <div class="seg" id="powerSeg">
-      <button data-v="solar" aria-pressed="true">Off-grid solar</button>
+      <button data-v="solar" aria-pressed="false">Off-grid solar</button>
       <button data-v="grid" aria-pressed="false">Grid at road</button>
       <button data-v="none" aria-pressed="false">Skip for now</button>
     </div>
 
     <label for="years">Years to compare (hauling adds up)</label>
-    <input type="number" id="years" value="10" min="1" max="30">
+    <input type="number" id="years" placeholder="10" min="1" max="30">
   </div>
 
   <div class="card">
@@ -698,7 +712,7 @@ const C = {
   site:[4000,9000,16000]
 };
 
-let state={county:"Mohave",water:"well",septic:"conv",power:"solar",region:"AZ",
+let state={county:"Mohave",water:null,septic:null,power:null,region:"AZ",
            local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,
            utDepths:null,septicTouched:false};
 
@@ -1099,7 +1113,10 @@ async function runSoilAndRain(lat,lng){
     if(sj.ok){
       state.soil=sj;
       const map=SOIL_SEPTIC[sj.rating]||SOIL_SEPTIC.unknown;
-      if(map.mode && !state.septicTouched && state.septic!=="none"){
+      // Upgrade a choice the user already made when the soil says they'll need
+      // a better system — but never make the choice for them. Selecting a
+      // wastewater plan on their behalf is the thing we just stopped doing.
+      if(map.mode && !state.septicTouched && state.septic && state.septic!=="none"){
         state.septic=map.mode;
         [...$("septicSeg").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===map.mode));
       }
@@ -1931,7 +1948,7 @@ function renderTopVerdict(){
    Deliberately shows upfront cost separately from the running total, because
    the two options trade off exactly there: a well is expensive once, hauling is
    cheap once and expensive forever. A single figure hides that. */
-function renderCompare(options, years, price){
+function renderCompare(options, years, price, yearsSet, priceSet){
   const box=$("compare"); if(!box) return;
   const money=v=>v==null?"—":"$"+Math.round(v).toLocaleString();
 
@@ -1973,7 +1990,9 @@ function renderCompare(options, years, price){
 
   box.innerHTML =
     "<div class='cmpHd'>What water will cost on this parcel</div>"+
-    "<p class='cmpSub'>All three options, over "+years+" years. The land itself is "+money(price)+".</p>"+
+    "<p class='cmpSub'>All three options"+
+      (yearsSet ? ", over "+years+" years" : ", previewed over "+years+" years — set your own period on the left")+
+      (priceSet ? ". The land itself is "+money(price)+"." : ".")+"</p>"+
     "<table class='cmp stack'><thead><tr><th>Option</th><th class='n'>Upfront</th>"+
     "<th class='n'>Total over "+years+" yrs</th><th>What it means here</th><th></th></tr></thead><tbody>"+
     rows.map(r=>{
@@ -2005,6 +2024,19 @@ document.addEventListener("click",e=>{
   if(btn) btn.click();
 });
 
+/* "Still needed" chips jump to the control they name and flash it. Telling
+   someone what's missing without taking them there is half an answer. */
+const NEED_TARGET = { price:"price", years:"years",
+                      water:"waterSeg", septic:"septicSeg", power:"powerSeg" };
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".needBtn"); if(!b) return;
+  const el=$(NEED_TARGET[b.dataset.need]); if(!el) return;
+  el.scrollIntoView({behavior:"smooth", block:"center"});
+  el.classList.add("flash");
+  setTimeout(()=>el.classList.remove("flash"), 1400);
+  if(el.tagName==="INPUT") setTimeout(()=>el.focus(), 350);
+});
+
 function render(){
   // COUNTIES holds Arizona well statistics only. Utah county names are now
   // valid selections (parcel search needs them) but have no entry here, so
@@ -2014,8 +2046,15 @@ function render(){
   const usingLocal=!!L;
   const src = usingLocal ? L : cty;
 
-  const price=Math.max(0,+$("price").value||0);
-  const years=Math.max(1,+$("years").value||10);
+  // Empty is a distinct state from zero. "" means not answered yet; 0 is a
+  // deliberate answer (gifted land, or hauling you already own a tank for).
+  const priceRaw = $("price").value.trim(), yearsRaw = $("years").value.trim();
+  const priceSet = priceRaw !== "" && isFinite(+priceRaw);
+  const yearsSet = yearsRaw !== "" && +yearsRaw >= 1;
+  const price = priceSet ? Math.max(0,+priceRaw) : 0;
+  // The comparison table needs a horizon to show running totals; 10 is used
+  // only for that preview and the table says so until a real number is given.
+  const years = yearsSet ? Math.max(1,+yearsRaw) : 10;
 
   // Depth distributions are right-skewed — a few very deep wells drag the mean
   // up — so the median is the planning number and the spread comes from sd.
@@ -2114,10 +2153,47 @@ function render(){
   }
 
   const options = { well:costWater("well"), haul:costWater("haul"), rain:costWater("rain") };
-  const chosen = options[state.water] || options.haul;
-  const wLow=chosen.low, wMid=chosen.mid, wHigh=chosen.high,
-        wLabel=chosen.label, wDetail=chosen.detail;
-  renderCompare(options, years, price);
+  renderCompare(options, years, price, yearsSet, priceSet);
+
+  /* Nothing is chosen for the user. A total assembled from defaults they never
+     picked is a confident wrong answer, and the reader has no way to know which
+     assumption is wrong. So the page asks, and stays quiet until it is told. */
+  const missing = [];
+  if(!priceSet)      missing.push(["price","a land price"]);
+  if(!state.water)   missing.push(["water","a water plan"]);
+  if(!state.septic)  missing.push(["septic","a wastewater plan"]);
+  if(!state.power)   missing.push(["power","a power plan"]);
+  if(!yearsSet)      missing.push(["years","how many years to compare"]);
+
+  const chosen = state.water ? options[state.water] : null;
+  const wLow = chosen?chosen.low:null, wMid = chosen?chosen.mid:null,
+        wHigh = chosen?chosen.high:null,
+        wLabel = chosen?chosen.label:null, wDetail = chosen?chosen.detail:null;
+
+  if(missing.length){
+    $("heroLabel").textContent = "Your parcel, so far";
+    $("waterBig").textContent = chosen ? money(wMid) : "—";
+    $("waterBig").style.fontSize = chosen ? "" : "40px";
+    $("waterRange").innerHTML = chosen
+      ? "Range "+money(wLow)+" – "+money(wHigh)+" · "+wLabel
+      : "Pick a water plan on the left and this fills in.";
+    $("total").textContent = "—";
+    $("totalRange").textContent = "";
+    $("bar").innerHTML = "";
+    $("lines").innerHTML = "";
+    $("assumptions").innerHTML = "";
+    $("swingNote").innerHTML = "";
+    $("verdict").className = "verdict v-warn";
+    $("verdict").innerHTML =
+      "<strong>Still needed:</strong> "+
+      missing.map(m=>"<button class='needBtn' data-need='"+m[0]+"'>"+m[1]+"</button>").join(" ")+
+      "<div class='needWhy'>Nothing here is pre-filled on purpose. A total built from guesses "+
+      "we made for you would look just as confident as one built from your actual plans.</div>";
+    renderTopVerdict();
+    makeCollapsible($("wellList"));
+    renderCtaDrillers();
+    return;
+  }
 
   // Septic: derived from soil when we have it, otherwise the statewide range.
   const soilMap = state.soil ? (SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown) : null;
