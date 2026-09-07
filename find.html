@@ -166,6 +166,39 @@ const py = lat => PAD + (BOX.n - lat) / (BOX.n - BOX.s) * (H - PAD*2);
 const BANDS = [[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
 const colour = d => BANDS.find(b => d <= b[0])[1];
 
+/* A scatter of dots with no coastline is unreadable — "35.00, -110.64" means
+   nothing without something to place it against. Approximate state outline,
+   plus towns people actually use to orient in rural Arizona. */
+const AZ_OUTLINE = [
+  [37.00,-114.05],[37.00,-109.045],[31.332,-109.045],[31.332,-111.07],[32.49,-114.81],
+  [32.72,-114.72],[33.03,-114.52],[33.42,-114.52],[34.26,-114.14],[34.46,-114.34],
+  [34.72,-114.50],[35.00,-114.63],[35.61,-114.68],[36.14,-114.05]
+];
+const AZ_TOWNS = [
+  ["Phoenix",33.45,-112.07],["Tucson",32.22,-110.97],["Flagstaff",35.20,-111.65],
+  ["Kingman",35.19,-114.05],["Yuma",32.69,-114.63],["Prescott",34.54,-112.47],
+  ["Show Low",34.25,-110.03],["Page",36.91,-111.46],["Lake Havasu",34.48,-114.32],
+  ["Safford",32.83,-109.71],["Payson",34.23,-111.32],["Sierra Vista",31.55,-110.28]
+];
+
+// Outline goes under the data; town labels go over it so they stay readable
+// where dots are dense.
+function stateOutline(){
+  const path = AZ_OUTLINE.map((p,i)=>
+    (i?"L":"M")+px(p[1]).toFixed(1)+" "+py(p[0]).toFixed(1)).join(" ")+" Z";
+  return `<path d="${path}" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".35"/>`;
+}
+function townLabels(){
+  return AZ_TOWNS.map(([n,la,lo])=>{
+    const x=px(lo), y=py(la);
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" fill="var(--panel2)" `+
+           `stroke="currentColor" stroke-width="1.2" opacity=".7"/>`+
+           `<text x="${(x+5).toFixed(1)}" y="${(y+3.5).toFixed(1)}" font-size="9.5" `+
+           `fill="currentColor" opacity=".72" paint-order="stroke" stroke="var(--panel2)" `+
+           `stroke-width="2.5" font-family="ui-sans-serif,system-ui">${n}</text>`;
+  }).join("");
+}
+
 let DATA = null;
 
 const fmt = n => n==null ? "—" : n.toLocaleString();
@@ -186,13 +219,16 @@ function render(){
 
   // Map: every cell is drawn, but non-matching ones fade back so the shape of
   // the state stays legible instead of the map emptying out as you filter.
+  // Set membership, not Array.includes — includes() inside a map over 8,588
+  // cells is quadratic and made every slider drag stutter.
+  const hits = new Set(match);
   const dots = all.map(c => {
-    const hit = match.includes(c);
-    const r = hit ? Math.min(4.2, 1.5 + Math.log10(c[2])*1.5) : 1.3;
+    const hit = hits.has(c);
+    const r = hit ? Math.min(4.2, 1.5 + Math.log10(c[2])*1.5) : 1.4;
     return `<circle cx="${px(c[1]).toFixed(1)}" cy="${py(c[0]).toFixed(1)}" r="${r.toFixed(1)}" `+
-           `fill="${hit ? colour(c[3]) : "currentColor"}" opacity="${hit ? .92 : .12}"/>`;
+           `fill="${hit ? colour(c[3]) : "currentColor"}" opacity="${hit ? .92 : .18}"/>`;
   }).join("");
-  $("map").innerHTML = dots;
+  $("map").innerHTML = stateOutline() + dots + townLabels();
 
   const shallow = match.slice().sort((a,b) => a[3]-b[3] || b[2]-a[2]);
   const acres = match.length * 1.4 * 1.4;   // cells are ~1.4 mi square
