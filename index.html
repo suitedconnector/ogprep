@@ -480,7 +480,8 @@
     <select id="county"></select>
 
     <label for="price">Land price</label>
-    <div class="money"><span>$</span><input type="number" id="price" placeholder="8,000" min="0" step="500"></div>
+    <div class="money"><span>$</span><input type="number" id="price" placeholder="8,000" min="0" step="500"
+      autocomplete="off"></div>
     <div class="note">The asking price, or your offer — whichever you're testing. This is the
       one number you control, and usually the smallest part of the total.</div>
 
@@ -513,7 +514,7 @@
     </div>
 
     <label for="years">Years to compare (hauling adds up)</label>
-    <input type="number" id="years" placeholder="10" min="1" max="30">
+    <input type="number" id="years" placeholder="10" min="1" max="30" autocomplete="off">
   </div>
 
   <div class="card">
@@ -936,6 +937,15 @@ function applyState(code){
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
   render();
 }
+
+/* Browsers restore form values across reloads and back-navigation, which puts
+   numbers back into fields we deliberately left empty — indistinguishable from
+   a default, and it would let a total build itself from a stale answer.
+   autocomplete="off" is advisory, so clear them outright on load. */
+["price","years","roof","usegpd"].forEach(id=>{
+  const el=$(id); if(!el) return;
+  if(id==="price"||id==="years") el.value="";
+});
 
 /* Theme. Light is the default because most people run their browser light and
    a dark-by-default page reads as a developer tool rather than a buyer's tool.
