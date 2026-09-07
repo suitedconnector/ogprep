@@ -101,6 +101,76 @@ const COUNTIES = {
   }
 };
 
+/* ---------------------------------------------------------------------------
+   Utah — all 29 counties from one pattern.
+
+   Arizona needs a bespoke adapter per county because each assessor runs their
+   own GIS with its own field names. Utah does not: a 2005 statute (HB113)
+   requires UGRC to assemble a statewide parcel layer, so every county is
+   published on one ArcGIS org with an identical schema. That turns 29 adapters
+   into one loop.
+
+   The trade-off is depth of attributes. The statute deliberately excludes the
+   fields counties sell — no owner name, no assessed value — so this gives
+   location, address, acreage and ownership class, and nothing more. That is
+   still enough to do the only job the app needs an APN for: turn a parcel
+   number into a point.
+
+   Service names strip spaces: Box Elder -> Parcels_BoxElder.
+--------------------------------------------------------------------------- */
+const UT_ROOT = "https://services1.arcgis.com/99lidPhWCzftIe9K/ArcGIS/rest/services/";
+
+const UT_COUNTY_NAMES = ["Beaver","Box Elder","Cache","Carbon","Daggett","Davis","Duchesne",
+  "Emery","Garfield","Grand","Iron","Juab","Kane","Millard","Morgan","Piute","Rich","Salt Lake",
+  "San Juan","Sanpete","Sevier","Summit","Tooele","Uintah","Utah","Wasatch","Washington",
+  "Wayne","Weber"];
+
+// Shape__Area is web-mercator square metres, so it overstates area by roughly
+// 1/cos²(latitude) — about 60% at Utah's latitudes. Correcting it beats
+// publishing an acreage that is visibly wrong on a parcel someone owns.
+function acresFromMercator(area, lat) {
+  if (!(area > 0) || !isFinite(lat)) return null;
+  const k = Math.cos(lat * Math.PI / 180);
+  return +((area * k * k) / 4046.8564224).toFixed(2);
+}
+
+for (const name of UT_COUNTY_NAMES) {
+  COUNTIES[name.toLowerCase()] = {
+    name,
+    state: "UT",
+    url: UT_ROOT + "Parcels_" + name.replace(/\s+/g, "") + "/FeatureServer/0/query",
+    apnField: "PARCEL_ID",
+    apnAltField: "ACCOUNT_NUM",
+    addrField: "PARCEL_ADD",
+    fields: "PARCEL_ID,PARCEL_ADD,PARCEL_CITY,PARCEL_ZIP,OWN_TYPE,RECORDER," +
+            "CoParcel_URL,ACCOUNT_NUM,ParcelYear,Shape__Area",
+    needsGeometry: true,
+    map: (a, feat) => {
+      const c = feat && feat.centroid;
+      return {
+        apn: a.PARCEL_ID,
+        address: [clean(a.PARCEL_ADD), clean(a.PARCEL_CITY), clean(a.PARCEL_ZIP)]
+                   .filter(Boolean).join(", ") || null,
+        // The statute excludes owner name — counties sell that.
+        owner: null,
+        acres: acresFromMercator(+a.Shape__Area, c ? +c.y : NaN),
+        use: null,
+        zoning: null,
+        landValue: null,
+        improvementValue: null,
+        improved: null,
+        ownershipType: clean(a.OWN_TYPE),      // Private / Federal / State / Tribal
+        accountNumber: clean(a.ACCOUNT_NUM),
+        parcelYear: clean(a.ParcelYear),
+        recorderPhone: clean(a.RECORDER),
+        countyParcelSite: clean(a.CoParcel_URL),
+        note: "Utah's statewide layer carries boundary, address and ownership class only. " +
+              "Owner name and assessed value stay with the county recorder."
+      };
+    }
+  };
+}
+
 // Assessors use a variety of placeholders for "no value".
 const clean = v => {
   const s = String(v == null ? "" : v).trim();
@@ -180,6 +250,9 @@ const bareApn = raw => String(raw || "").toUpperCase().replace(/[^0-9A-Z]/g, "")
 async function fetchParcel(cfg, where) {
   const params = { where, outFields: cfg.fields, resultRecordCount: 12 };
   if (cfg.needsGeometry) { params.returnGeometry = "true"; params.outSR = "4326"; }
+  // Utah's service computes a true centroid server-side. A bounding-box centre
+  // can land outside an L-shaped or crescent parcel; a real centroid does not.
+  if (cfg.state === "UT") { params.returnCentroid = "true"; params.outSR = "4326"; }
   return esri(cfg.url, params);
 }
 
@@ -187,6 +260,9 @@ function pointOf(cfg, feat) {
   if (cfg.point) {
     const p = cfg.point(feat.attributes);
     return (isFinite(p.lat) && isFinite(p.lon)) ? p : null;
+  }
+  if (feat.centroid && isFinite(feat.centroid.x) && isFinite(feat.centroid.y)) {
+    return { lon: +feat.centroid.x, lat: +feat.centroid.y };
   }
   return bboxCentre(feat.geometry);
 }
@@ -257,7 +333,7 @@ export async function onRequestGet({ request }) {
           return json({
             ok: true, multiple: true, county: cfg.name,
             matches: withAddr.slice(0, 12).map(r => {
-              const m = cfg.map(r.attributes);
+              const m = cfg.map(r.attributes, r);
               return { apn: m.apn, address: m.address, acres: m.acres, improved: m.improved };
             })
           });
@@ -278,7 +354,7 @@ export async function onRequestGet({ request }) {
       if (!feat) continue;
 
       const pt = pointOf(cfg, feat);
-      const base = cfg.map(feat.attributes);
+      const base = cfg.map(feat.attributes, feat);
 
       let neighbours = null;
       if (pt && cfg.neighbours) {

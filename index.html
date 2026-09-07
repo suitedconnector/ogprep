@@ -584,9 +584,13 @@ const sdev=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.ma
 const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const i=Math.floor(s.length/2);
   return s.length%2?s[i]:(s[i-1]+s[i])/2;};
 
-// Counties with a parcel/APN adapter. Everywhere else is coordinates-only.
+// Arizona counties with a bespoke assessor adapter. Everywhere else in Arizona
+// is coordinates-only, because each assessor runs their own GIS.
 const APN_COUNTIES=["Mohave","Yavapai"];
 
+// Every Utah county supports parcel search. A 2005 statute requires all 29 to
+// publish to one statewide layer with an identical schema, so one adapter
+// covers the state — no per-county work at all.
 const UT_COUNTIES=["Beaver","Box Elder","Cache","Carbon","Daggett","Davis","Duchesne","Emery","Garfield",
   "Grand","Iron","Juab","Kane","Millard","Morgan","Piute","Rich","Salt Lake","San Juan","Sanpete","Sevier",
   "Summit","Tooele","Uintah","Utah","Wasatch","Washington","Wayne","Weber"];
@@ -613,7 +617,7 @@ const REPORT_OFFER = {
            "Utah drillers with filed logs in this area. In a closed basin they will also tell you "+
            "straight whether drilling is worth attempting at all. No charge, no obligation.",
     apnLabel: "Parcel number",
-    apnHint: "Utah is coordinates-only for now — a parcel number, listing link or cross streets all work here.",
+    apnHint: "Utah parcel numbers vary by county — Iron County looks like E-0209-0025-0001. A listing link works too.",
     apnPlaceholder: "e.g. E-0209-0025-0001"
   }
 };
@@ -710,18 +714,22 @@ function applyState(code){
   $("wellStats").style.display = az?"":"none";
   $("confNote").style.display = az?"":"none";
 
-  // Utah has no parcel adapter, so coordinates only.
+  // Utah supports parcel and coordinate search — every county publishes to the
+  // statewide layer — but not address search, because the state layer's address
+  // field is sparse on rural parcels.
   [...$("modeSeg").children].forEach(b=>{
-    const off = !az && b.dataset.v!=="coords";
+    const off = !az && b.dataset.v==="address";
     b.disabled=off; b.style.opacity=off?".4":"";
-    b.title = off ? "Parcel and address search are Arizona-only so far" : "";
+    b.title = off ? "Utah's statewide parcel layer has sparse addresses on rural land — use the parcel number or coordinates" : "";
   });
   if(!az){
-    mode="coords";
-    [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v==="coords"));
-    $("coords").placeholder="37.6800, -113.0600";
-    $("modeHint").textContent="Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and "+
-      "click the coordinates that appear to copy them.";
+    if(mode==="address") mode="apn";
+    [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===mode));
+    $("coords").placeholder = mode==="apn" ? "e.g. E-0209-0025-0001" : "37.6800, -113.0600";
+    $("modeHint").textContent = mode==="apn"
+      ? "Parcel numbers vary by Utah county — Iron County looks like E-0209-0025-0001. Pick the county above first."
+      : "Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and "+
+        "click the coordinates that appear to copy them.";
   }else{
     $("coords").placeholder=MODES[mode].ph;
     $("modeHint").textContent=MODES[mode].hint;
@@ -775,6 +783,17 @@ $("demoStrip").addEventListener("click", async e=>{
 });
 
 function syncModeAvailability(){
+  // Utah: parcel search everywhere, address search nowhere.
+  if(state.region==="UT"){
+    [...$("modeSeg").children].forEach(b=>{
+      const off = b.dataset.v==="address";
+      b.disabled=off; b.style.opacity=off?".4":"";
+      b.title=off?"Utah's statewide layer has sparse addresses on rural parcels":"";
+    });
+    if(mode==="address"){ mode="apn";
+      [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===mode)); }
+    return;
+  }
   const supported=APN_COUNTIES.includes(state.county);
   [...$("modeSeg").children].forEach(b=>{
     const off = !supported && b.dataset.v!=="coords";
