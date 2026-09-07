@@ -8,6 +8,11 @@
 <meta property="og:title" content="Will you hit water on that Arizona parcel?">
 <meta property="og:description" content="Will you hit water on that Arizona parcel? See the wells actually drilled nearby — depth, water level, yield — and what a well would cost. Built on 174,782 filed records.">
 <meta property="og:type" content="website">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 <style>
   /* Light is the default. The results panels were originally designed as light
      "paper" islands on a dark page, so their colours are now variables too —
@@ -333,22 +338,35 @@
   }
   .maphdr{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
     color:var(--paper-muted);margin-bottom:8px}
-  .wellmap{width:100%;height:auto;display:block;max-width:340px;margin:0 auto}
+  /* Leaflet well map, replacing the old inline SVG scatter. */
+  .wellMapBox{height:min(56vh,430px);border-radius:9px;border:1px solid var(--paper-line);
+    margin-top:8px;background:var(--paper-alt)}
+  .wmTools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
+  .seg.wmSeg{display:flex;gap:6px;margin:0}
+  .seg.wmSeg button{flex:0 0 auto;min-width:0;background:var(--paper-alt);color:var(--paper-ink);
+    border:1px solid var(--paper-line);border-radius:7px;padding:5px 11px;font-size:12px;
+    font-weight:700;cursor:pointer}
+  .seg.wmSeg button[aria-pressed=true]{background:var(--accent-fill);color:var(--on-accent);
+    border-color:var(--accent-fill)}
+  .wmLegend{display:flex;flex-wrap:wrap;gap:11px;font-size:11.5px;color:var(--paper-muted);
+    margin-top:8px}
+  .wmLegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;
+    vertical-align:-1px}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink)}
+  .leaflet-popup-content{margin:11px 13px;font:13.5px/1.5 ui-sans-serif,system-ui}
+  .leaflet-container{font:inherit}
+  .pop b{font-size:15px}
+  .pop .popRow{display:flex;justify-content:space-between;gap:14px;padding:3px 0;
+    border-bottom:1px solid var(--line);font-size:12.5px}
+  .pop .popRow:last-of-type{border-bottom:0}
+  .pop .popRow span{color:var(--muted)}
   .welldot{cursor:pointer}
   .welldot text{pointer-events:none;user-select:none}
   .welldot:hover circle,.welldot:focus circle{stroke:var(--paper-ink);stroke-width:2}
   .welldot:focus{outline:none}
   .welldot.sel circle{stroke:var(--paper-ink);stroke-width:3}
   td.wn{font-weight:800;width:2em}
-  .welldetail{margin-top:10px;padding:11px 13px;border-radius:8px;font-size:12.5px;
-    background:#fff;border:1px solid var(--paper-line);color:var(--paper-muted)}
-  .welldetail .soilname{color:var(--paper-ink)}
-  .welldetail .soilrow{font-size:12.5px;border-bottom-color:var(--paper-line2)}
-  .welldetail .soilrow span{color:var(--paper-muted)}
-  .welldetail b{color:var(--paper-ink)}
-  .welldetail .src{color:var(--paper-muted)}
-  .maplegend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--paper-muted);margin-top:8px;flex-wrap:wrap}
-  .maplegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+
   .mapgrad{flex:0 1 70px;height:7px;border-radius:4px;
     background:linear-gradient(90deg,rgb(110,170,90),rgb(235,75,70))}
   .rainbox{margin-top:12px;padding:13px 15px;border-radius:10px;
@@ -1366,6 +1384,7 @@ async function lookup(){
         "<table><thead><tr><th>#</th><th>Use</th><th>Drilled</th><th class='n'>Depth</th>"+
         "<th class='n'>Away</th><th class='n'>To water</th></tr></thead><tbody>"+rows+"</tbody></table>"+
         "<div class='src'>Source: ADWR Groundwater Site Inventory"+(j.cached?" (cached)":", queried live")+".</div>";
+      buildWellMap(j,lat,lng);
     }
   }catch(err){
     state.local=null;
@@ -1393,387 +1412,111 @@ async function lookup(){
  * which distance rings answer better than terrain — and it needs no API key,
  * no tile provider and no external requests.
  */
+/* Nearby wells on a real basemap.
+
+   The previous version drew an SVG scatter with distance rings. It was honest
+   but abstract: "0.4 miles away" tells you far less than seeing that well on
+   the next lot, with a track running to it. Satellite imagery answers the
+   question people ask straight after depth — can I even get a rig in there.
+
+   Returns a placeholder div; the map is created after it lands in the DOM. */
+let WELLMAP = null, WELLBASE = null;
+
+const WM_BASEMAPS = {
+  sat:   { url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+           attr:"Imagery: Esri, Maxar, Earthstar Geographics", max:18 },
+  topo:  { url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+           attr:"USGS The National Map", max:16 },
+  street:{ url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+           attr:"Esri, HERE, Garmin, OpenStreetMap contributors", max:19 }
+};
+const WM_BANDS=[[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
+const wmColour = d => WM_BANDS.find(b => d <= b[0])[1];
+
 function wellMapHtml(j,lat,lng){
   const pts=(j.wells||[]).filter(w=>w.lat!=null&&w.lon!=null);
-  if(pts.length<2) return "";
-  const R=j.radiusMiles||2;
-  const S=300, C=S/2, pad=26, usable=C-pad;
-  // Local equirectangular projection — fine over a few miles.
-  const kx=Math.cos(lat*Math.PI/180)*69.17, ky=69.17;   // miles per degree
-  const px=w=>C+((w.lon-lng)*kx/R)*usable;
-  const py=w=>C-((w.lat-lat)*ky/R)*usable;
-
-  const dmin=Math.min(...pts.map(w=>w.depth)), dmax=Math.max(...pts.map(w=>w.depth));
-  const shade=d=>{ const t=dmax>dmin?(d-dmin)/(dmax-dmin):0;
-    // shallow (green) → deep (red)
-    const r=Math.round(110+125*t), g=Math.round(170-95*t), b=Math.round(90-20*t);
-    return `rgb(${r},${g},${b})`; };
-
-  const rings=[R*0.25,R*0.5,R*0.75,R].map(m=>
-    `<circle cx="${C}" cy="${C}" r="${(m/R)*usable}" fill="none" stroke="rgba(28,31,24,.16)" stroke-dasharray="3 4"/>`+
-    `<text x="${C+2}" y="${C-(m/R)*usable+11}" font-size="9" fill="#6b7360">${m.toFixed(m<1?2:1)} mi</text>`).join("");
-
-  window.__wellPts=pts;   // for the click handler
-  const dots=pts.map((w,i)=>{
-    const x=px(w), y=py(w);
-    if(!isFinite(x)||!isFinite(y)) return "";
-    const label=`Well ${w.n} · ${w.depth.toLocaleString()} ft`+(w.drilled?` · drilled ${w.drilled}`:"")+
-      (w.use?` · ${w.use}`:"")+(w.miles!=null?` · ${w.miles} mi away`:"");
-    return `<g class="welldot" data-i="${i}" tabindex="0" role="button" aria-label="${label}">`+
-             `<title>${label}</title>`+
-             `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="${shade(w.depth)}" `+
-               `stroke="rgba(0,0,0,.5)" stroke-width="1"/>`+
-             `<text x="${x.toFixed(1)}" y="${(y+3.2).toFixed(1)}" text-anchor="middle" `+
-               `font-size="9.5" font-weight="700" fill="#14160f">${w.n}</text>`+
-           `</g>`;
-  }).join("");
-
-  return `<div class="mapwrap">
-    <div class="maphdr">Wells within ${R} miles · numbered deepest first · tap for detail</div>
-    <svg viewBox="0 0 ${S} ${S}" class="wellmap" role="img"
-         aria-label="Scatter map of ${pts.length} wells around your point">
-      ${rings}
-      <line x1="${C-8}" y1="${C}" x2="${C+8}" y2="${C}" stroke="#8a6d1f" stroke-width="2.5"/>
-      <line x1="${C}" y1="${C-8}" x2="${C}" y2="${C+8}" stroke="#8a6d1f" stroke-width="2.5"/>
-      ${dots}
-    </svg>
-    <div class="maplegend">
-      <span><i style="background:${shade(dmin)}"></i>${Math.round(dmin).toLocaleString()} ft</span>
-      <span class="mapgrad"></span>
-      <span><i style="background:${shade(dmax)}"></i>${Math.round(dmax).toLocaleString()} ft</span>
-      <span style="margin-left:auto"><i style="background:#8a6d1f"></i>your point</span>
-    </div>
-    <div id="welldetail" class="welldetail">Tap any dot to see that well's record.</div>
-    <div class="src">${pts.length} of ${j.withDepth} wells have mapped coordinates. North is up.</div>
-  </div>`;
-}
-
-// Delegated so it survives the map being re-rendered.
-document.addEventListener("click",e=>{
-  const dot=e.target.closest && e.target.closest(".welldot");
-  if(!dot) return;
-  showWell(+dot.dataset.i, dot);
-});
-document.addEventListener("keydown",e=>{
-  if(e.key!=="Enter"&&e.key!==" ") return;
-  const dot=e.target.closest && e.target.closest(".welldot");
-  if(!dot) return;
-  e.preventDefault(); showWell(+dot.dataset.i, dot);
-});
-
-function showWell(i,dot){
-  const w=(window.__wellPts||[])[i], box=$("welldetail");
-  if(!w||!box) return;
-  document.querySelectorAll(".welldot.sel").forEach(d=>d.classList.remove("sel"));
-  dot.classList.add("sel");
-  const row=(lbl,val)=>val==null||val===""?"":"<div class='soilrow'><span>"+lbl+"</span><b>"+val+"</b></div>";
-  const yield_ = w.depthToWater!=null ? (w.depth-w.depthToWater) : null;
-  box.innerHTML=
-    "<div class='soilname'>Well "+w.n+"</div>"+
-    row("Total depth", w.depth.toLocaleString()+" ft")+
-    row("Depth to water", w.depthToWater!=null?Math.round(w.depthToWater).toLocaleString()+" ft":"not recorded")+
-    row("Water column", yield_!=null&&yield_>0?Math.round(yield_).toLocaleString()+" ft of standing water":null)+
-    row("Distance from your point", w.miles!=null?w.miles+" mi":null)+
-    row("Drilled", w.drilled||"not recorded")+
-    row("Recorded use", w.use||"not recorded")+
-    row("Coordinates", w.lat.toFixed(5)+", "+w.lon.toFixed(5))+
-    "<div class='src'>ADWR record. Depth to water is the level when last measured, which may be decades ago — "+
-    "Arizona water tables have generally fallen since.</div>";
-}
-
-/**
- * Drillers who have filed wells near this point. Not a listings page — it is
- * built from the drilling record itself, so it shows who actually works here
- * rather than who paid to appear.
- */
-function drillersHtml(d){
-  if(!d || !d.drillers || !d.drillers.length) return "";
-  // Only currently-licensed companies — a retired licence number is no use to a buyer.
-  const named=d.drillers.filter(x=>x.licensed && x.name);
-  if(!named.length) return "";
-  const retired=d.drillers.length-named.length;
-  const rows=named.slice(0,8).map((x,i)=>{
-    const id="q"+i;
-    return "<div class='drow'>"+
-      "<div class='dname'>"+x.name+
-        (x.city?" <span class='dcity'>"+x.city+"</span>":"")+"</div>"+
-      "<div class='dstats'>"+
-        "<span><b>"+x.wells+"</b> well"+(x.wells===1?"":"s")+" nearby</span>"+
-        "<span>median <b>"+(x.medianDepth?x.medianDepth.toLocaleString()+" ft":"—")+"</b></span>"+
-        (x.medianYieldGpm?"<span>~<b>"+x.medianYieldGpm+" gpm</b></span>":"")+
-        (x.firstYear?"<span>"+x.firstYear+"–"+x.lastYear+"</span>":"")+
-      "</div>"+
-      "<button type='button' class='dquote' data-q='"+id+"' data-driller=\""+
-        x.name.replace(/"/g,"&quot;")+"\" data-licence='"+x.licence+"'>Request a quote</button>"+
-      "<div class='qform' id='"+id+"' hidden>"+
-        "<div class='qfields'>"+
-          "<input type='text'  placeholder='Your name'  data-f='name'>"+
-          "<input type='email' placeholder='Email'      data-f='email'>"+
-          "<input type='tel'   placeholder='Phone'      data-f='phone'>"+
-        "</div>"+
-        "<textarea placeholder='Anything they should know? (optional)' rows='2' data-f='note'></textarea>"+
-        "<button type='button' class='qsend'>Send request</button>"+
-        "<div class='qnote'>We'll pass your details to "+x.name+
-          " along with the well data for your location. They contact you directly — "+
-          "we can't promise a reply, and nothing is charged either way.</div>"+
-        "<div class='qresult'></div>"+
-      "</div>"+
-    "</div>";
-  }).join("");
-  return "<div class='drillers'>"+
-    "<div class='maphdr'>Drillers who have worked near here</div>"+
-    "<p class='dintro'>From "+d.wellsConsidered.toLocaleString()+" filed wells within "+
-      (d.scope.radiusMiles||10)+" miles. This is the drilling record, not a paid listing — "+
-      "it shows who works this ground and how deep their wells go.</p>"+
-    rows+
-    "<div class='src'>Companies from ADWR's licensed driller list; well counts from the Wells55 "+
-    "registry. Filing a well here doesn't mean they're currently taking work."+
-    (retired?" "+retired+" other licence"+(retired===1?" is":"s are")+
-      " on nearby wells but no longer on ADWR's active list — most likely retired.":"")+
+  if(!pts.length) return "";
+  return "<div class='mapwrap'>"+
+    "<div class='maphdr'>Wells within "+(j.radiusMiles||2)+" miles · tap any well for its record</div>"+
+    "<div class='wmTools'><div class='seg wmSeg' id='wmSeg'>"+
+      "<button data-v='sat' aria-pressed='true'>Satellite</button>"+
+      "<button data-v='topo' aria-pressed='false'>Terrain</button>"+
+      "<button data-v='street' aria-pressed='false'>Street</button>"+
+    "</div></div>"+
+    "<div id='wellMap' class='wellMapBox'></div>"+
+    "<div class='wmLegend'>"+
+      "<span><i style='background:#2f7d4f'></i>&lt;150 ft</span>"+
+      "<span><i style='background:#7fa650'></i>150–300</span>"+
+      "<span><i style='background:#c8a24a'></i>300–600</span>"+
+      "<span><i style='background:#d3742f'></i>600–1,000</span>"+
+      "<span><i style='background:#a33d1e'></i>&gt;1,000 ft</span>"+
+      "<span><i style='background:none;border:2px solid #c8a24a'></i>your parcel</span>"+
     "</div>"+
-  "</div>";
+    "<div class='src'>"+pts.length+" of "+(j.withDepth||pts.length)+" wells have mapped coordinates. "+
+      "Well locations are derived from filed records and are not survey grade — treat a dot as "+
+      "\"about here\", not an exact spot.</div></div>";
 }
 
-// Quote requests — delegated so they survive the panel being re-rendered.
-document.addEventListener("click",async e=>{
-  const open=e.target.closest && e.target.closest(".dquote");
-  if(open){
-    const box=document.getElementById(open.dataset.q);
-    if(!box) return;
-    const showing=!box.hasAttribute("hidden");
-    if(showing){ box.setAttribute("hidden",""); open.textContent="Request a quote"; }
-    else { box.removeAttribute("hidden"); open.textContent="Cancel"; box.querySelector("input").focus(); }
-    return;
-  }
-  const send=e.target.closest && e.target.closest(".qsend");
-  if(!send) return;
+function wmSetBase(k){
+  const b=WM_BASEMAPS[k];
+  if(WELLBASE) WELLMAP.removeLayer(WELLBASE);
+  WELLBASE=L.tileLayer(b.url,{attribution:b.attr,maxZoom:b.max,maxNativeZoom:b.max}).addTo(WELLMAP);
+  const seg=$("wmSeg");
+  if(seg) [...seg.children].forEach(x=>x.setAttribute("aria-pressed", x.dataset.v===k));
+}
 
-  const box=send.closest(".qform");
-  const btn=box.parentElement.querySelector(".dquote");
-  const val=f=>{const el=box.querySelector('[data-f="'+f+'"]'); return el?el.value.trim():"";};
-  const out=box.querySelector(".qresult");
-  if(!val("email")&&!val("phone")){
-    out.innerHTML="<span class='qerr'>Give an email or a phone number so they can reach you.</span>";
-    return;
+/* Build the map once its container exists. Called after innerHTML is set. */
+function buildWellMap(j, lat, lng){
+  const host=$("wellMap");
+  if(!host || typeof L==="undefined") return;
+  if(WELLMAP){ WELLMAP.remove(); WELLMAP=null; WELLBASE=null; }
+
+  WELLMAP=L.map(host,{preferCanvas:true, scrollWheelZoom:false});
+  wmSetBase("sat");
+  L.control.scale({imperial:true,metric:false}).addTo(WELLMAP);
+
+  const pts=(j.wells||[]).filter(w=>w.lat!=null&&w.lon!=null);
+  const group=L.featureGroup().addTo(WELLMAP);
+
+  // Your parcel, if the county publishes a boundary rather than just a point.
+  const P=state.parcel;
+  if(P && P.boundary && P.boundary.length){
+    L.polygon(P.boundary,{color:"#c8a24a",weight:2.5,fill:false,dashArray:"6 4"})
+      .addTo(group).bindPopup("<b>"+(P.apn||"This parcel")+"</b>"+
+        (P.acres?"<br>"+P.acres+" acres":"")+(P.address?"<br>"+P.address:""));
+  }else{
+    L.circleMarker([lat,lng],{radius:6,color:"#c8a24a",weight:2.5,fill:false})
+      .addTo(group).bindPopup("Your point");
   }
 
-  const L=state.local, P=state.parcel;
-  const payload={
-    _subject:"Drilling quote request — "+btn.dataset.driller,
-    driller:btn.dataset.driller,
-    driller_licence:btn.dataset.licence,
-    name:val("name"), email:val("email"), phone:val("phone"), note:val("note"),
-    county:state.county,
-    parcel:P?P.apn:"(not given)",
-    location:L?L.lat.toFixed(5)+", "+L.lng.toFixed(5):"(not given)",
-    nearby_wells:L?L.n:"",
-    nearby_median_depth_ft:L?Math.round(L.med||L.avg):"",
-    submitted_at:new Date().toISOString()
-  };
+  pts.forEach(w=>{
+    L.circleMarker([w.lat,w.lon],{
+      radius: Math.min(11, 4 + Math.log10(Math.max(w.depth,10))*2.4),
+      color:"#fff", weight:1, fillColor:wmColour(w.depth), fillOpacity:.85
+    }).addTo(group).bindPopup(
+      "<div class='pop'><b>"+w.depth.toLocaleString()+" ft</b> deep"+
+      "<div class='popRow'><span>Depth to water</span><b>"+
+        (w.depthToWater?Math.round(w.depthToWater).toLocaleString()+" ft":"not recorded")+"</b></div>"+
+      "<div class='popRow'><span>Drilled</span><b>"+(w.drilled||"—")+"</b></div>"+
+      "<div class='popRow'><span>Use</span><b>"+(w.use||"—")+"</b></div>"+
+      "<div class='popRow'><span>Distance</span><b>"+(w.miles!=null?w.miles+" mi":"—")+"</b></div></div>");
+  });
 
-  send.disabled=true; send.textContent="Sending…"; out.innerHTML="";
-  try{
-    const r=await fetch(FORMSPREE_ENDPOINT,{method:"POST",
-      headers:{"Content-Type":"application/json","Accept":"application/json"},
-      body:JSON.stringify(payload)});
-    if(!r.ok) throw new Error("server returned "+r.status);
-    box.innerHTML="<div class='qok'>Sent. We'll pass this to "+btn.dataset.driller+
-      " with the well data for your spot.</div>";
-    btn.textContent="Request sent"; btn.disabled=true;
-  }catch(ex){
-    out.innerHTML="<span class='qerr'>Couldn't send that — "+(ex.message||ex)+". Try again shortly.</span>";
-    send.disabled=false; send.textContent="Send request";
-  }
+  // Utah: who owns the water next door. A cluster of diversions on one point is
+  // what a shared system looks like from above.
+  try{ WELLMAP.fitBounds(group.getBounds().pad(0.15)); }
+  catch(_){ WELLMAP.setView([lat,lng],13); }
+
+  const resize=()=>WELLMAP && WELLMAP.invalidateSize({animate:false});
+  setTimeout(resize,60); setTimeout(resize,400);
+  if(window.ResizeObserver) new ResizeObserver(resize).observe(host);
+}
+
+// Basemap switch, delegated because the map is rebuilt on every lookup.
+document.addEventListener("click",e=>{
+  const b=e.target.closest("#wmSeg button"); if(!b || !WELLMAP) return;
+  wmSetBase(b.dataset.v);
 });
-
-/**
- * Utah water rights near the point. Utah requires an approved right to drill,
- * so in a closed basin this — not depth — is what decides whether a parcel is
- * usable. Presented deliberately as evidence to verify, not an answer.
- */
-function rightsHtml(w){
-  if(!w || !w.rights || !w.rights.length){
-    return "<div class='wells'><div class='maphdr'>Utah water rights</div>"+
-      "<p class='dintro'>No points of diversion found within "+(w&&w.scope?w.scope.radiusMiles:1)+
-      " miles. In a closed basin that usually means there is no existing right to draw on here — "+
-      "worth confirming before assuming a well is possible.</p></div>";
-  }
-  const badge=r=>r.uses.length?r.uses.join(", "):"—";
-  // data-label lets each cell name itself when the table stacks on mobile.
-  const rows=w.rights.slice(0,15).map(r=>
-    "<tr><td data-label='Right'><a href='"+(r.link||"#")+"' target='_blank' rel='noopener'>"+
-      (r.waterRight||"—")+"</a></td>"+
-    "<td data-label='Type'>"+(r.type||"—")+"</td>"+
-    "<td data-label='Status'>"+(r.status||"—")+"</td>"+
-    "<td data-label='Uses'>"+badge(r)+"</td>"+
-    "<td class='n' data-label='Priority'>"+(r.priorityYear||"—")+"</td>"+
-    "<td class='n' data-label='Volume'>"+(r.acreFeet!=null?r.acreFeet+" af":"—")+"</td>"+
-    "<td class='n' data-label='Away'>"+(r.miles!=null?r.miles+" mi":"—")+"</td></tr>").join("");
-
-  const dom = w.domesticCount;
-  const verdict = dom>0
-    ? "<strong>"+dom+" live domestic right"+(dom===1?"":"s")+" nearby.</strong> That is the one that "+
-      "matters for a home — worth checking whether any attaches to this parcel."
-    : "<strong>No live domestic rights within this radius.</strong> Everything here is irrigation, stock "+
-      "or municipal. In a closed basin that is the norm, and it means a home would need an existing "+
-      "right purchased and transferred, a connection to a public system, or hauled water.";
-
-  return "<div class='wells'>"+
-    "<div class='maphdr'>Utah water rights within "+w.scope.radiusMiles+" miles</div>"+
-    "<p class='dintro'>"+w.liveCount+" live of "+w.found+" on record"+
-      (w.monitoringCount?" ("+w.monitoringCount+" monitoring bores excluded)":"")+
-      " · "+w.undergroundCount+" underground · "+w.springCount+" spring · "+w.surfaceCount+" surface</p>"+
-    "<div class='densbox' style='text-align:left'>"+verdict+"</div>"+
-    /* The table below is unreadable without this. "Perfected, 1951, domestic,
-       8 af" is four pieces of jargon in a row, and a buyer who doesn't know
-       what they mean will either ignore the panel or misread it. Folded, so it
-       costs one line once someone has learned it. */
-    "<details class='glossary'><summary>What these columns mean</summary>"+
-    "<div class='gloss'>"+
-      "<p><b>Type</b> — where the water comes from. <em>Underground</em> is a well; "+
-      "<em>Surface</em> a stream or river; <em>Spring</em> a natural outflow. "+
-      "<em>Abandonded Well</em> (Utah's spelling) means the right survives but the hole doesn't — "+
-      "you'd be buying paper and drilling fresh.</p>"+
-      "<p><b>Status</b> — <em>Perfected</em> means the water has been put to use and the right is "+
-      "fully established. <em>Approved</em> means permission was granted but use may not be proven yet. "+
-      "Anything lapsed, forfeited or rejected is filtered out before you see this table.</p>"+
-      "<p><b>Uses</b> — what the water is legally for. A right approved for irrigation or stock "+
-      "<em>does not</em> let you supply a house. <strong>Domestic is the one a home needs.</strong></p>"+
-      "<p><b>Priority</b> — the year the claim was established. Utah is first in time, first in right: "+
-      "in a shortage, an 1870 right gets water before a 2022 right does. Older is stronger.</p>"+
-      "<p><b>Volume</b> — acre-feet per year. One acre-foot is about 326,000 gallons — roughly what a "+
-      "careful off-grid household uses in five to eight years, or a suburban lawn drinks in one.</p>"+
-      "<p class='glossWarn'>None of this proves a right transfers with the land. In Utah water rights "+
-      "are separate property and can be sold away from the ground they once served. Title work is the "+
-      "only way to know.</p>"+
-    "</div></details>"+
-    "<table class='stack'><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
-    "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
-    "<tbody>"+rows+"</tbody></table>"+
-    "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
-    "A diversion near a parcel does not prove the right conveys with that land — water rights are "+
-    "separate property in Utah. Verify with title work.</div></div>";
-}
-
-/**
- * Utah well logs. No depths here — Utah files the document, not the numbers —
- * so this is a shortcut to the paperwork rather than an analysis.
- */
-/* Map the Utah depth response onto the object shape the Arizona cost model
-   already understands { n, med, avg, sd, min, max, dtw, miles }. Doing the
-   translation here rather than branching the pricing code means Utah and
-   Arizona are costed by exactly the same arithmetic, and only the data source
-   differs. Returns null when the sample is too thin to be honest about. */
-function localFromUtah(d){
-  if(!d || !d.ok) return null;
-  const depths = (d.wells||[])
-    .filter(w => !w.nonProduction && !w.dryHole && w.depthFt!=null && w.depthFt>20)
-    .map(w => w.depthFt);
-  // Three wells is the floor. Below that a median is an anecdote wearing a
-  // statistic's clothes, and the county fallback would be no better.
-  if(depths.length < 3) return null;
-
-  const avg = depths.reduce((a,b)=>a+b,0)/depths.length;
-  const sd  = Math.sqrt(depths.reduce((s,v)=>s+(v-avg)**2,0)/depths.length) || avg*0.35;
-  return {
-    n: depths.length,
-    med: d.medianDepthFt!=null ? d.medianDepthFt : Math.round(avg),
-    avg, sd,
-    min: Math.min(...depths),
-    max: Math.max(...depths),
-    dtw: d.medianStaticWaterLevelFt,
-    miles: d.scope ? d.scope.radiusMiles : null,
-    utah: true,
-    dryHoleCount: d.dryHoleCount||0,
-    wlMin: d.minStaticWaterLevelFt, wlMax: d.maxStaticWaterLevelFt
-  };
-}
-
-function utDepthsHtml(d){
-  const money=v=>v==null?"—":v.toLocaleString();
-  const supply=(d.wells||[]).filter(w=>!w.nonProduction);
-
-  let dry="";
-  if(d.dryHoleCount){
-    // The single most consequential fact on the page. It leads.
-    dry = "<div class='banner b-err' style='margin:10px 0'><strong>"+d.dryHoleCount+
-      " dry hole"+(d.dryHoleCount===1?"":"s")+" on record nearby.</strong> "+
-      d.dryHoles.map(h=>"A well at "+(h.miles!=null?h.miles+" mi":"unknown distance")+
-        (h.drilled?", drilled "+h.drilled:"")+", was logged as: "+
-        (h.comments||[]).join("; ")+".").join(" ")+
-      " Someone paid to drill here and got nothing. That is the risk this page exists to show you.</div>";
-  }
-
-  // Utah's server refusing us looks identical to an empty area unless we say so.
-  const outage = d.fetchFailedCount
-    ? "<div class='banner b-thin' style='margin:8px 0'>Utah's well log server did not answer for "+
-      d.fetchFailedCount+" of the "+(d.fetchFailedCount+d.inspected)+" wells we asked about"+
-      (/503|429/.test((d.fetchErrors||[]).join(" "))?" (it is rate-limiting or temporarily down)":"")+
-      ". The figures below are from the ones that did answer — try again in a few minutes for the rest.</div>"
-    : "";
-
-  if(d.medianDepthFt==null){
-    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Well depths nearby</div>"+dry+outage+
-      "<p class='dintro'>Found "+d.distinctWellCount+" well"+(d.distinctWellCount===1?"":"s")+
-      " within "+d.scope.radiusMiles+" miles, but none carry a usable depth"+
-      (d.supplyWellsMissingDepth?" — "+d.supplyWellsMissingDepth+" predate Utah's 1991 computerised records":"")+
-      ". Widen the radius, or open the filed logs below.</p></div>";
-  }
-
-  const rows=supply.slice(0,15).map(w=>
-    "<tr><td class='n' data-label='Distance'>"+(w.miles!=null?w.miles+" mi":"—")+"</td>"+
-    "<td class='n' data-label='Depth'>"+(w.depthFt!=null?money(w.depthFt)+" ft":"—")+"</td>"+
-    "<td class='n' data-label='To water'>"+(w.staticWaterLevelFt!=null
-        ? money(w.staticWaterLevelFt)+" ft"+(w.waterLevelSuspect?" <span title='Filed level is below the bottom of the well — treated as a filing error and excluded from the median.'>⚠</span>":"")
-        : "—")+"</td>"+
-    "<td data-label='Drilled'>"+(w.drilled||"—")+"</td>"+
-    "<td data-label='Driller'>"+(w.driller||"—")+"</td>"+
-    "<td data-label='Notes'>"+(w.dryHole?"<b style='color:#b00'>Dry hole</b>":(w.waterRights&&w.waterRights.length>1
-        ? w.waterRights.length+" rights on this well":"—"))+"</td>"+
-    "<td data-label='Document'><a href='"+w.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
-
-  const wlSpread = (d.minStaticWaterLevelFt!=null && d.maxStaticWaterLevelFt!=null &&
-                    d.maxStaticWaterLevelFt - d.minStaticWaterLevelFt > 100)
-    ? "<p class='dintro'><strong>Depth to water swings "+money(d.minStaticWaterLevelFt)+" to "+
-      money(d.maxStaticWaterLevelFt)+" ft inside this radius.</strong> That is fractured ground, not a "+
-      "consistent water table — two neighbours can get very different wells. Budget toward the deep end.</p>"
-    : "";
-
-  return "<div class='wells' style='margin-top:12px'>"+
-    "<div class='maphdr'>Well depths within "+d.scope.radiusMiles+" miles</div>"+dry+outage+
-    "<p class='dintro'>Read from <strong>"+d.inspected+"</strong> filed well logs ("+
-      d.distinctWellCount+" distinct wells indexed nearby). Median depth <strong>"+
-      money(d.medianDepthFt)+" ft</strong>, range "+money(d.minDepthFt)+"–"+money(d.maxDepthFt)+" ft"+
-      (d.nonProductionCount?". "+d.nonProductionCount+" monitoring or geothermal bore"+
-        (d.nonProductionCount===1?"":"s")+" excluded — they are not drilled for water":"")+".</p>"+
-    wlSpread+
-    "<table class='stack'><thead><tr><th class='n'>Away</th><th class='n'>Depth</th><th class='n'>To water</th>"+
-    "<th>Drilled</th><th>Driller</th><th>Notes</th><th></th></tr></thead><tbody>"+rows+"</tbody></table>"+
-    "<div class='src'>Source: Utah Division of Water Rights, well drilling database — read from the "+
-    "individual filed logs, not the map index.</div></div>";
-}
-
-function utLogsHtml(d){
-  if(!d.logs || !d.logs.length){
-    return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
-      "<p class='dintro'>No filed well logs within "+d.scope.radiusMiles+" miles. That may mean nothing has "+
-      "been drilled here, or that older wells were never filed.</p></div>";
-  }
-  const rows=d.logs.slice(0,15).map(l=>
-    "<tr><td class='n' data-label='Distance'>"+(l.miles!=null?l.miles+" mi":"—")+"</td>"+
-    "<td data-label='Owner'>"+(l.owner||"—")+"</td>"+
-    "<td data-label='Water right'>"+(l.waterRight||"—")+"</td>"+
-    "<td data-label='Type'>"+(l.geologic?"<b>Geologic</b>":(l.logType||"Well log"))+"</td>"+
-    "<td data-label='Document'><a href='"+l.link+"' target='_blank' rel='noopener'>Open log</a></td></tr>").join("");
-  return "<div class='wells' style='margin-top:12px'>"+
-    "<div class='maphdr'>Well logs within "+d.scope.radiusMiles+" miles</div>"+
-    "<p class='dintro'><strong>"+d.found+" filed log"+(d.found===1?"":"s")+"</strong>"+
-      (d.geologicCount?", "+d.geologicCount+" of them geologic logs (richer detail)":"")+
-      ". "+d.note+"</p>"+
-    "<table class='stack'><thead><tr><th class='n'>Away</th><th>Owner</th><th>Water right</th>"+
-    "<th>Type</th><th>Document</th></tr></thead><tbody>"+rows+"</tbody></table>"+
-    "<div class='src'>Source: Utah Division of Water Rights well log index.</div></div>";
-}
 
 function parcelHtml(p){
   const money=v=>v==null?"—":"$"+v.toLocaleString();

@@ -374,9 +374,25 @@ export async function onRequestGet({ request }) {
         } catch (_) { neighbours = null; }
       }
 
+      /* The boundary itself, when the county publishes polygons. Seeing your
+         parcel outlined against the wells around it is worth more than any
+         distance figure — and we already paid for this geometry to compute the
+         centroid, then threw it away. Rings only; simplified to keep the
+         payload sane on parcels with thousands of vertices. */
+      const rings = feat.geometry && feat.geometry.rings
+        ? feat.geometry.rings.map(r => {
+            const step = Math.max(1, Math.ceil(r.length / 200));
+            const out = r.filter((_, i) => i % step === 0).map(v => [+v[1], +v[0]]);  // [lat,lon]
+            const first = r[0], last = out[out.length - 1];
+            if (last[0] !== +first[1] || last[1] !== +first[0]) out.push([+first[1], +first[0]]);
+            return out;
+          })
+        : null;
+
       return json({
         ok: true, county: cfg.name, ...base,
         lat: pt ? pt.lat : null, lon: pt ? pt.lon : null,
+        boundary: rings,
         neighbours,
         source: {
           dataset: `${cfg.name} County parcel data`,

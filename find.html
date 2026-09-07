@@ -198,13 +198,17 @@ const HALF = CELL / 2;
 const BANDS = [[150,"#2f7d4f"],[300,"#7fa650"],[600,"#c8a24a"],[1000,"#d3742f"],[1e9,"#a33d1e"]];
 const colour = d => BANDS.find(b => d <= b[0])[1];
 
+/* All three from providers that serve tiles without a key or an account.
+   Note the {z}/{y}/{x} ordering — ArcGIS tile services put row before column,
+   the reverse of the OSM convention, and getting it wrong yields a plausible
+   map of entirely the wrong place. */
 const BASEMAPS = {
-  sat: { url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-         attr:"Imagery: Esri, Maxar, Earthstar Geographics", max:18 },
-  topo:{ url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-         attr:"USGS The National Map", max:16 },
-  street:{ url:"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-         attr:"&copy; OpenStreetMap contributors &copy; CARTO", max:19 }
+  sat:   { url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+           attr:"Imagery: Esri, Maxar, Earthstar Geographics", max:18 },
+  topo:  { url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+           attr:"USGS The National Map", max:16 },
+  street:{ url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+           attr:"Esri, HERE, Garmin, OpenStreetMap contributors", max:19 }
 };
 
 let MAP=null, LAYER=null, BASE=null, DATA=null;
@@ -214,8 +218,19 @@ function initMap(){
   MAP = L.map("map", { preferCanvas:true, zoomControl:true })
          .fitBounds([[31.30,-114.85],[37.05,-109.00]]);
   setBase("sat");
+  // Overlay pane, explicitly above tiles. Canvas overlays occasionally end up
+  // painted under the basemap when the container is sized by CSS after init.
   LAYER = L.layerGroup().addTo(MAP);
   L.control.scale({imperial:true, metric:false}).addTo(MAP);
+
+  // Leaflet measures its container once. Ours is sized with min(70vh,620px),
+  // which can resolve after init — leaving the map believing it is 0px tall,
+  // so tiles paint but overlays land outside the visible area.
+  const resize = () => MAP.invalidateSize({animate:false});
+  setTimeout(resize, 60);
+  setTimeout(resize, 400);
+  window.addEventListener("resize", resize);
+  if(window.ResizeObserver) new ResizeObserver(resize).observe($("map"));
 }
 
 function setBase(k){
@@ -256,15 +271,20 @@ function render(){
 
   LAYER.clearLayers();
   const draw = showAll ? all : match;
+  let drawn = 0;
   draw.forEach(c => {
     const hit = hits.has(c);
-    L.rectangle([[c[0]-HALF, c[1]-HALF],[c[0]+HALF, c[1]+HALF]], {
+    const rect = L.rectangle([[c[0]-HALF, c[1]-HALF],[c[0]+HALF, c[1]+HALF]], {
       stroke:false,
       fillColor: hit ? colour(c[3]) : "#888",
       fillOpacity: hit ? .62 : .18,
       interactive: hit
-    }).addTo(LAYER).bindPopup(() => cellPopup(c, DATA.counties[c[8]]));
+    });
+    rect.addTo(LAYER);
+    if(hit) rect.bindPopup(() => cellPopup(c, DATA.counties[c[8]]));
+    drawn++;
   });
+  MAP.invalidateSize({animate:false});
 
   // Frame the results, so filtering to one county actually takes you there.
   if(match.length && match.length < all.length){
@@ -282,10 +302,12 @@ function render(){
       `The shallowest is <b>${fmt(shallow[0][3])} ft</b>. Click any square for its records.`
     : `No areas match. Try a greater depth`+(county==="all"?"":`, or widen from ${county} County`)+`.`;
 
+  // Reports what was actually drawn, so "no squares" is never ambiguous
+  // between "nothing matched" and "the map failed".
   $("mapNote").textContent =
-    `${fmt(match.length)} of ${fmt(all.length)} mapped areas shown. Each square is about 1.4 miles `+
-    `across and holds at least ${DATA._meta.minWellsPerCell} filed wells. Unshaded ground means no `+
-    `records, not shallow water.`;
+    `${fmt(drawn)} squares drawn (${fmt(match.length)} of ${fmt(all.length)} areas match). `+
+    `Each square is about 1.4 miles across and holds at least `+
+    `${DATA._meta.minWellsPerCell} filed wells. Unshaded ground means no records, not shallow water.`;
 
   $("rows").innerHTML = shallow.slice(0,40).map(c => {
     const co = DATA.counties[c[8]];
