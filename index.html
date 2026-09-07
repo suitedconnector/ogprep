@@ -458,23 +458,8 @@
      one where water is routine, one where it may be unobtainable. Hidden the
      moment a real lookup runs. -->
 <div class="demo" id="demoStrip">
-  <div class="demoHd">Here's the difference between two parcels in Iron County, Utah</div>
-  <p class="demoSub">Four miles apart. Septic and power cost about the same on both.
-    Water is the difference between a build and a write-off.</p>
-  <div class="demoBtns">
-    <button class="demoBtn ok" data-region="UT" data-county="Iron" data-price="8000"
-            data-coords="37.657426, -113.164702" data-radius="3219">
-      <b>A parcel where water works</b>
-      <span>41 domestic rights nearby · wells 222–610 ft · no dry holes</span>
-    </button>
-    <button class="demoBtn bad" data-region="UT" data-county="Iron" data-price="8000"
-            data-coords="37.65504, -113.09533" data-radius="8047">
-      <b>A parcel where it may not</b>
-      <span>Zero domestic rights · a dry hole 0.8 mi away · closed basin</span>
-    </button>
-  </div>
-  <p class="demoFoot">Both are real coordinates and the numbers come from state records, live.
-    Neither is a recommendation — and neither is a quote.</p>
+  <!-- Rebuilt per state by applyState — the examples must match the state on
+       screen, or Arizona visitors are shown a Utah closed basin. -->
 </div>
 
 <div class="grid">
@@ -801,6 +786,17 @@ const STATES = {
             "490 ft in Pinal — but the county figure can be wildly wrong for one spot. Around Golden Valley in "+
             "Mohave, wells run three to six times the county median. That difference is tens of thousands of dollars.",
     // What one lookup actually returns, listed before they run it.
+    demo: {
+      head: "Here's the difference between two parcels in Mohave County, Arizona",
+      sub: "Fifty miles apart, same county, same county median of 230 ft. "+
+           "Nobody drilling either one would guess the other exists.",
+      a: { label:"A parcel where water is cheap", county:"Mohave", price:"8000",
+           coords:"34.7050, -113.6100", radius:"3220",
+           note:"32 wells nearby · average 119 ft · water at 34 ft" },
+      b: { label:"A parcel where it is brutal", county:"Mohave", price:"8000",
+           coords:"35.2178, -114.2225", radius:"3220",
+           note:"9 wells nearby · average 1,245 ft · water at 1,048 ft" }
+    },
     expect: ["How deep the wells around this parcel were drilled, and how far down they hit water",
              "What a well should cost here — priced off those depths, not a county average",
              "Whether the soil will take a conventional septic field, from the USDA survey",
@@ -826,6 +822,17 @@ const STATES = {
              "carries only an index, so the numbers come from a page deeper. Coverage starts in 1991, when "+
              "the state computerised its records; older wells appear without depths. Yield is not filed at "+
              "all, so there is no gallons-per-minute figure to give you.",
+    demo: {
+      head: "Here's the difference between two parcels in Iron County, Utah",
+      sub: "Four miles apart. Septic and power cost about the same on both. "+
+           "Water is the difference between a build and a write-off.",
+      a: { label:"A parcel where water works", county:"Iron", price:"8000",
+           coords:"37.657426, -113.164702", radius:"3219",
+           note:"41 domestic rights nearby · wells 222–610 ft · no dry holes" },
+      b: { label:"A parcel where it may not", county:"Iron", price:"8000",
+           coords:"37.65504, -113.09533", radius:"8047",
+           note:"Zero domestic rights · a dry hole 0.8 mi away · closed basin" }
+    },
     expect: ["Every water right on and around the parcel — status, use, seniority and volume",
              "Whether any are <strong>domestic</strong>, which is the one a home actually needs",
              "How deep nearby wells went, read from the drillers' own filed logs",
@@ -877,6 +884,20 @@ function applyState(code){
     s.expect.map(x=>"<li>"+x+"</li>").join("")+"</ul>"+
     "<div class='expectFoot'>All of it from public state records, in about ten seconds. "+
     "Nothing is emailed and nothing is stored.</div>";
+
+  // Worked examples, rebuilt for the state on screen. Hidden once a real
+  // lookup has run — it has taught what it can by then.
+  const d=s.demo;
+  $("demoStrip").innerHTML =
+    "<div class='demoHd'>"+d.head+"</div><p class='demoSub'>"+d.sub+"</p>"+
+    "<div class='demoBtns'>"+
+    [["ok",d.a],["bad",d.b]].map(([cls,x])=>
+      "<button class='demoBtn "+cls+"' data-region='"+code+"' data-county='"+x.county+
+      "' data-price='"+x.price+"' data-coords='"+x.coords+"' data-radius='"+x.radius+"'>"+
+      "<b>"+x.label+"</b><span>"+x.note+"</span></button>").join("")+
+    "</div><p class='demoFoot'>Both are real coordinates and every figure is pulled live from "+
+    "state records. Neither is a recommendation — and neither is a quote.</p>";
+  $("demoStrip").style.display = $("wellList").children.length ? "none" : "";
 
   $("stateWhy").innerHTML = code==="AZ"
     ? "In Arizona you may drill a domestic well on your own land without buying a water right, "+
