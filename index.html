@@ -250,11 +250,8 @@
   .glossWarn{padding-top:8px;border-top:1px solid var(--paper-line2);color:#7d3a28}
 
   /* Named drillers in the offer — evidence, not a promise. */
-  .ctaDr{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:13px}
-  .ctaDr>span{color:var(--muted);margin-right:2px}
-  .ctaDr>b{background:var(--panel2);border:1px solid var(--line);border-radius:999px;
-    padding:5px 11px;font-weight:700;font-size:12.5px}
-  .ctaDr>b>i{font-style:normal;color:var(--muted);font-weight:600}
+  .ctaDr{margin-top:12px;font-size:13.5px;line-height:1.5;color:var(--muted)}
+  .ctaDr b{color:var(--ink)}
 
   /* The one sentence most readers need and would otherwise have to infer. */
   .swing{margin-top:12px;padding:12px 14px;border-radius:9px;font-size:14px;line-height:1.55;
@@ -2417,23 +2414,22 @@ function render(){
   renderCtaDrillers();
 }
 
-/* Name the drillers. "Get quotes from local drillers" is a promise; "Grimshaw &
-   Sons drilled three of the wells above" is evidence. The names come out of the
-   filed logs we already read, so this costs nothing extra and cannot be faked. */
+/* Refer to the driller list rather than reprinting it. The full table already
+   names them a screen above; repeating the names here read as two competing
+   sections about the same thing. Say how many and point at it. */
 function renderCtaDrillers(){
   const box=$("ctaDrillers"); if(!box) return;
-  let names=[];
+  let count=0;
   if(state.utDepths && state.utDepths.wells){
-    const tally=new Map();
-    state.utDepths.wells.filter(w=>!w.nonProduction && w.driller)
-      .forEach(w=>tally.set(w.driller,(tally.get(w.driller)||0)+1));
-    names=[...tally.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4);
+    count = new Set(state.utDepths.wells
+      .filter(w=>!w.nonProduction && w.driller).map(w=>w.driller)).size;
   }else if(state.drillers && state.drillers.drillers){
-    names=state.drillers.drillers.slice(0,4).map(d=>[d.name, d.wellsNearby||d.wells||0]);
+    count = state.drillers.drillers.length;
   }
-  if(!names.length){ box.innerHTML=""; return; }
-  box.innerHTML="<div class='ctaDr'><span>Drillers with filed logs near your point:</span>"+
-    names.map(([n,c])=>"<b>"+n+(c>1?" <i>("+c+" wells)</i>":"")+"</b>").join("")+"</div>";
+  if(!count){ box.innerHTML=""; return; }
+  box.innerHTML="<div class='ctaDr'><span>Your request goes to the <b>"+count+
+    "</b> driller"+(count===1?"":"s")+" listed above — the ones with filed logs near your point, "+
+    "with your coordinates and those depths attached.</span></div>";
 }
 
 $("leadForm").addEventListener("submit",async e=>{
