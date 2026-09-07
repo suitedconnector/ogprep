@@ -253,6 +253,10 @@
   .gloss p{margin:0 0 8px}
   .gloss em{font-style:normal;font-weight:700}
   .glossWarn{padding-top:8px;border-top:1px solid var(--paper-line2);color:#7d3a28}
+  /* The official term, kept visible but subordinate to the plain meaning. */
+  .jarg{display:block;font-size:11px;color:var(--paper-muted);font-weight:500;
+    text-transform:none;letter-spacing:0;margin-top:1px}
+  .domYes{color:#2f7d4f}
 
   /* Named drillers in the offer — evidence, not a promise. */
   .ctaDr{margin-top:12px;font-size:13.5px;line-height:1.5;color:var(--muted)}
@@ -1660,16 +1664,50 @@ function rightsHtml(w){
       " miles. In a closed basin that usually means there is no existing right to draw on here — "+
       "worth confirming before assuming a well is possible.</p></div>";
   }
-  const badge=r=>r.uses.length?r.uses.join(", "):"—";
+  /* Translate in the table, don't make people look things up.
+
+     "Underground · Perfected · Domestic, Irrigation · 1951" is four pieces of
+     jargon in a row. A glossary helps the reader who already suspects they need
+     one; everybody else reads past it and quietly misunderstands. So the plain
+     meaning leads and the official term follows in grey — which keeps the panel
+     verifiable against the state's own records without requiring fluency. */
+  const TYPE_PLAIN = {
+    "UNDERGROUND":"Well", "SURFACE":"Stream or river", "SPRING":"Spring",
+    "ABANDONDED WELL":"Well — abandoned", "ABANDONED WELL":"Well — abandoned",
+    "POINT TO POINT":"Stock watering area"
+  };
+  const STATUS_PLAIN = {
+    "PERFECTED":"In use", "APPROVED":"Permitted", "TERMINATED":"Dead", "UNAPPROVED":"Not granted"
+  };
+  const plain = (raw, map) => {
+    const k = String(raw||"").trim().toUpperCase();
+    const p = map[k];
+    return !raw ? "—"
+      : p ? p+" <span class='jarg'>"+raw+"</span>"
+          : raw;
+  };
+  // A right approved only for irrigation or stock cannot supply a house, and
+  // that is the single most consequential thing in this table.
+  const badge = r => {
+    if(!r.uses.length) return "—";
+    const dom = r.uses.includes("Domestic");
+    return (dom ? "<b class='domYes'>Domestic</b>" : "") +
+      (dom && r.uses.length>1 ? ", " : "") +
+      r.uses.filter(u=>u!=="Domestic").join(", ") +
+      (dom ? "" : " <span class='jarg'>not for a house</span>");
+  };
   // data-label lets each cell name itself when the table stacks on mobile.
   const rows=w.rights.slice(0,15).map(r=>
     "<tr><td data-label='Right'><a href='"+(r.link||"#")+"' target='_blank' rel='noopener'>"+
       (r.waterRight||"—")+"</a></td>"+
-    "<td data-label='Type'>"+(r.type||"—")+"</td>"+
-    "<td data-label='Status'>"+(r.status||"—")+"</td>"+
+    "<td data-label='Type'>"+plain(r.type, TYPE_PLAIN)+"</td>"+
+    "<td data-label='Status'>"+plain(r.status, STATUS_PLAIN)+"</td>"+
     "<td data-label='Uses'>"+badge(r)+"</td>"+
-    "<td class='n' data-label='Priority'>"+(r.priorityYear||"—")+"</td>"+
-    "<td class='n' data-label='Volume'>"+(r.acreFeet!=null?r.acreFeet+" af":"—")+"</td>"+
+    "<td class='n' data-label='Priority'>"+(r.priorityYear||"—")+
+      (r.priorityYear ? "<span class='jarg'>"+(r.priorityYear<1935?"senior":r.priorityYear<1958?"mid":"junior")+"</span>" : "")+"</td>"+
+    "<td class='n' data-label='Volume'>"+(r.acreFeet!=null
+      ? r.acreFeet+" af<span class='jarg'>"+Math.round(r.acreFeet*325851).toLocaleString()+" gal/yr</span>"
+      : "—")+"</td>"+
     "<td class='n' data-label='Away'>"+(r.miles!=null?r.miles+" mi":"—")+"</td></tr>").join("");
 
   const dom = w.domesticCount;
