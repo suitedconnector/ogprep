@@ -2458,10 +2458,15 @@ function renderCtaDrillers(){
   if(state.utDepths && state.utDepths.wells){
     count = new Set(state.utDepths.wells
       .filter(w=>!w.nonProduction && w.driller).map(w=>w.driller)).size;
-  }else if(state.drillers && state.drillers.drillers){
-    // Only currently licensed drillers — the retired licences appear on old
-    // wells but cannot take work, and promising to contact them is a lie.
-    count = state.drillers.drillers.filter(d=>d.name).length;
+  }else if(state.drillers){
+    /* licensedCount, not drillerCount. The latter counts every licence number
+       found on nearby wells, including the ones ADWR no longer lists as active
+       — the panel's own footnote calls those "most likely retired". Promising
+       to send a request to a driller who cannot take work is a lie, and it is
+       the kind that gets noticed when nobody calls back. */
+    count = state.drillers.licensedCount != null
+      ? state.drillers.licensedCount
+      : (state.drillers.drillers || []).length;
   }
   if(!count){ box.innerHTML=""; return; }
   box.innerHTML="<div class='ctaDr'><span>Your request goes to the <b>"+count+
