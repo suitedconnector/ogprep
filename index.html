@@ -707,9 +707,23 @@ function applyState(code){
   document.title = s.kicker.replace("Build Off Grid · ","") + " — what water will cost on that parcel";
 
   const az = code==="AZ";
-  // Arizona drives everything off county statistics; Utah has none of that yet.
-  $("county").parentElement.querySelector('label[for="county"]').style.display = az?"":"none";
-  $("county").style.display = az?"":"none";
+
+  /* The county select has to stay visible in Utah now that parcel search works
+     there — the API needs to know which county layer to query. What Utah does
+     not have is the county-level well statistics table, so those panels hide
+     instead. Previously the whole select was hidden, which left state.county
+     stuck on "Mohave" and sent every Utah parcel lookup to Arizona. */
+  $("county").parentElement.querySelector('label[for="county"]').style.display = "";
+  $("county").style.display = "";
+  sel.innerHTML = counties.map(c=>{
+    const coordsOnly = code==="AZ" && !APN_COUNTIES.includes(c);
+    return "<option value='"+c+"'>"+c+(coordsOnly?"  — coordinates only":"")+"</option>";
+  }).join("");
+  // Keep the current county if it exists in the new list, else pick a default.
+  sel.value = counties.includes(state.county) ? state.county : (code==="UT" ? "Iron" : "Mohave");
+  state.county = sel.value;
+  leadSel.value = state.county;
+
   document.getElementById("statsTitle").style.display = az?"":"none";
   $("wellStats").style.display = az?"":"none";
   $("confNote").style.display = az?"":"none";
@@ -1699,7 +1713,10 @@ function renderTopVerdict(){
 }
 
 function render(){
-  const cty=COUNTIES[state.county];
+  // COUNTIES holds Arizona well statistics only. Utah county names are now
+  // valid selections (parcel search needs them) but have no entry here, so
+  // every read of cty has to tolerate null.
+  const cty=COUNTIES[state.county] || null;
   const L=state.local;
   const usingLocal=!!L;
   const src = usingLocal ? L : cty;
@@ -1709,16 +1726,19 @@ function render(){
 
   // Depth distributions are right-skewed — a few very deep wells drag the mean
   // up — so the median is the planning number and the spread comes from sd.
-  const centre = usingLocal ? src.med : src.med;
-  const dLow=Math.max(60,Math.round(centre-0.6*src.sd));
-  const dMid=Math.round(centre);
-  const dHigh=Math.round(centre+src.sd);
+  // src is null in Utah before a lookup: no local wells yet, and no county
+  // statistics table to fall back on. The depth figures below are only read
+  // when water === "well", and that path returns early without a source.
+  const centre = src ? src.med : 0;
+  const dLow  = src ? Math.max(60,Math.round(centre-0.6*src.sd)) : 0;
+  const dMid  = src ? Math.round(centre) : 0;
+  const dHigh = src ? Math.round(centre+src.sd) : 0;
 
   $("statsTitle").textContent = usingLocal
     ? "Wells within "+L.miles+" miles of your point"
     : "What the county records say";
 
-  $("wellStats").innerHTML = usingLocal ? `
+  $("wellStats").innerHTML = !src ? "" : usingLocal ? `
     <div class="stat"><span>Wells with recorded depth</span><b>${L.n}</b></div>
     <div class="stat"><span>Average depth nearby</span><b>${Math.round(L.avg).toLocaleString()} ft</b></div>
     <div class="stat"><span>Shallowest / deepest</span><b>${L.min.toLocaleString()} – ${L.max.toLocaleString()} ft</b></div>
@@ -1736,8 +1756,8 @@ function render(){
     <div class="stat"><span>Median water level</span><b>${cty.wl} ft</b></div>
     ${cty.gpm?`<div class="stat"><span>Median tested yield</span><b>${cty.gpm} gpm</b></div>`:""}`;
 
-  const spread=src.sd/(src.med||src.avg);
-  $("confNote").textContent = usingLocal
+  const spread = src ? src.sd/(src.med||src.avg) : 0;
+  $("confNote").textContent = !src ? "" : usingLocal
     ? (L.utah && L.dryHoleCount
         ? "A dry hole is on record within this radius. Depth is only half the question here — whether "+
           "you hit water at all is the other half."
@@ -1790,7 +1810,7 @@ function render(){
   // Utah now has real depths — but only where enough logs carry them. Without
   // a local sample there is nothing to price from, and the Arizona county
   // figure would be a confident number about the wrong state. Refuse instead.
-  const noDepthData = state.region==="UT" && state.water==="well" && !usingLocal;
+  const noDepthData = state.water==="well" && !usingLocal && !cty;
   if(noDepthData){
     $("heroLabel").textContent = "Cost to drill a well";
     $("waterBig").textContent  = "Not enough local records";
