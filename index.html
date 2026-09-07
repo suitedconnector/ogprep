@@ -109,6 +109,69 @@
     text-transform:none;font-size:12px;color:#6b7360}
   details.pan>summary .flag{margin-left:auto;font-weight:800;letter-spacing:0;
     text-transform:none;font-size:12px;color:#a3341f}
+  /* "What you'll get back" — sets expectations at the point of commitment. */
+  .expect{margin-top:12px;padding:12px 14px;border-radius:10px;
+    background:var(--panel2);border:1px solid var(--line)}
+  .expect .expectHd{font-size:11.5px;font-weight:800;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .expect ul{margin:0;padding:0;list-style:none}
+  .expect li{position:relative;padding:4px 0 4px 20px;font-size:13.5px;line-height:1.45;
+    color:var(--ink)}
+  .expect li:before{content:"→";position:absolute;left:0;top:4px;color:var(--muted)}
+  .expect .expectFoot{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--muted)}
+
+  /* Three-way water comparison — the centrepiece. */
+  .cmpWrap{margin-top:16px;padding:18px;border-radius:14px;
+    background:var(--panel);border:1px solid var(--line)}
+  .cmpWrap:empty{display:none}
+  .cmpHd{font-size:17px;font-weight:800;letter-spacing:-.01em}
+  .cmpSub{margin:4px 0 12px;color:var(--muted);font-size:13.5px}
+  table.cmp{width:100%;border-collapse:collapse}
+  table.cmp th{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+    font-weight:700;padding:0 10px 8px 0;text-align:left;border-bottom:1px solid var(--line)}
+  table.cmp td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line);font-size:14px;
+    vertical-align:top}
+  table.cmp td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cmpRow.sel{background:rgba(200,162,74,.07)}
+  .cmpRow.blocked{opacity:.6}
+  .cmpRow .rng{display:block;font-size:11.5px;color:var(--muted);font-weight:500;margin-top:2px}
+  .cheap{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;
+    background:rgba(127,166,80,.18);color:#9ec97a;font-size:10.5px;font-weight:800;
+    letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
+  .cmp .warn{color:#e0a08a}
+  .cmpBtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;
+    white-space:nowrap}
+  .cmpBtn:hover{border-color:var(--accent)}
+  .cmpSel{font-size:11.5px;color:var(--accent);font-weight:700;white-space:nowrap}
+  .cmpFoot{margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+  @media (max-width:620px){
+    table.cmp td.n{text-align:left !important}
+    .cmpRow.sel{outline:1px solid rgba(200,162,74,.35)}
+  }
+
+  /* One line under the state toggle explaining why the question changes. */
+  .stateWhy{margin-top:9px;font-size:13.5px;line-height:1.5;color:var(--muted);max-width:62ch}
+  .stateWhy strong{color:var(--ink)}
+
+  /* Column key under the cost table. */
+  .colkey{margin-top:10px;display:grid;gap:5px;font-size:13px;line-height:1.45;color:var(--muted)}
+  .colkey b{color:var(--ink)}
+  .colkey strong{color:var(--accent)}
+
+  /* Folded glossary inside the water rights panel. */
+  details.glossary{margin:10px 0 4px;border:1px solid #d8dccd;border-radius:9px;background:#fff}
+  details.glossary>summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:13px;
+    font-weight:700;color:#5d6552;display:flex;align-items:center;gap:7px}
+  details.glossary>summary::-webkit-details-marker{display:none}
+  details.glossary>summary:before{content:"▸";transition:transform .15s}
+  details.glossary[open]>summary:before{transform:rotate(90deg)}
+  .gloss{padding:0 12px 10px;font-size:13px;line-height:1.55;color:#2a2f24}
+  .gloss p{margin:0 0 8px}
+  .gloss em{font-style:normal;font-weight:700}
+  .glossWarn{padding-top:8px;border-top:1px solid #e6e9dd;color:#7d3a28}
+
   /* Named drillers in the offer — evidence, not a promise. */
   .ctaDr{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:13px}
   .ctaDr>span{color:var(--muted);margin-right:2px}
@@ -304,6 +367,8 @@
     <button data-v="AZ" aria-pressed="true">Arizona</button>
     <button data-v="UT" aria-pressed="false">Utah</button>
   </div>
+  <!-- The toggle changes the question, not just the dataset. Worth one line. -->
+  <div class="stateWhy" id="stateWhy"></div>
   <h1 id="headline">Will you hit water — and what will it cost?</h1>
   <p class="sub" id="headIntro"></p>
   <!-- Background moved behind a toggle. It is worth reading once and never
@@ -399,9 +464,15 @@
       <button id="goBtn" type="button">Look it up</button>
     </div>
     <div class="note" id="modeHint">Parcel number for Mohave or Yavapai County. We'll search both.</div>
+
+    <!-- Says what comes back, before they commit. The mode hint tells them what
+         to type; nothing was telling them what they would get for it. -->
+    <div class="expect" id="expect"></div>
     <div id="parcelBox"></div>
 
     <label for="radius">Search radius</label>
+    <div class="note" style="margin:-2px 0 6px">How far out to look for neighbouring wells.
+      Wider finds more records but crosses into different ground.</div>
     <select id="radius">
       <option value="805">½ mile</option>
       <option value="1609">1 mile</option>
@@ -441,6 +512,9 @@
   <div class="verdict" id="verdict"></div>
 </div>
 
+<!-- The question the tool exists to answer, shown rather than explained. -->
+<div class="cmpWrap" id="compare"></div>
+
 <div id="resultsHost">
   <div id="wellList"></div>
   <div id="drillersBox"></div>
@@ -457,9 +531,21 @@
     <span class="tag t-you">you</span>
   </div>
   <table>
-    <thead><tr><th>Item</th><th class="n">Low</th><th class="n">Likely</th><th class="n">High</th></tr></thead>
+    <thead><tr><th>Item</th>
+      <th class="n" title="Everything goes right: shallow water, easy access, no surprises">Low</th>
+      <th class="n" title="The midpoint — not a quote, and not what you should budget">Likely</th>
+      <th class="n" title="What to actually budget for. Deep water, difficult ground, long runs">High</th>
+    </tr></thead>
     <tbody id="lines"></tbody>
   </table>
+  <!-- "Likely" gets read as a quote. It isn't one, and the gap between it and
+       High is where people get hurt. Said once, plainly, under the table. -->
+  <div class="colkey">
+    <div><b>Low</b> — everything goes right: shallow water, easy access, no surprises.</div>
+    <div><b>Likely</b> — the midpoint of published ranges. A planning figure, <em>not a quote</em>.</div>
+    <div><b>High</b> — <strong>what to actually budget.</strong> Deep water, hard ground, long runs.
+      Off-grid builds land here more often than people expect.</div>
+  </div>
   <div class="swing" id="swingNote"></div>
   <div class="note" id="assumptions"></div>
 </div>
@@ -639,7 +725,13 @@ const STATES = {
            "Built on 174,782 filed well records from the Department of Water Resources.",
     detail: "Built on <strong>174,782 filed well records</strong>. Statewide medians run 105 ft in Graham to "+
             "490 ft in Pinal — but the county figure can be wildly wrong for one spot. Around Golden Valley in "+
-            "Mohave, wells run three to six times the county median. That difference is tens of thousands of dollars."
+            "Mohave, wells run three to six times the county median. That difference is tens of thousands of dollars.",
+    // What one lookup actually returns, listed before they run it.
+    expect: ["How deep the wells around this parcel were drilled, and how far down they hit water",
+             "What a well should cost here — priced off those depths, not a county average",
+             "Whether the soil will take a conventional septic field, from the USDA survey",
+             "Rainfall at this point, and whether catchment could realistically cover you",
+             "Which drillers have worked this ground, and how many wells each has filed"]
   },
   UT: {
     name: "Utah",
@@ -659,7 +751,12 @@ const STATES = {
     missing: "Depths here are read from the individual filed well logs, one at a time — Utah's map layer "+
              "carries only an index, so the numbers come from a page deeper. Coverage starts in 1991, when "+
              "the state computerised its records; older wells appear without depths. Yield is not filed at "+
-             "all, so there is no gallons-per-minute figure to give you."
+             "all, so there is no gallons-per-minute figure to give you.",
+    expect: ["Every water right on and around the parcel — status, use, seniority and volume",
+             "Whether any are <strong>domestic</strong>, which is the one a home actually needs",
+             "How deep nearby wells went, read from the drillers' own filed logs",
+             "Dry holes on record — wells that were drilled here and found nothing",
+             "Which drillers have worked this ground, and soil suitability for septic"]
   }
 };
 
@@ -698,6 +795,20 @@ function applyState(code){
   const counties = code==="UT" ? UT_COUNTIES : Object.keys(COUNTIES);
   leadSel.innerHTML = counties.map(c=>"<option>"+c+"</option>").join("");
   leadSel.value = code==="UT" ? "Iron" : state.county;
+
+  // Rebuilt on every state switch, and shown again — switching states changes
+  // the question the tool answers, so the promise has to be re-read.
+  $("expect").style.display = $("wellList").children.length ? "none" : "";
+  $("expect").innerHTML = "<div class='expectHd'>What you'll get back</div><ul>"+
+    s.expect.map(x=>"<li>"+x+"</li>").join("")+"</ul>"+
+    "<div class='expectFoot'>All of it from public state records, in about ten seconds. "+
+    "Nothing is emailed and nothing is stored.</div>";
+
+  $("stateWhy").innerHTML = code==="AZ"
+    ? "In Arizona you may drill a domestic well on your own land without buying a water right, "+
+      "so the question is <strong>what it costs</strong>."
+    : "In Utah you may not drill without an approved water right, and in closed basins the state "+
+      "has stopped issuing them — so the question is <strong>whether you're allowed at all</strong>.";
 
   $("kicker").textContent   = s.kicker;
   $("headline").textContent = s.question;
@@ -977,9 +1088,12 @@ async function lookup(){
     return;
   }
 
-  // Once anything real has been looked up, the worked example has served its
-  // purpose and only competes for attention.
+  // Once anything real has been looked up, the worked example and the
+  // "what you'll get back" panel have both served their purpose. Nobody needs
+  // to be told what a lookup returns after they have watched one return it,
+  // and on a phone that copy is pure vertical cost from then on.
   const demo=$("demoStrip"); if(demo) demo.style.display="none";
+  const exp=$("expect"); if(exp) exp.style.display="none";
 
   const dist=$("radius").value;
   const btn=$("goBtn");btn.disabled=true;btn.textContent="Looking…";
@@ -1352,6 +1466,29 @@ function rightsHtml(w){
       (w.monitoringCount?" ("+w.monitoringCount+" monitoring bores excluded)":"")+
       " · "+w.undergroundCount+" underground · "+w.springCount+" spring · "+w.surfaceCount+" surface</p>"+
     "<div class='densbox' style='text-align:left'>"+verdict+"</div>"+
+    /* The table below is unreadable without this. "Perfected, 1951, domestic,
+       8 af" is four pieces of jargon in a row, and a buyer who doesn't know
+       what they mean will either ignore the panel or misread it. Folded, so it
+       costs one line once someone has learned it. */
+    "<details class='glossary'><summary>What these columns mean</summary>"+
+    "<div class='gloss'>"+
+      "<p><b>Type</b> — where the water comes from. <em>Underground</em> is a well; "+
+      "<em>Surface</em> a stream or river; <em>Spring</em> a natural outflow. "+
+      "<em>Abandonded Well</em> (Utah's spelling) means the right survives but the hole doesn't — "+
+      "you'd be buying paper and drilling fresh.</p>"+
+      "<p><b>Status</b> — <em>Perfected</em> means the water has been put to use and the right is "+
+      "fully established. <em>Approved</em> means permission was granted but use may not be proven yet. "+
+      "Anything lapsed, forfeited or rejected is filtered out before you see this table.</p>"+
+      "<p><b>Uses</b> — what the water is legally for. A right approved for irrigation or stock "+
+      "<em>does not</em> let you supply a house. <strong>Domestic is the one a home needs.</strong></p>"+
+      "<p><b>Priority</b> — the year the claim was established. Utah is first in time, first in right: "+
+      "in a shortage, an 1870 right gets water before a 2022 right does. Older is stronger.</p>"+
+      "<p><b>Volume</b> — acre-feet per year. One acre-foot is about 326,000 gallons — roughly what a "+
+      "careful off-grid household uses in five to eight years, or a suburban lawn drinks in one.</p>"+
+      "<p class='glossWarn'>None of this proves a right transfers with the land. In Utah water rights "+
+      "are separate property and can be sold away from the ground they once served. Title work is the "+
+      "only way to know.</p>"+
+    "</div></details>"+
     "<table class='stack'><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
     "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
     "<tbody>"+rows+"</tbody></table>"+
@@ -1712,6 +1849,87 @@ function renderTopVerdict(){
     (risks.length?"<ul class='risks'><li>"+risks.join("</li><li>")+"</li></ul>":"");
 }
 
+/* The three-way comparison. This is the question the tool exists to answer —
+   "what water source will actually work on this parcel" — and it was previously
+   only answerable by clicking each option and remembering the numbers.
+
+   Deliberately shows upfront cost separately from the running total, because
+   the two options trade off exactly there: a well is expensive once, hauling is
+   cheap once and expensive forever. A single figure hides that. */
+function renderCompare(options, years, price){
+  const box=$("compare"); if(!box) return;
+  const money=v=>v==null?"—":"$"+Math.round(v).toLocaleString();
+
+  const rows=["well","haul","rain"].map(k=>{
+    const o=options[k];
+    if(!o) return {
+      k, short:"Drill a well", blocked:true,
+      why: state.region==="UT"
+        ? "No usable well depths on file near this point, so there is nothing honest to price."
+        : "No depth records for this location."
+    };
+    const upfront = o.upfront ? o.mid : o.upfrontOnly;
+    let verdict="";
+    if(k==="well"){
+      const D=state.utDepths;
+      verdict = D && D.dryHoleCount
+        ? "<b class='warn'>"+D.dryHoleCount+" dry hole"+(D.dryHoleCount===1?"":"s")+" nearby</b> · median "+
+          (D.medianDepthFt||"—")+" ft"
+        : state.local
+          ? "Median "+Math.round(state.local.med||state.local.avg)+" ft nearby"+
+            (state.local.dryHoleCount===0?", no dry holes":"")
+          : "From county records";
+      if(state.region==="UT" && state.rights && state.rights.domesticCount===0){
+        verdict = "<b class='warn'>No domestic water right — may not be permitted</b>";
+      }
+    }else if(k==="haul"){
+      verdict = "No permit needed · works from day one";
+    }else{
+      const c=o.coverage!=null?Math.round(o.coverage*100):null;
+      verdict = c!=null
+        ? "Covers ~"+c+"% of your use in a dry year"+(c<60?" — the rest is hauled":"")
+        : "Depends on roof area and rainfall";
+    }
+    return { k, short:o.short, upfront, total:o.mid, low:o.low, high:o.high, verdict };
+  });
+
+  const live=rows.filter(r=>!r.blocked);
+  const cheapest = live.length ? live.reduce((a,b)=>a.total<=b.total?a:b) : null;
+
+  box.innerHTML =
+    "<div class='cmpHd'>What water will cost on this parcel</div>"+
+    "<p class='cmpSub'>All three options, over "+years+" years. The land itself is "+money(price)+".</p>"+
+    "<table class='cmp stack'><thead><tr><th>Option</th><th class='n'>Upfront</th>"+
+    "<th class='n'>Total over "+years+" yrs</th><th>What it means here</th><th></th></tr></thead><tbody>"+
+    rows.map(r=>{
+      if(r.blocked) return "<tr class='cmpRow blocked'><td data-label='Option'><b>"+r.short+"</b></td>"+
+        "<td class='n' data-label='Upfront'>—</td><td class='n' data-label='Total'>—</td>"+
+        "<td data-label='What it means'>"+r.why+"</td><td></td></tr>";
+      const isSel = r.k===state.water;
+      const best = cheapest && r.k===cheapest.k;
+      return "<tr class='cmpRow"+(isSel?" sel":"")+"'>"+
+        "<td data-label='Option'><b>"+r.short+"</b>"+(best?" <span class='cheap'>lowest</span>":"")+"</td>"+
+        "<td class='n' data-label='Upfront'>"+money(r.upfront)+"</td>"+
+        "<td class='n' data-label='Total over "+years+" yrs'><b>"+money(r.total)+"</b>"+
+          "<span class='rng'>"+money(r.low)+"–"+money(r.high)+"</span></td>"+
+        "<td data-label='What it means'>"+r.verdict+"</td>"+
+        "<td data-label=''>"+(isSel
+          ? "<span class='cmpSel'>showing below</span>"
+          : "<button class='cmpBtn' data-opt='"+r.k+"'>See detail</button>")+"</td></tr>";
+    }).join("")+
+    "</tbody></table>"+
+    "<p class='cmpFoot'>A well is expensive once. Hauling is cheap once and expensive forever — "+
+    "at "+years+" years the two often cross over. Change the year count above to see where.</p>";
+}
+
+// Switching option from the comparison table drives the same control a user
+// would click, so the rest of the page stays in step.
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".cmpBtn"); if(!b) return;
+  const btn=[...$("waterSeg").children].find(x=>x.dataset.v===b.dataset.opt);
+  if(btn) btn.click();
+});
+
 function render(){
   // COUNTIES holds Arizona well statistics only. Utah county names are now
   // valid selections (parcel search needs them) but have no entry here, so
@@ -1768,31 +1986,63 @@ function render(){
        : spread>0.6 ? "Depths vary enormously across this county. Check your actual spot above."
        : "Depths here are relatively consistent across the county.");
 
-  let wLow,wMid,wHigh,wLabel,wDetail;
-  if(state.water==="well"){
-    wLow  = dLow*C.drillFtLow   + C.wellKitLow;
-    wMid  = dMid*C.drillFtMid   + C.wellKitMid;
-    wHigh = dHigh*C.drillFtHigh + C.wellKitHigh;
-    wLabel="Well (drilling + pump, casing, tank)";
-    wDetail=dLow+"–"+dHigh+" ft at $"+C.drillFtLow+"–"+C.drillFtHigh+"/ft, based on "+
-      (usingLocal?"wells within "+L.miles+" miles":"the county average");
-  }else if(state.water==="rain"){
-    const r=rainMath();
-    // Catchment rarely covers everything in Arizona — the shortfall is hauled.
-    const haulLow=C.haulYrLow*r.shortfallShare, haulMid=C.haulYrMid*r.shortfallShare,
-          haulHigh=C.haulYrHigh*r.shortfallShare;
-    wLow  = C.cisternLow  + C.catchLow  + haulLow*years;
-    wMid  = C.cisternMid  + C.catchMid  + haulMid*years;
-    wHigh = C.cisternHigh + C.catchHigh + haulHigh*years;
-    wLabel="Catchment + cistern"+(r.shortfallShare>0.02?" + top-up hauling ("+years+" yr)":"");
-    wDetail=r.detail;
-  }else{
-    wLow  = C.cisternLow  + C.haulYrLow*years;
-    wMid  = C.cisternMid  + C.haulYrMid*years;
-    wHigh = C.cisternHigh + C.haulYrHigh*years;
-    wLabel="Cistern + "+years+" yr of hauled water";
-    wDetail="$"+C.haulYrLow.toLocaleString()+"–"+C.haulYrHigh.toLocaleString()+"/yr delivered";
+  /* Cost every water option, not just the selected one.
+
+     The arithmetic for all three already ran on every render — the old code
+     computed one and discarded the logic for the other two. Keeping all three
+     lets the page answer "which water source works on this parcel" by showing
+     the comparison, instead of asking the reader to click each button and hold
+     three numbers in their head. */
+  function costWater(kind){
+    if(kind==="well"){
+      // No depth data means no honest well price. Say so rather than guess.
+      if(!src) return null;
+      return {
+        kind,
+        low:  dLow*C.drillFtLow   + C.wellKitLow,
+        mid:  dMid*C.drillFtMid   + C.wellKitMid,
+        high: dHigh*C.drillFtHigh + C.wellKitHigh,
+        label:"Well (drilling + pump, casing, tank)",
+        short:"Drill a well",
+        upfront:true,   // paid once, at the start
+        detail: dLow+"–"+dHigh+" ft at $"+C.drillFtLow+"–"+C.drillFtHigh+"/ft, based on "+
+          (usingLocal?"wells within "+L.miles+" miles":"the county average")
+      };
+    }
+    if(kind==="rain"){
+      const r=rainMath();
+      // Catchment rarely covers a full year out here — the shortfall is hauled.
+      const hl=C.haulYrLow*r.shortfallShare, hm=C.haulYrMid*r.shortfallShare,
+            hh=C.haulYrHigh*r.shortfallShare;
+      return {
+        kind,
+        low:  C.cisternLow  + C.catchLow  + hl*years,
+        mid:  C.cisternMid  + C.catchMid  + hm*years,
+        high: C.cisternHigh + C.catchHigh + hh*years,
+        label:"Catchment + cistern"+(r.shortfallShare>0.02?" + top-up hauling ("+years+" yr)":""),
+        short:"Rainwater catchment",
+        upfrontOnly: C.cisternMid + C.catchMid,
+        detail:r.detail,
+        coverage:r.coverageDry
+      };
+    }
+    return {
+      kind,
+      low:  C.cisternLow  + C.haulYrLow*years,
+      mid:  C.cisternMid  + C.haulYrMid*years,
+      high: C.cisternHigh + C.haulYrHigh*years,
+      label:"Cistern + "+years+" yr of hauled water",
+      short:"Cistern + hauling",
+      upfrontOnly: C.cisternMid,
+      detail:"$"+C.haulYrLow.toLocaleString()+"–"+C.haulYrHigh.toLocaleString()+"/yr delivered"
+    };
   }
+
+  const options = { well:costWater("well"), haul:costWater("haul"), rain:costWater("rain") };
+  const chosen = options[state.water] || options.haul;
+  const wLow=chosen.low, wMid=chosen.mid, wHigh=chosen.high,
+        wLabel=chosen.label, wDetail=chosen.detail;
+  renderCompare(options, years, price);
 
   // Septic: derived from soil when we have it, otherwise the statewide range.
   const soilMap = state.soil ? (SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown) : null;
