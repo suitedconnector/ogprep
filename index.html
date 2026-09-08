@@ -245,6 +245,42 @@
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* Who holds the water — companies vs individuals. */
+  .holders{margin:12px 0 4px;padding:13px 15px;border-radius:10px;
+    background:rgba(91,143,185,.12);border:1px solid rgba(91,143,185,.55)}
+  .holdHd{font-size:14.5px;font-weight:800;color:var(--paper-ink);margin-bottom:5px}
+  .holdLead,.holdAsk{margin:0 0 9px;font-size:13.5px;line-height:1.55;color:var(--paper-ink)}
+  .holdList{margin:0 0 10px;padding:0;list-style:none}
+  .holdList li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
+    border-bottom:1px solid var(--paper-line2);font-size:13.5px;align-items:baseline}
+  .holdList li:last-child{border-bottom:0}
+  .holdList li span{color:var(--paper-muted);font-size:12px;white-space:nowrap}
+  .holdLinks{display:flex;flex-wrap:wrap;gap:8px}
+  .holdLinks a{padding:7px 12px;border-radius:999px;border:1px solid var(--paper-line);
+    background:#fff;color:#7a5a12;font-weight:700;font-size:12.5px;text-decoration:none}
+
+  /* Where to buy a right. */
+  details.market{margin:10px 0 4px;border:1px solid var(--paper-line);border-radius:10px;
+    background:#fff}
+  details.market>summary{cursor:pointer;list-style:none;padding:10px 13px;font-size:13.5px;
+    font-weight:800;color:var(--paper-ink);display:flex;align-items:center;gap:8px}
+  details.market>summary::-webkit-details-marker{display:none}
+  details.market>summary:before{content:"\25B8";transition:transform .15s;color:var(--paper-muted)}
+  details.market[open]>summary:before{transform:rotate(90deg)}
+  .marketBody{padding:0 14px 12px;font-size:13.5px;line-height:1.6;color:var(--paper-ink)}
+  .mktLead{margin:0 0 8px}
+  .mktCaveat,.mktNote{font-size:12px;color:var(--paper-muted);line-height:1.5;margin:0 0 9px}
+  .mktArea{margin:0 0 10px;padding:8px 11px;border-radius:7px;
+    background:var(--paper-alt);border:1px solid var(--paper-line)}
+  .mktLinks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:11px}
+  .mktLinks a{padding:7px 12px;border-radius:999px;border:1px solid var(--paper-line);
+    background:var(--paper-alt);color:#7a5a12;font-weight:700;font-size:12.5px;text-decoration:none}
+  .mktLinks a:hover{border-color:var(--accent)}
+  .mktCheck{padding:10px 12px;border-radius:8px;background:rgba(200,162,74,.12);
+    border:1px solid rgba(200,162,74,.5)}
+  .mktCheck ol{margin:7px 0 0;padding-left:20px}
+  .mktCheck li{padding:3px 0}
+
   /* Next steps for a Utah water right. */
   details.steps{margin:12px 0 4px;border:1px solid var(--accent);border-radius:10px;
     background:var(--paper-alt)}
@@ -1724,6 +1760,134 @@ function utahNextStepsHtml(w){
     "</div></details>";
 }
 
+/* Where to actually buy a right, and what it may cost.
+
+   Deliberately not a marketplace. Utah water rights are real property, so
+   brokering them for other people needs a licence — and three exchanges
+   already hold the seller relationships. What none of them do is tell a buyer
+   whether a right is any good: whether it can move to their basin, and whether
+   it survives the regulation schedule. That analysis is the part we own.
+
+   The right number encodes the policy area — 73-2832 is Area 73, Cedar City
+   Valley — so the area is derived from data already on screen. */
+const AF_PER_HOUSE = 0.45;      // Division standard, indoor domestic
+const AF_PER_ANIMAL = 0.028;    // per cow or horse equivalent
+const AF_PER_IRR_ACRE = 4.0;    // per irrigated acre
+
+/* Two observed sale prices, both from Utah Water Hub listings in September
+   2026: Area 54 at 0.75 AF for $33,750 and Area 15 at 0.336 AF for $15,120.
+   Both land near $45,000/AF. Two points is not a market, and neither is in
+   Iron County — so this is shown as a reference figure to check locally, not
+   as an estimate for a specific basin. */
+const AF_PRICE_REF = 45000;
+
+function policyAreaOf(w){
+  const r = (w && w.rights || []).find(x => /^(\d+)-/.test(String(x.waterRight||"")));
+  return r ? String(r.waterRight).match(/^(\d+)-/)[1] : null;
+}
+
+function marketHtml(w){
+  const area = policyAreaOf(w);
+  const need = AF_PER_HOUSE + 2*AF_PER_ANIMAL + 0.125*AF_PER_IRR_ACRE;   // ~1.0 AF
+  const money = v => "$"+Math.round(v).toLocaleString();
+
+  return "<details class='market'><summary>Where to buy a water right, and what it costs</summary>"+
+    "<div class='marketBody'>"+
+
+    "<p class='mktLead'>A house, two animals and an eighth-acre of garden needs about "+
+      "<b>"+need.toFixed(2)+" acre-feet</b> by the Division's own standards. At recently listed "+
+      "Utah prices of roughly <b>"+money(AF_PRICE_REF)+" per acre-foot</b>, that is "+
+      "<b>"+money(need*AF_PRICE_REF)+"</b> for the right alone — before you drill anything.</p>"+
+
+    "<p class='mktCaveat'>That per-acre-foot figure comes from two listings in Areas 54 and 15 "+
+      "in September 2026. Two sales are not a market, and neither is in this basin. Treat it as "+
+      "the order of magnitude to check locally, not a quote — in a closed basin it may be far higher, "+
+      "and in an open one you may not need to buy at all.</p>"+
+
+    (area ? "<p class='mktArea'>Rights near this point are in <b>Policy Area "+area+"</b>. "+
+      "A right must be movable to your place of use, so that is the number to filter listings by.</p>" : "")+
+
+    "<div class='mktLinks'>"+
+      "<a href='https://utahwaterhub.com/listings' target='_blank' rel='noopener'>Utah Water Hub</a>"+
+      "<a href='https://utahwaterrightexchange.com/' target='_blank' rel='noopener'>Utah Water Right Exchange</a>"+
+      "<a href='https://www.utahwaterandland.com/' target='_blank' rel='noopener'>Utah Water and Land</a>"+
+      "<a href='https://classifieds.ksl.com/search/Other-Real-Estate/Water-Rights' target='_blank' rel='noopener'>KSL Classifieds</a>"+
+    "</div>"+
+
+    "<div class='mktCheck'><b>Before you pay for any listing, check three things this page can "+
+      "already tell you:</b>"+
+      "<ol>"+
+        "<li><b>Priority date.</b> In a critical management area rights are regulated off "+
+          "junior-first. A 2004 right in Cedar Valley stops in <b>2035</b>. A pre-1935 right runs "+
+          "to 2070. Two rights with the same acre-feet can be worth very different money.</li>"+
+        "<li><b>Policy area.</b> Buying a right in the wrong area buys you nothing — the State "+
+          "Engineer must approve moving it to your place of use.</li>"+
+        "<li><b>Whether it has been used.</b> Seven years of non-use makes a right forfeitable. "+
+          "Ask the seller for evidence of beneficial use.</li>"+
+      "</ol>"+
+    "</div>"+
+
+    "<div class='mktNote'>We have no commercial relationship with any of these and take nothing "+
+      "on a sale. They are listed because they are where Utah rights are actually traded.</div>"+
+
+    "</div></details>";
+}
+
+/* Who actually holds the water here.
+
+   In a closed basin individual rights stop trading — owners hold. The 41
+   "domestic rights" near a Cedar Valley parcel turn out to be a handful of
+   mutual water companies holding dozens each, not 41 available neighbours.
+   That distinction decides the route: you are not buying a right, you are
+   buying shares in a company, or connecting to a district, or hauling.
+
+   Shares trade far more readily than rights, so naming the company is more
+   actionable than any count of rights. */
+const WATER_CO = /(water users|water compan|irrigation|canal|conservancy|water district|mutual|water assoc|water corp)/i;
+
+function holdersHtml(w){
+  const rights = (w && w.rights) || [];
+  if(!rights.length) return "";
+
+  const tally = new Map();
+  rights.forEach(r => {
+    const o = (r.owner || "").trim();
+    if(!o) return;
+    const k = o.toUpperCase().replace(/[.,]/g,"").replace(/\s+/g," ");
+    const t = tally.get(k) || { name:o, n:0, dom:0 };
+    t.n++;
+    if((r.uses||[]).includes("Domestic")) t.dom++;
+    tally.set(k, t);
+  });
+
+  const all = [...tally.values()].sort((a,b) => b.n - a.n);
+  const companies = all.filter(t => WATER_CO.test(t.name));
+  if(!companies.length || companies[0].n < 3) return "";
+
+  const shown = companies.slice(0,4);
+  const held = companies.reduce((a,t) => a + t.n, 0);
+  const share = Math.round(held / rights.length * 100);
+
+  return "<div class='holders'>"+
+    "<div class='holdHd'>Water here is held by companies, not individuals</div>"+
+    "<p class='holdLead'><b>"+share+"%</b> of the live rights near this point belong to water "+
+      "companies or districts. In a basin where individual rights rarely come up for sale, buying "+
+      "<b>shares</b> in one of these is usually the realistic route — shares trade far more freely "+
+      "than rights do.</p>"+
+    "<ul class='holdList'>"+
+      shown.map(t => "<li><b>"+t.name+"</b><span>"+t.n+" right"+(t.n===1?"":"s")+
+        (t.dom ? " · "+t.dom+" domestic" : "")+"</span></li>").join("")+
+    "</ul>"+
+    "<p class='holdAsk'><b>What to ask them:</b> whether shares are available, what one share "+
+      "delivers in acre-feet, whether the system serves your parcel, and what the connection costs. "+
+      "Ask too whether any of their wells are being abandoned — a company can hold rights and still "+
+      "have no working well.</p>"+
+    "<div class='holdLinks'>"+
+      "<a href='https://utahwaterhub.com/listings?type=share' target='_blank' rel='noopener'>Irrigation shares for sale</a>"+
+      "<a href='https://waterrights.utah.gov/contact.asp' target='_blank' rel='noopener'>Division regional office</a>"+
+    "</div></div>";
+}
+
 function utLogsHtml(d){
   if(!d.logs || !d.logs.length){
     return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
@@ -1844,7 +2008,9 @@ function rightsHtml(w){
     "<table class='stack'><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
     "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
     "<tbody>"+rows+"</tbody></table>"+
+    holdersHtml(w)+
     utahNextStepsHtml(w)+
+    marketHtml(w)+
     "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
     "A diversion near a parcel does not prove the right conveys with that land — water rights are "+
     "separate property in Utah. Verify with title work.</div></div>";
