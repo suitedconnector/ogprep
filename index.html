@@ -245,6 +245,45 @@
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* In-app water right checker. */
+  .wrCheck{margin:0 0 12px;padding:12px 13px;border-radius:9px;
+    background:var(--paper-alt);border:1px solid var(--paper-line)}
+  .wrCheck label{display:block;font-size:13px;font-weight:700;color:var(--paper-ink);margin-bottom:7px}
+  .wrRow{display:grid;grid-template-columns:1fr auto;gap:8px}
+  .wrRow input{background:#fff;color:var(--paper-ink);border:1px solid var(--paper-line);
+    border-radius:8px;padding:10px 11px;font-size:14.5px;width:100%}
+  .wrRow button{background:var(--info-fill);color:var(--on-info);border:0;border-radius:8px;
+    padding:10px 16px;font-weight:800;font-size:13.5px;cursor:pointer;white-space:nowrap}
+  .wrRow button:disabled{opacity:.6;cursor:default}
+  .wrHint{font-size:11.5px;color:var(--paper-muted);margin-top:7px;line-height:1.5}
+  .wrPending{margin-top:10px;font-size:13px;color:var(--paper-muted)}
+  .wrBad{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.5;
+    background:rgba(193,80,46,.12);border:1px solid rgba(193,80,46,.5);color:var(--paper-ink)}
+  .wrCard{margin-top:11px;padding:12px 13px;border-radius:9px;background:#fff;border:1px solid}
+  .wrCard.wrYes{border-color:#8fbf6a} .wrCard.wrMaybe{border-color:#d9b45a}
+  .wrCard.wrNo{border-color:#c98b76}
+  .wrHead{font-size:15px;font-weight:800;color:var(--paper-ink);display:flex;
+    justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:9px}
+  .wrHead span{font-size:12.5px;font-weight:600;color:var(--paper-muted)}
+  .wrGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+  @media(max-width:520px){.wrGrid{grid-template-columns:1fr}}
+  .wrGrid>div{display:flex;justify-content:space-between;gap:10px;padding:4px 0;
+    border-bottom:1px solid var(--paper-line2);font-size:13px}
+  .wrGrid span{color:var(--paper-muted)}
+  .wrGrid b{color:var(--paper-ink);text-align:right}
+  .wrSupports{margin-top:9px;font-size:13px;line-height:1.55;color:var(--paper-ink)}
+  .wrFlags{margin:10px 0 0;padding:0;list-style:none;font-size:13px;line-height:1.55}
+  .wrFlags li{padding:7px 10px;border-radius:7px;margin-bottom:6px}
+  .wf-bad{background:rgba(193,80,46,.13);color:#7d2312}
+  .wf-warn{background:rgba(211,116,47,.13);color:#7d3a28}
+  .wf-good{background:rgba(127,166,80,.16);color:#315b1c}
+  .wrPods{margin-top:8px;font-size:12px;color:var(--paper-muted)}
+  .wrLinks{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .wrLinks a{padding:6px 11px;border-radius:999px;border:1px solid var(--paper-line);
+    color:#7a5a12;font-weight:700;font-size:12px;text-decoration:none}
+  .wrCaveat{margin-top:9px;font-size:11.5px;color:var(--paper-muted);line-height:1.5}
+  .mktLinks>span{font-size:12px;color:var(--paper-muted);align-self:center;margin-right:2px}
+
   /* Who holds the water — companies vs individuals. */
   .holders{margin:12px 0 4px;padding:13px 15px;border-radius:10px;
     background:rgba(91,143,185,.12);border:1px solid rgba(91,143,185,.55)}
@@ -1807,11 +1846,24 @@ function marketHtml(w){
     (area ? "<p class='mktArea'>Rights near this point are in <b>Policy Area "+area+"</b>. "+
       "A right must be movable to your place of use, so that is the number to filter listings by.</p>" : "")+
 
-    "<div class='mktLinks'>"+
+    /* The checker comes first. Sending people out to a marketplace is sending
+       them somewhere that will not tell them whether the right is any good —
+       so the analysis happens here, and the listings are a footnote. */
+    "<div class='wrCheck'>"+
+      "<label for='wrInput'>Seen a right for sale? Paste its number and we'll check it.</label>"+
+      "<div class='wrRow'>"+
+        "<input type='text' id='wrInput' placeholder='e.g. 73-2832' autocomplete='off'>"+
+        "<button type='button' id='wrGo'>Check it</button>"+
+      "</div>"+
+      "<div class='wrHint'>Works with any listing — Utah Water Hub, KSL, a broker, a neighbour. "+
+        "We read the state's record and tell you what it means.</div>"+
+      "<div id='wrResult'></div>"+
+    "</div>"+
+
+    "<div class='mktLinks'><span>Where rights are listed:</span>"+
       "<a href='https://utahwaterhub.com/listings' target='_blank' rel='noopener'>Utah Water Hub</a>"+
-      "<a href='https://utahwaterrightexchange.com/' target='_blank' rel='noopener'>Utah Water Right Exchange</a>"+
-      "<a href='https://www.utahwaterandland.com/' target='_blank' rel='noopener'>Utah Water and Land</a>"+
-      "<a href='https://classifieds.ksl.com/search/Other-Real-Estate/Water-Rights' target='_blank' rel='noopener'>KSL Classifieds</a>"+
+      "<a href='https://utahwaterrightexchange.com/' target='_blank' rel='noopener'>Water Right Exchange</a>"+
+      "<a href='https://classifieds.ksl.com/search/Other-Real-Estate/Water-Rights' target='_blank' rel='noopener'>KSL</a>"+
     "</div>"+
 
     "<div class='mktCheck'><b>Before you pay for any listing, check three things this page can "+
@@ -1887,6 +1939,80 @@ function holdersHtml(w){
       "<a href='https://waterrights.utah.gov/contact.asp' target='_blank' rel='noopener'>Division regional office</a>"+
     "</div></div>";
 }
+
+/* Check a listed water right, in-app.
+
+   The exchanges tell you a right exists and what it costs. They do not tell
+   you whether it is live, whether it covers domestic use, or when the
+   regulation schedule shuts it off. That analysis is the reason to be here
+   rather than there, so it renders in place — nobody is sent away to work out
+   what they just read. */
+async function checkWaterRight(){
+  const el=$("wrInput"), out=$("wrResult"), btn=$("wrGo");
+  const wr=(el.value||"").trim();
+  if(!wr){ el.focus(); return; }
+
+  btn.disabled=true; btn.textContent="Checking…";
+  out.innerHTML="<div class='wrPending'>Reading the state record for "+wr+"…</div>";
+  try{
+    const j=await (await fetch("/api/waterright?wr="+encodeURIComponent(wr))).json();
+    out.innerHTML = j.ok ? wrResultHtml(j)
+      : "<div class='wrBad'>"+(j.error||"Lookup failed.")+
+        (j.checkAt?" <a href='"+j.checkAt+"' target='_blank' rel='noopener'>Check on the Division's site</a>":"")+
+        "</div>";
+  }catch(e){
+    out.innerHTML="<div class='wrBad'>Couldn't reach the lookup: "+(e.message||e)+"</div>";
+  }
+  btn.disabled=false; btn.textContent="Check it";
+}
+
+function wrResultHtml(j){
+  const money=v=>"$"+Math.round(v).toLocaleString();
+  const bad=j.flags.filter(f=>f.level==="bad").length;
+  const verdict = bad ? "wrNo" : (j.flags.some(f=>f.level==="warn") ? "wrMaybe" : "wrYes");
+  const head = bad
+    ? "This one has a problem"
+    : (verdict==="wrMaybe" ? "Worth pursuing, with questions" : "This one looks clean");
+
+  return "<div class='wrCard "+verdict+"'>"+
+    "<div class='wrHead'>"+head+"<span>"+j.wr+"</span></div>"+
+
+    "<div class='wrGrid'>"+
+      "<div><span>Status</span><b>"+(j.status||j.detailStatus||"—")+"</b></div>"+
+      "<div><span>Priority</span><b>"+(j.priorityYear||"—")+"</b></div>"+
+      "<div><span>Uses</span><b>"+(j.uses.length?j.uses.join(", "):"—")+"</b></div>"+
+      "<div><span>Volume</span><b>"+(j.acreFeet!=null?j.acreFeet+" af":"—")+"</b></div>"+
+      "<div><span>Area</span><b>"+(j.policyArea?"Area "+j.policyArea:"—")+"</b></div>"+
+      "<div><span>Owner of record</span><b>"+(j.owner||"—")+"</b></div>"+
+    "</div>"+
+
+    (j.supports ? "<div class='wrSupports'>That volume supports about <b>"+
+      j.supports.typicalHomesteads+"</b> household"+(j.supports.typicalHomesteads===1?"":"s")+
+      " at the Division's standard — a house, two animals and an eighth-acre of garden — "+
+      "or <b>"+j.supports.irrigatedAcres+"</b> irrigated acres. "+
+      j.supports.gallonsPerYear.toLocaleString()+" gallons a year.</div>" : "")+
+
+    (j.flags.length ? "<ul class='wrFlags'>"+
+      j.flags.map(f=>"<li class='wf-"+f.level+"'>"+f.text+"</li>").join("")+"</ul>" : "")+
+
+    (j.diversionPoints && j.diversionPoints.length
+      ? "<div class='wrPods'>"+j.diversionPoints.length+" point"+
+        (j.diversionPoints.length===1?"":"s")+" of diversion on record"+
+        (j.diversionPoints[0].legal?" · "+j.diversionPoints[0].legal:"")+"</div>" : "")+
+
+    "<div class='wrLinks'>"+
+      "<a href='"+j.officialRecord+"' target='_blank' rel='noopener'>Official record</a>"+
+      (j.wellLog?"<a href='"+j.wellLog+"' target='_blank' rel='noopener'>Well log</a>":"")+
+    "</div>"+
+
+    "<div class='wrCaveat'>"+j.caveats[0]+"</div>"+
+  "</div>";
+}
+
+document.addEventListener("click",e=>{ if(e.target.id==="wrGo") checkWaterRight(); });
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && e.target.id==="wrInput"){ e.preventDefault(); checkWaterRight(); }
+});
 
 function utLogsHtml(d){
   if(!d.logs || !d.logs.length){
