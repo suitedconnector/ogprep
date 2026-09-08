@@ -245,6 +245,22 @@
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* Next steps for a Utah water right. */
+  details.steps{margin:12px 0 4px;border:1px solid var(--accent);border-radius:10px;
+    background:var(--paper-alt)}
+  details.steps>summary{cursor:pointer;list-style:none;padding:11px 13px;font-size:14px;
+    font-weight:800;color:var(--paper-ink);display:flex;align-items:center;gap:8px}
+  details.steps>summary::-webkit-details-marker{display:none}
+  details.steps>summary:before{content:"\25B8";transition:transform .15s;color:var(--paper-muted)}
+  details.steps[open]>summary:before{transform:rotate(90deg)}
+  .stepsBody{padding:0 14px 12px}
+  .stepsBody ol{margin:0;padding-left:20px;font-size:13.5px;line-height:1.6;color:var(--paper-ink)}
+  .stepsBody li{padding:5px 0}
+  .stepsBody a{color:#7a5a12;font-weight:600}
+  .stepsAlt{margin-top:11px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.55;
+    background:rgba(127,166,80,.16);border:1px solid rgba(127,166,80,.5);color:var(--paper-ink)}
+  .stepsWarn{margin-top:9px;font-size:12px;line-height:1.5;color:var(--paper-muted)}
+
   /* Folded glossary inside the water rights panel. */
   details.glossary{margin:10px 0 4px;border:1px solid var(--paper-line);border-radius:9px;background:#fff}
   details.glossary>summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:13px;
@@ -1624,6 +1640,90 @@ function utDepthsHtml(d){
     "individual filed logs, not the map index.</div></div>";
 }
 
+/* What to do with a water right number.
+
+   The panel above hands people a right number and a link, then stops. That is
+   the moment they need direction most, and the Division's own FAQ answers it
+   precisely — including the acre-foot standards and the Cedar City Valley
+   worked example. All of this is quoted from waterrights.utah.gov rather than
+   invented, and every step links back to the page that governs it.
+
+   Deliberately not advice: it names the process and the offices, and says
+   plainly where a professional is warranted. */
+function utahNextStepsHtml(w){
+  const dom = w ? w.domesticCount : null;
+  const closed = dom === 0;
+
+  const head = closed
+    ? "No domestic right nearby. Here's what getting one actually takes."
+    : "You found rights nearby. Here's what to do with those numbers.";
+
+  return "<details class='steps'"+(closed?" open":"")+">"+
+    "<summary>"+head+"</summary><div class='stepsBody'>"+
+
+    "<ol>"+
+
+    "<li><b>Find out whether the area is open, restricted or closed.</b> "+
+      "This decides which application you can even file. In a closed area no new water is "+
+      "appropriated — you must buy part of an existing right. "+
+      "<a href='https://waterrights.utah.gov/gisinfo/maps/agwpol.pdf' target='_blank' rel='noopener'>"+
+      "Groundwater policy map (PDF)</a></li>"+
+
+    "<li><b>Work out how much water you need.</b> The Division's standards: "+
+      "<b>0.45 acre-feet</b> for indoor domestic use, <b>0.028</b> per cow or horse, and "+
+      "<b>4.0 acre-feet per acre</b> irrigated. Their own Cedar City Valley example — a house, "+
+      "two animals and an eighth-acre of garden — comes to about <b>1.0 acre-foot</b>. "+
+      "<a href='https://waterrights.utah.gov/wrinfo/policy/wateruse.asp' target='_blank' rel='noopener'>"+
+      "Use standards</a> · "+
+      "<a href='https://waterrights.utah.gov/wrinfo/policy/wrareas/default.asp' target='_blank' rel='noopener'>"+
+      "Area policies</a></li>"+
+
+    "<li><b>Check the seller actually owns it.</b> County recorders hold title in Utah — the "+
+      "Division's ownership record is an indication, not the official record. If the seller is not "+
+      "shown as owner at the Division, title work is needed before it can pass to you. "+
+      "Iron County Recorder: <b>1-435-477-8350</b></li>"+
+
+    "<li><b>Check it hasn't been abandoned.</b> A right unused for <b>seven years</b> is subject to "+
+      "forfeiture. Look for evidence it has been exercised, and check its status in the Division's "+
+      "records before you pay for it. "+
+      "<a href='https://le.utah.gov/xcode/Title73/Chapter1/73-1-S4.html' target='_blank' rel='noopener'>"+
+      "Utah Code 73-1-4</a></li>"+
+
+    "<li><b>Ask the regional office before you buy.</b> They will tell you whether the right is "+
+      "likely to be suitable for your intended use and place of use. This call is free and it is "+
+      "the step most people skip. "+
+      "<a href='https://waterrights.utah.gov/contact.asp' target='_blank' rel='noopener'>"+
+      "Regional offices</a> · Cedar City: <b>435-586-4231</b></li>"+
+
+    "<li><b>Then the paperwork, in this order.</b> Deed executed by the owner → recorded in the "+
+      "county where the water is currently diverted → <b>Report of Water Right Conveyance</b> filed "+
+      "with the Division (one to two weeks) → <b>Change Application</b> to move the point of "+
+      "diversion, place of use or nature of use to your parcel. "+
+      "<a href='https://waterrights.utah.gov/wrinfo/forms/default.asp' target='_blank' rel='noopener'>"+
+      "Forms</a> · "+
+      "<a href='https://waterrights.utah.gov/wrinfo/forms/fees.asp' target='_blank' rel='noopener'>"+
+      "Fees</a></li>"+
+
+    "<li><b>Expect months, not weeks.</b> Both appropriation and change applications require public "+
+      "notice and a decision by the State Engineer. Approval is not guaranteed — in a critical "+
+      "management area that is a real risk, not a formality. A favourable decision includes "+
+      "permission to drill; a <em>rush letter</em> can sometimes authorise drilling sooner, but not "+
+      "use of the water.</li>"+
+
+    "</ol>"+
+
+    "<div class='stepsAlt'><b>If none of that works, rainwater is the one route needing no water "+
+      "right.</b> Utah legalised harvesting in 2010 — registration is free and takes minutes. "+
+      "<a href='https://waterrights.utah.gov/forms/rainwater.asp' target='_blank' rel='noopener'>"+
+      "Register rainwater collection</a>. Hauling needs no right either.</div>"+
+
+    "<div class='stepsWarn'>This is the published process, not legal advice. Water rights are real "+
+      "property and the Division itself recommends professional help if you are unsure — a water "+
+      "rights attorney or consultant costs far less than a parcel you cannot build on.</div>"+
+
+    "</div></details>";
+}
+
 function utLogsHtml(d){
   if(!d.logs || !d.logs.length){
     return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
@@ -1744,6 +1844,7 @@ function rightsHtml(w){
     "<table class='stack'><thead><tr><th>Right</th><th>Type</th><th>Status</th><th>Uses</th>"+
     "<th class='n'>Priority</th><th class='n'>Volume</th><th class='n'>Away</th></tr></thead>"+
     "<tbody>"+rows+"</tbody></table>"+
+    utahNextStepsHtml(w)+
     "<div class='src'>Source: Utah Division of Water Rights, points of diversion, rebuilt nightly. "+
     "A diversion near a parcel does not prove the right conveys with that land — water rights are "+
     "separate property in Utah. Verify with title work.</div></div>";
