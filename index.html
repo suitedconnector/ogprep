@@ -38,6 +38,7 @@
 
     --hero:linear-gradient(160deg,#fffdf6,#f6f4e9);
     --shadow:0 1px 2px rgba(20,25,15,.06), 0 2px 10px rgba(20,25,15,.04);
+    --r:5px;
     color-scheme: light;
   }
   html[data-theme="dark"]{
@@ -62,7 +63,7 @@
 
   /* Theme toggle, top right of the header. */
   .themeBtn{position:absolute;top:0;right:0;background:var(--panel);color:var(--muted);
-    border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;
+    border:1px solid var(--line);border-radius:var(--r);padding:7px 13px;font-size:12.5px;
     font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;line-height:1}
   .themeBtn:hover{border-color:var(--accent);color:var(--ink)}
   header{position:relative}
@@ -76,12 +77,12 @@
   .sub{color:var(--muted);max-width:62ch;margin:0}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
   @media(max-width:860px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px;
     box-shadow:var(--shadow)}
   .card h2{margin:0 0 14px;font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
   label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
   select,input[type=number],input[type=email],input[type=text]{width:100%;background:var(--panel2);color:var(--ink);
-    border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:15px}
+    border:1px solid var(--line);border-radius:var(--r);padding:11px 12px;font-size:15px}
   select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
   /* Placeholders were inheriting full-strength ink, so an empty field looked
      filled in. A hint must never be mistakable for an answer. */
@@ -96,7 +97,7 @@
   .money:focus-within>span{color:var(--accent)}
   .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
   .seg button{flex:1;min-width:104px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-    border-radius:9px;padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer;
+    border-radius:var(--r);padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer;
     transition:border-color .12s, background .12s}
   .seg button:hover:not([aria-pressed=true]):not(:disabled){border-color:var(--accent);background:var(--panel)}
   .seg button[aria-pressed=true]{background:var(--accent-fill);color:var(--on-accent);
@@ -106,18 +107,18 @@
   .stat span:first-child{color:var(--muted)}
   .stat b{font-variant-numeric:tabular-nums;font-weight:700}
   .headline{background:var(--hero);border:1px solid var(--accent);
-    border-radius:14px;padding:26px;margin:24px 0;box-shadow:var(--shadow)}
+    border-radius:var(--r);padding:26px;margin:24px 0;box-shadow:var(--shadow)}
   .big{font-size:clamp(34px,6vw,54px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
   .range{color:var(--muted);font-size:14px;margin-top:8px}
   .heroSecond{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
     display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
   .heroSecond b{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;margin-left:auto}
   .heroSecond i{font-style:normal;font-size:12px;flex-basis:100%;text-align:right}
-  .bar{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:18px 0 8px;border:1px solid var(--line)}
+  .bar{display:flex;height:26px;border-radius:var(--r);overflow:hidden;margin:18px 0 8px;border:1px solid var(--line)}
   .bar div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#14160f;white-space:nowrap}
   .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
-  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
-  .verdict{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:14.5px;line-height:1.5}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:var(--r);margin-right:5px}
+  .verdict{margin-top:16px;padding:14px 16px;border-radius:var(--r);font-size:14.5px;line-height:1.5}
   .v-good{background:rgba(127,166,80,.14);border:1px solid var(--good)}
   .v-warn{background:rgba(211,116,47,.14);border:1px solid var(--warn)}
   .v-bad{background:rgba(193,80,46,.16);border:1px solid var(--bad)}
@@ -125,40 +126,40 @@
   th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
   td.n{text-align:right;font-variant-numeric:tabular-nums}
-  .cta{background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:24px;margin-top:28px}
+  .cta{background:var(--panel);border:1px solid var(--accent);border-radius:var(--r);padding:24px;margin-top:28px}
   .cta .fields{display:grid;grid-template-columns:1fr 1.2fr 1.4fr;gap:12px;margin-top:14px}
   @media(max-width:700px){.cta .fields{grid-template-columns:1fr}}
   .cta label{margin-top:0}
-  .cta button{background:var(--accent-fill);color:var(--on-accent);border:0;border-radius:9px;padding:12px 22px;
+  .cta button{background:var(--accent-fill);color:var(--on-accent);border:0;border-radius:var(--r);padding:12px 22px;
     font-weight:800;font-size:15px;cursor:pointer;margin-top:16px}
   footer{margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
   footer a{color:var(--accent)}
   .note{font-size:12.5px;color:var(--muted);margin-top:10px}
-  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:99px;
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);
     padding:3px 10px;font-size:11.5px;color:var(--muted);margin-right:6px;margin-bottom:4px}
   .lookup{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
   @media(max-width:600px){.lookup{grid-template-columns:1fr}}
-  .lookup button{background:var(--info-fill);color:var(--on-info);border:0;border-radius:9px;padding:11px 18px;
+  .lookup button{background:var(--info-fill);color:var(--on-info);border:0;border-radius:var(--r);padding:11px 18px;
     font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
   .lookup button:disabled{opacity:.55;cursor:default}
-  .banner{margin-top:12px;padding:11px 13px;border-radius:9px;font-size:13.5px;line-height:1.5}
+  .banner{margin-top:12px;padding:11px 13px;border-radius:var(--r);font-size:13.5px;line-height:1.5}
   .b-local{background:rgba(91,143,185,.15);border:1px solid var(--info)}
   .b-thin{background:rgba(211,116,47,.14);border:1px solid var(--warn)}
   .b-err{background:rgba(193,80,46,.16);border:1px solid var(--bad)}
   /* The well report reads as a light document inside the dark app. */
   .wells{max-height:none;overflow:visible;margin-top:10px;background:var(--paper);color:var(--paper-ink);
-    border:1px solid var(--paper-line);border-radius:10px;padding:12px}
+    border:1px solid var(--paper-line);border-radius:var(--r);padding:12px}
   .wells table{color:var(--paper-ink)}
   .wells th{color:var(--paper-muted);border-bottom-color:var(--paper-line)}
   .wells td{border-bottom-color:var(--paper-line2)}
   .wells td.wn{color:#8a6d1f}
   .wells .src{color:var(--paper-muted)}
-  .mapwrap{margin:0 0 4px;padding:12px;border-radius:8px;
+  .mapwrap{margin:0 0 4px;padding:12px;border-radius:var(--r);
     background:var(--paper-alt);border:1px solid var(--paper-line)}
 
   /* Detail panels collapse by default. Every finding still renders — the page
      just stops presenting six of them at equal weight and shouting. */
-  details.pan{background:var(--paper);border:1px solid var(--paper-line);border-radius:10px;margin-top:10px}
+  details.pan{background:var(--paper);border:1px solid var(--paper-line);border-radius:var(--r);margin-top:10px}
   details.pan>summary{cursor:pointer;list-style:none;padding:11px 13px;
     font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
     color:var(--paper-muted);display:flex;align-items:center;gap:8px}
@@ -171,7 +172,7 @@
   details.pan>summary .flag{margin-left:auto;font-weight:800;letter-spacing:0;
     text-transform:none;font-size:12px;color:#a3341f}
   /* "What you'll get back" — sets expectations at the point of commitment. */
-  .expect{margin-top:12px;padding:12px 14px;border-radius:10px;
+  .expect{margin-top:12px;padding:12px 14px;border-radius:var(--r);
     background:var(--panel2);border:1px solid var(--line)}
   .expect .expectHd{font-size:11.5px;font-weight:800;letter-spacing:.09em;
     text-transform:uppercase;color:var(--accent);margin-bottom:8px}
@@ -184,7 +185,7 @@
 
   /* "Still needed" chips, and the flash that shows you where you're going. */
   .needBtn{background:var(--panel2);color:var(--ink);border:1px solid var(--accent);
-    border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;
+    border-radius:var(--r);padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;
     margin:4px 2px 0 0}
   .needBtn:hover{background:var(--accent-fill);color:var(--on-accent)}
   .needWhy{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.5}
@@ -194,10 +195,10 @@
     18%{box-shadow:0 0 0 4px rgba(138,109,31,.30)}
     60%{box-shadow:0 0 0 4px rgba(138,109,31,.18)}
   }
-  #waterSeg.flash,#septicSeg.flash,#powerSeg.flash{border-radius:9px}
+  #waterSeg.flash,#septicSeg.flash,#powerSeg.flash{border-radius:var(--r)}
 
   /* Three-way water comparison — the centrepiece. */
-  .cmpWrap{margin-top:16px;padding:18px;border-radius:14px;
+  .cmpWrap{margin-top:16px;padding:18px;border-radius:var(--r);
     background:var(--panel);border:1px solid var(--line)}
   .cmpWrap:empty{display:none}
   .cmpHd{font-size:17px;font-weight:800;letter-spacing:-.01em}
@@ -211,12 +212,12 @@
   .cmpRow.sel{background:rgba(200,162,74,.07)}
   .cmpRow.blocked{opacity:.6}
   .cmpRow .rng{display:block;font-size:11.5px;color:var(--muted);font-weight:500;margin-top:2px}
-  .cheap{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;
+  .cheap{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:var(--r);
     background:rgba(127,166,80,.18);color:var(--good-ink);font-size:10.5px;font-weight:800;
     letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
   .cmp .warn{color:var(--bad-ink)}
   .cmpBtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-    border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;
+    border-radius:var(--r);padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;
     white-space:nowrap}
   .cmpBtn:hover{border-color:var(--accent)}
   .cmpSel{font-size:11.5px;color:var(--accent);font-weight:700;white-space:nowrap}
@@ -227,7 +228,7 @@
   }
 
   /* Link to the area finder — the inverse of this page's question. */
-  .crossLink{margin-top:12px;padding:10px 14px;border-radius:10px;font-size:13.5px;
+  .crossLink{margin-top:12px;padding:10px 14px;border-radius:var(--r);font-size:13.5px;
     background:var(--panel2);border:1px solid var(--line);display:inline-flex;gap:8px;
     flex-wrap:wrap;color:var(--muted)}
   .crossLink a{font-weight:700;text-decoration:none}
@@ -239,27 +240,71 @@
 
   /* Column key under the cost table. */
   /* Shown instead of a header-only table when no plans are chosen yet. */
-  .emptyLines{padding:16px;border:1px dashed var(--line);border-radius:10px;margin-top:8px;
+  .emptyLines{padding:16px;border:1px dashed var(--line);border-radius:var(--r);margin-top:8px;
     color:var(--muted);font-size:13.5px;text-align:center}
   .colkey{margin-top:10px;display:grid;gap:5px;font-size:13px;line-height:1.45;color:var(--muted)}
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* Status strip — the report in one line. */
+  .strip{margin-top:16px;padding:14px 16px;border-radius:var(--r);
+    background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .stripLead{font-size:15px;font-weight:800;letter-spacing:-.01em;margin-bottom:11px}
+  .stripBad{color:var(--bad)} .stripOk{color:var(--good)}
+  .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px}
+  .chip{display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;
+    padding:9px 11px;border-radius:var(--r);border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font:inherit;width:100%}
+  .chip:hover{border-color:var(--accent)}
+  .chip i{flex:0 0 22px;height:22px;border-radius:var(--r);display:grid;place-items:center;
+    font-style:normal;font-weight:800;font-size:13px;line-height:1}
+  .chip span{display:block;font-size:12.5px;line-height:1.35;color:var(--muted)}
+  .chip b{display:block;font-size:13px;color:var(--ink);font-weight:700}
+  .c-good i{background:rgba(127,166,80,.22);color:var(--good-ink)}
+  .c-warn i{background:rgba(211,116,47,.22);color:var(--warn-ink)}
+  .c-bad  i{background:rgba(193,80,46,.22);color:var(--bad-ink)}
+  .c-none i{background:var(--line);color:var(--muted)}
+  .c-bad{border-color:rgba(193,80,46,.5)}
+  .stripHint{margin-top:9px;font-size:12px;color:var(--muted)}
+
+  /* Water table trend. */
+  .trend{margin-top:16px;padding:16px 18px;border-radius:var(--r);border:1px solid;line-height:1.55}
+  .trendGood{background:rgba(127,166,80,.13);border-color:rgba(127,166,80,.55)}
+  .trendWarn{background:rgba(211,116,47,.13);border-color:rgba(211,116,47,.55)}
+  .trendBad{background:rgba(193,80,46,.14);border-color:rgba(193,80,46,.6)}
+  .trendNone{background:var(--panel2);border-color:var(--line);padding:13px 15px;
+    border-radius:var(--r);font-size:13.5px;color:var(--muted);margin-top:16px;border-width:1px;
+    border-style:dashed}
+  .trendHd{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:11px}
+  .trendBars{display:grid;gap:7px;margin-bottom:11px}
+  .tRow{display:grid;grid-template-columns:96px 1fr 68px;gap:11px;align-items:center;font-size:13px}
+  .tRow>span{color:var(--muted)}
+  .tRow>b{text-align:right;font-variant-numeric:tabular-nums}
+  .tTrack{height:11px;border-radius:var(--r);background:var(--panel2);overflow:hidden;
+    border:1px solid var(--line)}
+  .tFill{height:100%;background:var(--info-fill);opacity:.85}
+  .trendBad .tFill{background:#c1502e}
+  .trendWarn .tFill{background:#d3742f}
+  .trendGood .tFill{background:#5d8f3a}
+  .trendBody{margin:0;font-size:14.5px}
+  .trendCaveat{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.5}
+  @media(max-width:520px){ .tRow{grid-template-columns:80px 1fr 58px;gap:8px;font-size:12.5px} }
+
   /* In-app water right checker. */
-  .wrCheck{margin:0 0 12px;padding:12px 13px;border-radius:9px;
+  .wrCheck{margin:0 0 12px;padding:12px 13px;border-radius:var(--r);
     background:var(--paper-alt);border:1px solid var(--paper-line)}
   .wrCheck label{display:block;font-size:13px;font-weight:700;color:var(--paper-ink);margin-bottom:7px}
   .wrRow{display:grid;grid-template-columns:1fr auto;gap:8px}
   .wrRow input{background:#fff;color:var(--paper-ink);border:1px solid var(--paper-line);
-    border-radius:8px;padding:10px 11px;font-size:14.5px;width:100%}
-  .wrRow button{background:var(--info-fill);color:var(--on-info);border:0;border-radius:8px;
+    border-radius:var(--r);padding:10px 11px;font-size:14.5px;width:100%}
+  .wrRow button{background:var(--info-fill);color:var(--on-info);border:0;border-radius:var(--r);
     padding:10px 16px;font-weight:800;font-size:13.5px;cursor:pointer;white-space:nowrap}
   .wrRow button:disabled{opacity:.6;cursor:default}
   .wrHint{font-size:11.5px;color:var(--paper-muted);margin-top:7px;line-height:1.5}
   .wrPending{margin-top:10px;font-size:13px;color:var(--paper-muted)}
-  .wrBad{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.5;
+  .wrBad{margin-top:10px;padding:10px 12px;border-radius:var(--r);font-size:13px;line-height:1.5;
     background:rgba(193,80,46,.12);border:1px solid rgba(193,80,46,.5);color:var(--paper-ink)}
-  .wrCard{margin-top:11px;padding:12px 13px;border-radius:9px;background:#fff;border:1px solid}
+  .wrCard{margin-top:11px;padding:12px 13px;border-radius:var(--r);background:#fff;border:1px solid}
   .wrCard.wrYes{border-color:#8fbf6a} .wrCard.wrMaybe{border-color:#d9b45a}
   .wrCard.wrNo{border-color:#c98b76}
   .wrHead{font-size:15px;font-weight:800;color:var(--paper-ink);display:flex;
@@ -273,19 +318,19 @@
   .wrGrid b{color:var(--paper-ink);text-align:right}
   .wrSupports{margin-top:9px;font-size:13px;line-height:1.55;color:var(--paper-ink)}
   .wrFlags{margin:10px 0 0;padding:0;list-style:none;font-size:13px;line-height:1.55}
-  .wrFlags li{padding:7px 10px;border-radius:7px;margin-bottom:6px}
+  .wrFlags li{padding:7px 10px;border-radius:var(--r);margin-bottom:6px}
   .wf-bad{background:rgba(193,80,46,.13);color:#7d2312}
   .wf-warn{background:rgba(211,116,47,.13);color:#7d3a28}
   .wf-good{background:rgba(127,166,80,.16);color:#315b1c}
   .wrPods{margin-top:8px;font-size:12px;color:var(--paper-muted)}
   .wrLinks{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-  .wrLinks a{padding:6px 11px;border-radius:999px;border:1px solid var(--paper-line);
+  .wrLinks a{padding:6px 11px;border-radius:var(--r);border:1px solid var(--paper-line);
     color:#7a5a12;font-weight:700;font-size:12px;text-decoration:none}
   .wrCaveat{margin-top:9px;font-size:11.5px;color:var(--paper-muted);line-height:1.5}
   .mktLinks>span{font-size:12px;color:var(--paper-muted);align-self:center;margin-right:2px}
 
   /* Who holds the water — companies vs individuals. */
-  .holders{margin:12px 0 4px;padding:13px 15px;border-radius:10px;
+  .holders{margin:12px 0 4px;padding:13px 15px;border-radius:var(--r);
     background:rgba(91,143,185,.12);border:1px solid rgba(91,143,185,.55)}
   .holdHd{font-size:14.5px;font-weight:800;color:var(--paper-ink);margin-bottom:5px}
   .holdLead,.holdAsk{margin:0 0 9px;font-size:13.5px;line-height:1.55;color:var(--paper-ink)}
@@ -295,11 +340,11 @@
   .holdList li:last-child{border-bottom:0}
   .holdList li span{color:var(--paper-muted);font-size:12px;white-space:nowrap}
   .holdLinks{display:flex;flex-wrap:wrap;gap:8px}
-  .holdLinks a{padding:7px 12px;border-radius:999px;border:1px solid var(--paper-line);
+  .holdLinks a{padding:7px 12px;border-radius:var(--r);border:1px solid var(--paper-line);
     background:#fff;color:#7a5a12;font-weight:700;font-size:12.5px;text-decoration:none}
 
   /* Where to buy a right. */
-  details.market{margin:10px 0 4px;border:1px solid var(--paper-line);border-radius:10px;
+  details.market{margin:10px 0 4px;border:1px solid var(--paper-line);border-radius:var(--r);
     background:#fff}
   details.market>summary{cursor:pointer;list-style:none;padding:10px 13px;font-size:13.5px;
     font-weight:800;color:var(--paper-ink);display:flex;align-items:center;gap:8px}
@@ -309,19 +354,19 @@
   .marketBody{padding:0 14px 12px;font-size:13.5px;line-height:1.6;color:var(--paper-ink)}
   .mktLead{margin:0 0 8px}
   .mktCaveat,.mktNote{font-size:12px;color:var(--paper-muted);line-height:1.5;margin:0 0 9px}
-  .mktArea{margin:0 0 10px;padding:8px 11px;border-radius:7px;
+  .mktArea{margin:0 0 10px;padding:8px 11px;border-radius:var(--r);
     background:var(--paper-alt);border:1px solid var(--paper-line)}
   .mktLinks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:11px}
-  .mktLinks a{padding:7px 12px;border-radius:999px;border:1px solid var(--paper-line);
+  .mktLinks a{padding:7px 12px;border-radius:var(--r);border:1px solid var(--paper-line);
     background:var(--paper-alt);color:#7a5a12;font-weight:700;font-size:12.5px;text-decoration:none}
   .mktLinks a:hover{border-color:var(--accent)}
-  .mktCheck{padding:10px 12px;border-radius:8px;background:rgba(200,162,74,.12);
+  .mktCheck{padding:10px 12px;border-radius:var(--r);background:rgba(200,162,74,.12);
     border:1px solid rgba(200,162,74,.5)}
   .mktCheck ol{margin:7px 0 0;padding-left:20px}
   .mktCheck li{padding:3px 0}
 
   /* Next steps for a Utah water right. */
-  details.steps{margin:12px 0 4px;border:1px solid var(--accent);border-radius:10px;
+  details.steps{margin:12px 0 4px;border:1px solid var(--accent);border-radius:var(--r);
     background:var(--paper-alt)}
   details.steps>summary{cursor:pointer;list-style:none;padding:11px 13px;font-size:14px;
     font-weight:800;color:var(--paper-ink);display:flex;align-items:center;gap:8px}
@@ -332,12 +377,12 @@
   .stepsBody ol{margin:0;padding-left:20px;font-size:13.5px;line-height:1.6;color:var(--paper-ink)}
   .stepsBody li{padding:5px 0}
   .stepsBody a{color:#7a5a12;font-weight:600}
-  .stepsAlt{margin-top:11px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.55;
+  .stepsAlt{margin-top:11px;padding:10px 12px;border-radius:var(--r);font-size:13px;line-height:1.55;
     background:rgba(127,166,80,.16);border:1px solid rgba(127,166,80,.5);color:var(--paper-ink)}
   .stepsWarn{margin-top:9px;font-size:12px;line-height:1.5;color:var(--paper-muted)}
 
   /* Folded glossary inside the water rights panel. */
-  details.glossary{margin:10px 0 4px;border:1px solid var(--paper-line);border-radius:9px;background:#fff}
+  details.glossary{margin:10px 0 4px;border:1px solid var(--paper-line);border-radius:var(--r);background:#fff}
   details.glossary>summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:13px;
     font-weight:700;color:var(--paper-muted);display:flex;align-items:center;gap:7px}
   details.glossary>summary::-webkit-details-marker{display:none}
@@ -357,18 +402,18 @@
   .ctaDr b{color:var(--ink)}
 
   /* The one sentence most readers need and would otherwise have to infer. */
-  .swing{margin-top:12px;padding:12px 14px;border-radius:9px;font-size:14px;line-height:1.55;
+  .swing{margin-top:12px;padding:12px 14px;border-radius:var(--r);font-size:14px;line-height:1.55;
     background:rgba(91,143,185,.10);border-left:3px solid #5b8fb9;color:var(--ink)}
   .swing:empty{display:none}
 
   /* Worked-example strip. Shown only before a real lookup. */
-  .demo{margin-top:16px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;
+  .demo{margin-top:16px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);
     background:var(--panel2)}
   .demoHd{font-size:16px;font-weight:800;letter-spacing:-.01em}
   .demoSub{margin:5px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
   .demoBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
   @media (max-width:700px){ .demoBtns{grid-template-columns:1fr} }
-  .demoBtn{text-align:left;cursor:pointer;padding:12px 14px;border-radius:10px;
+  .demoBtn{text-align:left;cursor:pointer;padding:12px 14px;border-radius:var(--r);
     border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
   .demoBtn b{display:block;font-size:14.5px;font-weight:800;margin-bottom:3px}
   .demoBtn span{display:block;font-size:12.5px;color:var(--muted);line-height:1.45}
@@ -398,7 +443,7 @@
   /* The answer, before any of the evidence. These panels are light on a dark
      page, so every text colour has to be set explicitly — inheriting the
      theme's pale ink would render them invisible. */
-  .topv{margin:14px 0 0;padding:16px 18px;border-radius:12px;border:1px solid;
+  .topv{margin:14px 0 0;padding:16px 18px;border-radius:var(--r);border:1px solid;
     line-height:1.5;color:var(--paper-ink)}
   .topv h3{margin:0 0 6px;font-size:19px;font-weight:800;letter-spacing:-.01em;color:#14170f}
   .topv p{margin:0;font-size:14.5px;color:#3a4033}
@@ -421,7 +466,7 @@
     table.stack{display:block}
     table.stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
     table.stack tbody,table.stack tr,table.stack td{display:block;width:auto}
-    table.stack tr{border:1px solid var(--paper-line);border-radius:9px;padding:9px 11px;
+    table.stack tr{border:1px solid var(--paper-line);border-radius:var(--r);padding:9px 11px;
       margin:0 0 8px;background:#fff}
     table.stack td{border:0;padding:2px 0;text-align:left !important;
       display:flex;gap:10px;align-items:baseline}
@@ -440,19 +485,19 @@
   .wellMapBox.dim .leaflet-tile-pane{filter:grayscale(.85) brightness(1.14) contrast(.78) opacity(.62)}
   /* Fixed height for the same reason as the finder map: vh is unreliable in
      embedded and in-app browsers. */
-  .wellMapBox{height:420px;border-radius:9px;border:1px solid var(--paper-line);
+  .wellMapBox{height:420px;border-radius:var(--r);border:1px solid var(--paper-line);
     margin-top:8px;background:var(--paper-alt)}
   @media(max-width:760px){ .wellMapBox{height:340px} }
   .wmTools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
   .seg.wmSeg{display:flex;gap:6px;margin:0}
   .seg.wmSeg button{flex:0 0 auto;min-width:0;background:var(--paper-alt);color:var(--paper-ink);
-    border:1px solid var(--paper-line);border-radius:7px;padding:5px 11px;font-size:12px;
+    border:1px solid var(--paper-line);border-radius:var(--r);padding:5px 11px;font-size:12px;
     font-weight:700;cursor:pointer}
   .seg.wmSeg button[aria-pressed=true]{background:var(--accent-fill);color:var(--on-accent);
     border-color:var(--accent-fill)}
   .wmLegend{display:flex;flex-wrap:wrap;gap:11px;font-size:11.5px;color:var(--paper-muted);
     margin-top:8px}
-  .wmLegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;
+  .wmLegend i{display:inline-block;width:10px;height:10px;border-radius:var(--r);margin-right:5px;
     vertical-align:-1px}
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink)}
   .leaflet-popup-content{margin:11px 13px;font:13.5px/1.5 ui-sans-serif,system-ui}
@@ -469,15 +514,15 @@
   .welldot.sel circle{stroke:var(--paper-ink);stroke-width:3}
   td.wn{font-weight:800;width:2em}
 
-  .mapgrad{flex:0 1 70px;height:7px;border-radius:4px;
+  .mapgrad{flex:0 1 70px;height:7px;border-radius:var(--r);
     background:linear-gradient(90deg,rgb(110,170,90),rgb(235,75,70))}
-  .rainbox{margin-top:12px;padding:13px 15px;border-radius:10px;
+  .rainbox{margin-top:12px;padding:13px 15px;border-radius:var(--r);
     background:rgba(91,143,185,.12);border:1px solid var(--info)}
   .rainbox.g-ok{background:rgba(127,166,80,.12);border-color:var(--good)}
   .rainbox.g-warn{background:rgba(211,116,47,.12);border-color:var(--warn)}
   .rainbox .src{display:block;margin-top:8px}
   .drillers{margin-top:12px;background:var(--paper);color:var(--paper-ink);border:1px solid var(--paper-line);
-    border-radius:10px;padding:14px}
+    border-radius:var(--r);padding:14px}
   .drillers .maphdr{color:var(--paper-muted);margin-bottom:6px}
   .dintro{font-size:12.5px;color:var(--paper-muted);margin:0 0 10px;line-height:1.5}
   .drow{padding:10px 0;border-bottom:1px solid var(--paper-line2)}
@@ -491,18 +536,18 @@
   .drillers .src{color:var(--paper-muted);margin-top:10px}
   .src{font-size:11.5px;color:var(--muted);margin-top:6px}
   .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
-    padding:2px 7px;border-radius:99px;margin-top:5px;cursor:help}
+    padding:2px 7px;border-radius:var(--r);margin-top:5px;cursor:help}
   .t-parcel{background:rgba(91,143,185,.22);color:#9cc6e6;border:1px solid var(--info)}
   .t-county{background:rgba(200,162,74,.18);color:#e0c485;border:1px solid var(--accent)}
   .t-typical{background:rgba(211,116,47,.18);color:#e6a877;border:1px solid var(--warn)}
   .t-you{background:rgba(163,171,147,.16);color:var(--muted);border:1px solid var(--line)}
-  .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:9px;
+  .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:var(--r);
     padding:12px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
   .keymap{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
   .headSeg{max-width:280px;margin:12px 0 4px}
-  .siGap{margin-top:12px;max-width:62ch;padding:8px 10px;border-radius:7px;font-size:12.5px;
+  .siGap{margin-top:12px;max-width:62ch;padding:8px 10px;border-radius:var(--r);font-size:12.5px;
     background:rgba(211,116,47,.13);border:1px solid var(--warn);color:var(--ink)}
-  .soilbox{margin-top:10px;padding:12px 14px;border-radius:9px;font-size:13px;line-height:1.55;
+  .soilbox{margin-top:10px;padding:12px 14px;border-radius:var(--r);font-size:13px;line-height:1.55;
     background:rgba(91,143,185,.13);border:1px solid var(--info)}
   .soilbox .src{display:block;margin-top:6px}
   .soildetails{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
@@ -511,7 +556,7 @@
   .soildetails summary::-webkit-details-marker{display:none}
   .soildetails summary::before{content:"▸ ";}
   .soildetails[open] summary::before{content:"▾ ";}
-  .soilcomp{margin-top:10px;padding:10px 12px;background:rgba(0,0,0,.18);border-radius:8px}
+  .soilcomp{margin-top:10px;padding:10px 12px;background:rgba(0,0,0,.18);border-radius:var(--r)}
   .soilname{font-weight:800;font-size:13.5px;margin-bottom:6px}
   .soilpct{font-weight:600;color:var(--muted);font-size:11.5px}
   .soilrow{display:flex;justify-content:space-between;gap:12px;padding:4px 0;
@@ -519,20 +564,20 @@
   .soilrow:last-child{border-bottom:0}
   .soilrow span{color:var(--muted)}
   .soilrow b{text-align:right}
-  .parcelbox{margin-top:12px;padding:14px;border-radius:10px;
+  .parcelbox{margin-top:12px;padding:14px;border-radius:var(--r);
     background:rgba(200,162,74,.10);border:1px solid var(--accent)}
-  .densbox{margin-top:12px;padding:12px;border-radius:8px;background:rgba(0,0,0,.22);text-align:center;font-size:13px}
+  .densbox{margin-top:12px;padding:12px;border-radius:var(--r);background:rgba(0,0,0,.22);text-align:center;font-size:13px}
   .densnum{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--accent2)}
   .denslbl{font-size:12px;color:var(--muted);margin-top:2px}
   .matchlist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
   .matchbtn{text-align:left;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-    border-radius:8px;padding:9px 11px;font-size:13.5px;font-weight:700;cursor:pointer}
+    border-radius:var(--r);padding:9px 11px;font-size:13.5px;font-weight:700;cursor:pointer}
   .matchbtn:hover{border-color:var(--accent)}
   .matchbtn span{display:block;font-weight:500;font-size:11.5px;color:var(--muted);margin-top:2px}
   .gates{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
   .gateshdr{font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
     color:var(--muted);margin-bottom:8px}
-  .gate{padding:8px 10px;border-radius:7px;margin-bottom:6px;font-size:13px;border-left:3px solid}
+  .gate{padding:8px 10px;border-radius:var(--r);margin-bottom:6px;font-size:13px;border-left:3px solid}
   .g-ok{background:rgba(127,166,80,.11);border-color:var(--good)}
   .g-warn{background:rgba(211,116,47,.13);border-color:var(--warn)}
   .gatenote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
@@ -662,6 +707,8 @@
 
 <!-- Reading order is: ask → answer → price → evidence. The verdict sits
      directly under the controls that produced it, not above them. -->
+<div class="strip" id="statusStrip" style="display:none"></div>
+
 <div class="topv tv-idle" id="topVerdict" style="display:none"></div>
 
 <div class="headline">
@@ -688,6 +735,8 @@
 </div>
 
 <!-- The question the tool exists to answer, shown rather than explained. -->
+<div id="trendBox"></div>
+
 <div class="cmpWrap" id="compare"></div>
 
 <div id="resultsHost">
@@ -749,7 +798,7 @@
     <div class="note" id="leadApnHint">No APN handy? Paste a listing link or the nearest cross streets instead.</div>
     <div id="leadErr"></div>
   </form>
-  <div id="thanks" style="display:none;margin-top:14px;padding:12px 14px;border-radius:9px;
+  <div id="thanks" style="display:none;margin-top:14px;padding:12px 14px;border-radius:5px;
     background:rgba(127,166,80,.14);border:1px solid var(--accent2);font-weight:600">
     Got it — we'll send your location and the nearby well depths to drillers working this area
     and pass their replies straight to you.</div>
@@ -1478,6 +1527,7 @@ async function lookup(){
       // wrapper during render(), and a Leaflet map does not survive being
       // moved. Stash the data and build once the DOM has settled.
       state.pendingWellMap = {j, lat, lng};
+      renderTrend(lat, lng);
     }
   }catch(err){
     state.local=null;
@@ -2014,6 +2064,180 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Enter" && e.target.id==="wrInput"){ e.preventDefault(); checkWaterRight(); }
 });
 
+/* Is the water table falling here?
+
+   A well is a thirty-year purchase. A parcel where water sits at 120 ft today
+   but has dropped 200 ft since 1990 is a different proposition from one that
+   has been steady since the war — and depth alone cannot tell them apart.
+
+   Compares wells drilled in the SAME cell before 1995 against those drilled
+   since 2005, which controls for geography. Statewide, 66% of comparable cells
+   show water getting deeper. Loaded lazily: most sessions never need it. */
+let TREND = null, TREND_TRIED = false;
+const TREND_CELL = 0.04;
+
+async function loadTrend(){
+  if(TREND || TREND_TRIED) return TREND;
+  TREND_TRIED = true;
+  try{
+    const j = await (await fetch("/data/az-water-trend.json")).json();
+    TREND = new Map(j.cells.map(c => [
+      Math.round(c[0]/TREND_CELL)+","+Math.round(c[1]/TREND_CELL), c
+    ]));
+  }catch(_){ TREND = null; }
+  return TREND;
+}
+
+async function renderTrend(lat, lon){
+  const box = $("trendBox"); if(!box) return;
+  if(state.region !== "AZ"){ box.innerHTML=""; return; }
+  const t = await loadTrend();
+  if(!t){ box.innerHTML=""; return; }
+
+  // Nearest cell, allowing one ring out — cells are 2.8 miles and a parcel can
+  // sit just over a boundary from perfectly good data.
+  const ky = Math.round(lat/TREND_CELL), kx = Math.round(lon/TREND_CELL);
+  let c = null, ring = 0;
+  outer:
+  for(ring=0; ring<=1; ring++){
+    for(let dy=-ring; dy<=ring; dy++) for(let dx=-ring; dx<=ring; dx++){
+      if(ring && Math.abs(dy)!==ring && Math.abs(dx)!==ring) continue;
+      const hit = t.get((ky+dy)+","+(kx+dx));
+      if(hit && hit[4]!=null){ c = hit; break outer; }
+    }
+  }
+  if(!c){
+    state.trendCell = null;
+    box.innerHTML = "<div class='trend trendNone'><b>No trend data for this spot.</b> "+
+      "It needs at least four wells drilled before 1995 and four since 2005 within about "+
+      "three miles. Thin records here, not necessarily stable water.</div>";
+    return;
+  }
+
+  state.trendCell = c;
+  const [ , , before, after, change ] = c;
+  const worse = change > 0;
+  const big = Math.abs(change) >= 50;
+  const cls = !worse ? "trendGood" : (big ? "trendBad" : "trendWarn");
+
+  const head = !worse
+    ? (change === 0 ? "Water is holding steady here" : "Water is shallower than it used to be")
+    : (big ? "Water here is falling fast" : "Water is slowly getting deeper");
+
+  const body = worse
+    ? "Wells drilled since 2005 hit water at <b>"+after+" ft</b>. Wells drilled here before 1995 "+
+      "hit it at <b>"+before+" ft</b>. That is <b>"+change+" ft deeper</b> in roughly two decades."+
+      (big ? " At that rate, budget for a deeper well than today's figures suggest — and ask a "+
+             "local driller what they are seeing now." : "")
+    : "Wells drilled since 2005 hit water at <b>"+after+" ft</b>, against <b>"+before+" ft</b> "+
+      "before 1995. It has not receded"+(change<0 ? " — it has risen "+Math.abs(change)+" ft." : ".");
+
+  box.innerHTML =
+    "<div class='trend "+cls+"'>"+
+      "<div class='trendHd'>"+head+"</div>"+
+      "<div class='trendBars'>"+
+        trendBar("Before 1995", before, Math.max(before, after)) +
+        trendBar("Since 2005", after, Math.max(before, after)) +
+      "</div>"+
+      "<p class='trendBody'>"+body+"</p>"+
+      "<div class='trendCaveat'>Static water level is recorded when a well is drilled, so this "+
+      "compares snapshots decades apart, not a monitored series. Same-area comparison, but well "+
+      "purpose and construction also changed over that time."+
+      (ring ? " Nearest data is about three miles from your point." : "")+"</div>"+
+    "</div>";
+}
+
+function trendBar(label, ft, max){
+  const pct = max ? Math.max(4, Math.round(ft/max*100)) : 4;
+  return "<div class='tRow'><span>"+label+"</span>"+
+    "<div class='tTrack'><div class='tFill' style='width:"+pct+"%'></div></div>"+
+    "<b>"+ft+" ft</b></div>";
+}
+
+/* The whole report, compressed to one line.
+
+   Kevin's word was "firehose" — every panel earns its place individually, but
+   they render at once and at equal weight. This is the fix: five chips, each a
+   traffic light, each a jump link. Two seconds to the answer, then drill only
+   where it is red.
+
+   Icons here are markers, not decoration. They exist because a colour alone
+   fails for colour-blind readers and prints badly. */
+const CHIP_MARK = { good:"✓", warn:"!", bad:"✕", none:"–" };
+
+function chip(key, label, level, value, target){
+  return "<button class='chip c-"+level+"' data-goto='"+target+"' "+
+    "aria-label='"+label+": "+value+"'>"+
+    "<i>"+CHIP_MARK[level]+"</i>"+
+    "<span><b>"+label+"</b>"+value+"</span></button>";
+}
+
+function renderStatusStrip(){
+  const box = $("statusStrip"); if(!box) return;
+  const L=state.local, W=state.rights, D=state.utDepths, S=state.soil, T=state.trendCell;
+  const ran = !!(L||W||D||S||state.parcel);
+  if(!ran){ box.innerHTML=""; box.style.display="none"; return; }
+  box.style.display="";
+
+  const chips=[];
+
+  /* 1 — Can you legally have water. The binding question in Utah; assumed in
+         Arizona, where an exempt domestic well needs no right. */
+  if(state.region==="UT"){
+    const dom = W ? W.domesticCount : null;
+    chips.push(dom==null ? chip("legal","Legal","none","not checked","wellList")
+      : dom===0 ? chip("legal","Legal","bad","no domestic right","wellList")
+      : chip("legal","Legal","good",dom+" domestic rights","wellList"));
+  }else{
+    chips.push(chip("legal","Legal","good","exempt well allowed","headIntro"));
+  }
+
+  /* 2 — Depth, and whether we have any. */
+  if(L && (L.med||L.avg)){
+    const d=Math.round(L.med||L.avg);
+    chips.push(chip("depth","Depth", d<=250?"good":d<=600?"warn":"bad", d+" ft typical","wellList"));
+  }else{
+    chips.push(chip("depth","Depth","none","no local records","wellList"));
+  }
+
+  /* 3 — Did anyone drill here and fail. The single most consequential fact. */
+  const dry = (D && D.dryHoleCount) || (L && L.dryHoleCount) || 0;
+  chips.push(dry ? chip("dry","Dry holes","bad",dry+" nearby","wellList")
+                 : chip("dry","Dry holes","good","none on record","wellList"));
+
+  /* 4 — Is the water table falling. Arizona only for now. */
+  if(state.region==="AZ"){
+    chips.push(!T ? chip("trend","Water table","none","no trend data","trendBox")
+      : T[4]>50 ? chip("trend","Water table","bad","down "+T[4]+" ft","trendBox")
+      : T[4]>0  ? chip("trend","Water table","warn","down "+T[4]+" ft","trendBox")
+      : chip("trend","Water table","good","holding","trendBox"));
+  }
+
+  /* 5 — Septic, which is the second-biggest line after water. */
+  const SOIL_LVL={not_limited:"good",somewhat_limited:"warn",very_limited:"bad",unknown:"none"};
+  const SOIL_TXT={not_limited:"soil suitable",somewhat_limited:"soil limited",
+                  very_limited:"soil very limited",unknown:"soil not mapped"};
+  chips.push(S ? chip("soil","Septic",SOIL_LVL[S.rating]||"none",SOIL_TXT[S.rating]||"unrated","assumptions")
+               : chip("soil","Septic","none","not checked","assumptions"));
+
+  const bad = chips.filter(c=>c.includes("c-bad")).length;
+  const lead = bad
+    ? "<div class='stripLead stripBad'>"+bad+" thing"+(bad===1?"":"s")+" to resolve before you buy</div>"
+    : "<div class='stripLead stripOk'>Nothing here disqualifies this parcel</div>";
+
+  box.innerHTML = lead + "<div class='chips'>"+chips.join("")+"</div>"+
+    "<div class='stripHint'>Tap any of these to jump to the detail.</div>";
+}
+
+// Jump to the section a chip names, and open it if it is collapsed.
+document.addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if(!b) return;
+  const el = $(b.dataset.goto); if(!el) return;
+  const det = el.closest("details") || el.querySelector("details");
+  if(det) det.open = true;
+  el.scrollIntoView({behavior:"smooth", block:"start"});
+});
+
 function utLogsHtml(d){
   if(!d.logs || !d.logs.length){
     return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
@@ -2337,7 +2561,11 @@ function makeCollapsible(host){
 
     const d=document.createElement("details");
     d.className="pan";
-    d.open = i===0 || !!warn || hasMap;
+    /* Closed unless it demands attention. With the status strip carrying the
+       summary, an open panel is no longer how someone finds the answer — it is
+       how they drown in it. Warnings still open themselves, because a hidden
+       dry-hole notice is worse than none. */
+    d.open = !!warn || hasMap;
     const s=document.createElement("summary");
     s.innerHTML = title + (warn
       ? "<span class='flag'>needs attention</span>"
@@ -2668,6 +2896,7 @@ function render(){
       "<div class='needWhy'>Nothing here is pre-filled on purpose. A total built from guesses "+
       "we made for you would look just as confident as one built from your actual plans.</div>";
     renderTopVerdict();
+  renderStatusStrip();
     makeCollapsible($("wellList"));
     renderCtaDrillers();
     flushWellMap();
@@ -2709,6 +2938,7 @@ function render(){
     $("lines").innerHTML = "";
     $("assumptions").innerHTML = "";
     renderTopVerdict();
+  renderStatusStrip();
     makeCollapsible($("wellList"));
     return;
   }
@@ -2827,6 +3057,7 @@ function render(){
     ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
 
   renderTopVerdict();
+  renderStatusStrip();
   makeCollapsible($("wellList"));
   renderCtaDrillers();
   flushWellMap();

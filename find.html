@@ -15,6 +15,7 @@
     --ink:#1a1d15; --muted:#61684f; --accent:#8a6d1f; --accent-fill:#8a6d1f; --on-accent:#fff;
     --info-fill:#2f6489; --on-info:#fff;
     --shadow:0 1px 2px rgba(20,25,15,.06), 0 2px 10px rgba(20,25,15,.04);
+    --r:5px;
     color-scheme:light;
   }
   html[data-theme="dark"]{
@@ -32,18 +33,18 @@
   .sub{color:var(--muted);max-width:64ch;margin:0}
   a{color:var(--accent)}
   .themeBtn{position:absolute;top:0;right:0;background:var(--panel);color:var(--muted);
-    border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;
+    border:1px solid var(--line);border-radius:var(--r);padding:7px 13px;font-size:12.5px;
     font-weight:700;cursor:pointer}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;
     box-shadow:var(--shadow);margin-top:18px}
   label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
   select,input[type=range]{width:100%}
   select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-    border-radius:9px;padding:11px 12px;font-size:15px}
+    border-radius:var(--r);padding:11px 12px;font-size:15px}
   .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
   @media(max-width:760px){.controls{grid-template-columns:1fr}}
   .val{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
-  .summary{margin-top:16px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  .summary{margin-top:16px;padding:14px 16px;border-radius:var(--r);background:var(--panel2);
     border:1px solid var(--line);font-size:15px;line-height:1.5}
   .summary b{font-size:19px}
   /* Ghosting the basemap, not the data. Filtering the tile pane alone leaves
@@ -53,14 +54,14 @@
      embedded views, some in-app browsers, print — collapses a vh-sized map to
      nothing, and a map that sometimes has no height is worse than one that is
      occasionally the wrong size. */
-  .map{height:560px;border:1px solid var(--line);border-radius:12px;margin-top:12px;
+  .map{height:560px;border:1px solid var(--line);border-radius:var(--r);margin-top:12px;
     background:var(--panel2)}
   @media(max-width:760px){ .map{height:420px} }
   @media(max-width:480px){ .map{height:340px} }
   .mapTools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
   .seg{display:flex;gap:6px}
   .seg button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-    border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
+    border-radius:var(--r);padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
   .seg button[aria-pressed=true]{background:var(--accent-fill);color:var(--on-accent);
     border-color:var(--accent-fill)}
   .chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);
@@ -70,32 +71,32 @@
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);
     box-shadow:0 2px 14px rgba(0,0,0,.25)}
   .leaflet-popup-content{margin:12px 14px;font:14px/1.5 ui-sans-serif,system-ui}
-  .leaflet-container{border-radius:12px;font:inherit}
+  .leaflet-container{border-radius:var(--r);font:inherit}
   .pop b{font-size:16px}
   .pop .popRow{display:flex;justify-content:space-between;gap:14px;padding:3px 0;
     border-bottom:1px solid var(--line);font-size:13px}
   .pop .popRow:last-of-type{border-bottom:0}
   .pop .popRow span{color:var(--muted)}
   .pop button{margin-top:9px;width:100%;background:var(--info-fill);color:var(--on-info);
-    border:0;border-radius:8px;padding:8px;font-weight:700;font-size:13px;cursor:pointer}
+    border:0;border-radius:var(--r);padding:8px;font-weight:700;font-size:13px;cursor:pointer}
   .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:10px}
-  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:var(--r);margin-right:5px}
   table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
   th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
   td.n{text-align:right;font-variant-numeric:tabular-nums}
-  .goBtn{background:var(--info-fill);color:var(--on-info);border:0;border-radius:8px;
+  .goBtn{background:var(--info-fill);color:var(--on-info);border:0;border-radius:var(--r);
     padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
   .note{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.55}
   footer{margin-top:36px;padding-top:20px;border-top:1px solid var(--line);
     color:var(--muted);font-size:12.5px;line-height:1.6}
   .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);
-    border-radius:99px;padding:3px 10px;font-size:11.5px;margin-right:6px}
+    border-radius:var(--r);padding:3px 10px;font-size:11.5px;margin-right:6px}
   @media (max-width:620px){
     table.stack{display:block}
     table.stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
     table.stack tbody,table.stack tr,table.stack td{display:block;width:auto}
-    table.stack tr{border:1px solid var(--line);border-radius:9px;padding:9px 11px;
+    table.stack tr{border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;
       margin:0 0 8px;background:var(--panel)}
     table.stack td{border:0;padding:2px 0;text-align:left !important;display:flex;gap:10px}
     table.stack td:before{content:attr(data-label);flex:0 0 44%;font-size:11px;font-weight:700;

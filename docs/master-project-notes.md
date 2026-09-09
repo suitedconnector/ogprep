@@ -74,7 +74,7 @@ Caveat stays: planning-scale interpretations, not a geotech report or a perc tes
 ### 2. Utah bulk well depth
 Call **801-538-7240** (Technical Services) for access to the WELLDB export at
 `waterrights.utah.gov/gisinfo/dbtables.asp`. Currently returns Access Denied. Unblocks a Utah
-depth map and ends per-well scraping entirely. Draft in `agency-data-emails.md`.
+depth map and ends per-well scraping entirely. Draft in `docs/agency-data-requests.md`.
 
 ### 3. Multi-state expansion
 Model travels; implementation doesn't. Three things vary:
@@ -142,4 +142,4 @@ Currently doing both.
 ## Related
 
 - [[utah-water-cedar-valley]] — Cedar Valley closed basin, Spring Creek lead, tax deed warning
-- `agency-data-emails.md` — drafted requests for bulk data access
+- `docs/agency-data-requests.md` — drafted requests for bulk data access
