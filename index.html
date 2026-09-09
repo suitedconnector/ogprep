@@ -246,6 +246,24 @@
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* Map picker. */
+  .pickMap{height:380px;border:1px solid var(--line);border-radius:var(--r);
+    margin-top:10px;background:var(--panel2)}
+  @media(max-width:760px){ .pickMap{height:300px} }
+  .pickBar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .seg.pickSeg{display:flex;gap:6px;margin:0}
+  .seg.pickSeg button{flex:0 0 auto;min-width:0;padding:7px 11px;font-size:12px}
+  #pickSearch{flex:1;min-width:170px;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;font-size:14px}
+  .pickFoot{display:flex;gap:12px;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;margin-top:10px}
+  #pickReadout{font-size:13px;color:var(--muted)}
+  #pickReadout b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .pickOut{color:var(--bad-ink)}
+  #pickGo{background:var(--info-fill);color:var(--on-info);border:0;border-radius:var(--r);
+    padding:10px 18px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+  #pickGo:disabled{opacity:.45;cursor:default}
+
   /* Status strip — the report in one line. */
   .strip{margin-top:16px;padding:14px 16px;border-radius:var(--r);
     background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow)}
@@ -675,9 +693,27 @@
 
     <label>Check a specific parcel — search by</label>
     <div class="seg" id="modeSeg">
+      <button data-v="map" aria-pressed="false">Pick on map</button>
       <button data-v="apn" aria-pressed="true">Parcel #</button>
       <button data-v="address" aria-pressed="false">Address</button>
       <button data-v="coords" aria-pressed="false">Coordinates</button>
+    </div>
+    <!-- The natural input for a question about land. Everything else asks
+         people to fetch coordinates from somewhere else first. -->
+    <div id="pickWrap" style="display:none">
+      <div class="pickBar">
+        <div class="seg pickSeg" id="pickBase">
+          <button data-v="sat" aria-pressed="true">Satellite</button>
+          <button data-v="topo" aria-pressed="false">Terrain</button>
+          <button data-v="street" aria-pressed="false">Street</button>
+        </div>
+        <input type="text" id="pickSearch" placeholder="Jump to a town or address" autocomplete="off">
+      </div>
+      <div id="pickMap" class="pickMap"></div>
+      <div class="pickFoot">
+        <span id="pickReadout">Tap the map to drop a pin on your parcel.</span>
+        <button type="button" id="pickGo" disabled>Check this spot</button>
+      </div>
     </div>
     <div class="lookup" style="margin-top:10px">
       <input type="text" id="coords" placeholder="306-32-007J" autocomplete="off">
@@ -1126,11 +1162,16 @@ function applyState(code){
     syncModeAvailability();
   }
 
+  // The picker frames a different state, so drop it and let it rebuild.
+  if(PICKMAP){ PICKMAP.remove(); PICKMAP=null; PICKBASE=null; PICKPIN=null; PICKAT=null; }
+  if($("pickGo")) $("pickGo").disabled = true;
+  if($("pickReadout")) $("pickReadout").textContent = "Tap the map to drop a pin on your parcel.";
   // Clear anything from the other state.
   state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.drillers=null;
   state.utLogs=null; state.utDepths=null;
   $("coords").value=""; $("lookupMsg").innerHTML=""; $("wellList").innerHTML="";
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
+  applyPickMode();
   render();
 }
 
@@ -1233,7 +1274,7 @@ function syncModeAvailability(){
   }
   const supported=APN_COUNTIES.includes(state.county);
   [...$("modeSeg").children].forEach(b=>{
-    const off = !supported && b.dataset.v!=="coords";
+    const off = !supported && b.dataset.v!=="coords" && b.dataset.v!=="map";
     b.disabled=off; b.style.opacity=off?".4":"";
     b.title=off?"Parcel and address search aren't available for "+state.county+" yet":"";
   });
@@ -1278,7 +1319,8 @@ const COORD_RE=/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/;
 const MODES={
   apn:     {ph:"306-32-007J  or  800-11-044T", hint:"Parcel number for Mohave or Yavapai County. We'll search both."},
   address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it, in Mohave or Yavapai. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
-  coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Arizona returns well depths and costs; Utah returns water rights."}
+  coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Arizona returns well depths and costs; Utah returns water rights."},
+  map:     {ph:"", hint:"Find your parcel on the satellite view and tap it. Drag the pin to fine-tune — you can see the tracks, washes and neighbouring buildings while you place it."}
 };
 let mode="apn";
 $("modeSeg").addEventListener("click",e=>{
@@ -1288,7 +1330,21 @@ $("modeSeg").addEventListener("click",e=>{
   $("coords").placeholder=MODES[mode].ph;
   $("modeHint").textContent=MODES[mode].hint;
   $("coords").value=""; $("parcelBox").innerHTML="";
+  applyPickMode();
 });
+
+/* Map mode swaps the text box for the picker. Built on first use rather than
+   on load — most sessions never open it, and an unused Leaflet instance is
+   400ms of layout nobody asked for. */
+function applyPickMode(){
+  const on = mode==="map";
+  $("pickWrap").style.display = on ? "" : "none";
+  document.querySelector(".lookup").style.display = on ? "none" : "";
+  if(on){
+    buildPickMap();
+    setTimeout(()=>PICKMAP && PICKMAP.invalidateSize({animate:false}), 80);
+  }
+}
 
 async function resolveParcel(qs,label){
   const pbox=$("parcelBox");
@@ -2236,6 +2292,106 @@ document.addEventListener("click", e => {
   const det = el.closest("details") || el.querySelector("details");
   if(det) det.open = true;
   el.scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+/* Pick a place on a map.
+
+   The most natural input for a question about land, and until now the only one
+   we did not offer — people were opening Google Maps, right-clicking, copying
+   coordinates and pasting them back. That is a strange thing to ask of someone
+   looking at a photograph of their own parcel.
+
+   Geocoding uses Nominatim (OpenStreetMap), which is free and key-less. Their
+   usage policy asks for one request per second and an identifying User-Agent,
+   so searches are debounced and only fire on submit, never per keystroke. */
+let PICKMAP=null, PICKBASE=null, PICKPIN=null, PICKAT=null;
+
+const PICK_BASEMAPS = {
+  sat:   { url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+           attr:"Imagery: Esri, Maxar, Earthstar Geographics", max:18 },
+  topo:  { url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+           attr:"USGS The National Map", max:16 },
+  street:{ url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+           attr:"Esri, HERE, Garmin, OpenStreetMap contributors", max:19 }
+};
+
+// Sensible opening view per state, so nobody starts at the whole country.
+const PICK_HOME = {
+  AZ: [[31.30,-114.85],[37.05,-109.00]],
+  UT: [[36.95,-114.10],[42.05,-109.00]]
+};
+
+function pickSetBase(k){
+  const b=PICK_BASEMAPS[k];
+  if(PICKBASE) PICKMAP.removeLayer(PICKBASE);
+  PICKBASE=L.tileLayer(b.url,{attribution:b.attr,maxZoom:b.max,maxNativeZoom:b.max}).addTo(PICKMAP);
+  [...$("pickBase").children].forEach(x=>x.setAttribute("aria-pressed", x.dataset.v===k));
+}
+
+function pickDrop(lat, lon, zoom){
+  PICKAT = { lat:+lat.toFixed(6), lon:+lon.toFixed(6) };
+  if(PICKPIN) PICKPIN.setLatLng([lat,lon]);
+  else PICKPIN = L.marker([lat,lon],{draggable:true}).addTo(PICKMAP)
+        .on("dragend", e => { const p=e.target.getLatLng(); pickDrop(p.lat,p.lng); });
+  if(zoom) PICKMAP.setView([lat,lon], zoom);
+
+  const inUT = lat>=36.9 && lat<=42.1 && lon>=-114.1 && lon<=-108.9;
+  const inAZ = lat>=31 && lat<=37.1 && lon>=-115 && lon<=-108.9;
+  const ok = inUT || inAZ;
+
+  $("pickGo").disabled = !ok;
+  $("pickReadout").innerHTML = ok
+    ? "<b>"+PICKAT.lat+", "+PICKAT.lon+"</b> · drag the pin to fine-tune"
+    : "<span class='pickOut'>That point is outside Arizona and Utah — the only states covered so far.</span>";
+}
+
+function buildPickMap(){
+  const host=$("pickMap");
+  if(!host || typeof L==="undefined" || PICKMAP) return;
+  PICKMAP = L.map(host, { zoomControl:true })
+             .fitBounds(PICK_HOME[state.region] || PICK_HOME.AZ);
+  pickSetBase("sat");
+  L.control.scale({imperial:true, metric:false}).addTo(PICKMAP);
+  PICKMAP.on("click", e => pickDrop(e.latlng.lat, e.latlng.lng));
+
+  const resize=()=>PICKMAP && PICKMAP.invalidateSize({animate:false});
+  setTimeout(resize,60); setTimeout(resize,400);
+  if(window.ResizeObserver) new ResizeObserver(resize).observe(host);
+}
+
+/* Find a town so people are not panning across a desert. Kept deliberately
+   modest: one request on submit, bounded to the two states we cover. */
+async function pickSearch(){
+  const q=$("pickSearch").value.trim();
+  if(!q || !PICKMAP) return;
+  $("pickReadout").textContent = "Looking for “"+q+"”…";
+  try{
+    const u="https://nominatim.openstreetmap.org/search?format=json&limit=1"+
+      "&countrycodes=us&q="+encodeURIComponent(q+", "+(state.region==="UT"?"Utah":"Arizona"));
+    const r=await fetch(u,{headers:{"Accept":"application/json"}});
+    const j=await r.json();
+    if(!j.length){ $("pickReadout").textContent = "Couldn't find that. Try a town name, or tap the map."; return; }
+    PICKMAP.setView([+j[0].lat, +j[0].lon], 13);
+    $("pickReadout").textContent = "Found "+(j[0].display_name||q).split(",").slice(0,2).join(",")+
+      ". Now tap your parcel.";
+  }catch(_){
+    $("pickReadout").textContent = "Search unavailable — pan and zoom to your parcel instead.";
+  }
+}
+
+$("pickBase").addEventListener("click", e => {
+  const b=e.target.closest("button"); if(b && PICKMAP) pickSetBase(b.dataset.v);
+});
+$("pickSearch").addEventListener("keydown", e => {
+  if(e.key==="Enter"){ e.preventDefault(); pickSearch(); }
+});
+$("pickGo").addEventListener("click", () => {
+  if(!PICKAT) return;
+  // Drive the same control a typed lookup uses, so one path runs the report.
+  const cb=[...$("modeSeg").children].find(x=>x.dataset.v==="coords");
+  if(cb) cb.click();
+  $("coords").value = PICKAT.lat+", "+PICKAT.lon;
+  $("goBtn").click();
 });
 
 function utLogsHtml(d){
