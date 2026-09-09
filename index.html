@@ -246,6 +246,29 @@
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* Tabs. */
+  .tabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:20px;
+    border-bottom:1px solid var(--line);padding-bottom:0}
+  .tabs [role=tab]{background:none;border:1px solid transparent;border-bottom:0;
+    border-radius:var(--r) var(--r) 0 0;padding:10px 16px;font-size:14px;font-weight:700;
+    color:var(--muted);cursor:pointer;margin-bottom:-1px}
+  .tabs [role=tab]:hover{color:var(--ink)}
+  .tabs [role=tab][aria-selected=true]{background:var(--panel);color:var(--ink);
+    border-color:var(--line);border-bottom:1px solid var(--panel)}
+  .flatToggle{display:flex;align-items:center;gap:7px;margin:0 0 0 auto;font-size:12.5px;
+    color:var(--muted);font-weight:600;cursor:pointer;padding-bottom:8px}
+  .flatToggle input{width:auto}
+  .pane{padding-top:4px}
+  #shareBtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:var(--r);padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
+  #shareBtn:hover{border-color:var(--accent)}
+  .shareRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+  .shareNote{font-size:12px;color:var(--muted)}
+  @media print{
+    .tabs,.flatToggle,#shareBtn,.demo,.expect{display:none !important}
+    .pane{display:block !important}
+  }
+
   /* Map picker. */
   .pickMap{height:380px;border:1px solid var(--line);border-radius:var(--r);
     margin-top:10px;background:var(--panel2)}
@@ -747,6 +770,14 @@
 
 <div class="topv tv-idle" id="topVerdict" style="display:none"></div>
 
+<div class="shareRow" id="shareRow" style="display:none">
+  <button type="button" id="shareBtn">Copy link to this report</button>
+  <span class="shareNote">The link carries the parcel and your plans — nothing is stored on our side.</span>
+</div>
+
+<!-- Tabs. One lookup, four views. The status strip and verdict sit above and
+     stay put, so the summary is always on screen and each chip switches tabs. -->
+
 <div class="headline">
   <div style="color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em;font-weight:700"
        id="heroLabel">Estimated water cost</div>
@@ -770,15 +801,26 @@
   <div class="verdict" id="verdict"></div>
 </div>
 
-<!-- The question the tool exists to answer, shown rather than explained. -->
-<div id="trendBox"></div>
-
-<div class="cmpWrap" id="compare"></div>
-
-<div id="resultsHost">
-  <div id="wellList"></div>
-  <div id="drillersBox"></div>
+<div class="tabs" id="tabs" style="display:none" role="tablist">
+  <button role="tab" data-tab="water"    aria-selected="true">Water</button>
+  <button role="tab" data-tab="cost"     aria-selected="false">Full cost</button>
+  <button role="tab" data-tab="evidence" aria-selected="false">The records</button>
+  <label class="flatToggle"><input type="checkbox" id="flatView"> Show everything</label>
 </div>
+
+<div class="pane" data-pane="water">
+  <div id="trendBox"></div>
+  <div class="cmpWrap" id="compare"></div>
+</div>
+
+<div class="pane" data-pane="evidence">
+  <div id="resultsHost">
+    <div id="wellList"></div>
+    <div id="drillersBox"></div>
+  </div>
+</div>
+
+<div class="pane" data-pane="cost">
 
 <div class="card">
   <h2>The rest of what it takes</h2>
@@ -815,6 +857,8 @@
 <!-- The offer is no longer the data — the page gives that away. It is contact
      with the people who actually drilled the wells shown above, carrying the
      depth and location context a driller would otherwise have to ask for. -->
+</div><!-- /cost pane -->
+
 <div class="cta" id="report">
   <div style="font-size:19px;font-weight:800;margin-bottom:4px" id="ctaHeading">Get quotes from drillers who have worked this ground</div>
   <div style="color:var(--muted);font-size:14.5px" id="ctaBlurb"></div>
@@ -1175,22 +1219,9 @@ function applyState(code){
   render();
 }
 
-/* Arrive from the area finder with a point already chosen. The finder answers
-   "where should I look"; this page answers "what about exactly here", so the
-   handoff has to carry the coordinates and run itself. */
-(function fromFinder(){
-  const q = new URLSearchParams(location.search);
-  const la = parseFloat(q.get("lat")), lo = parseFloat(q.get("lon"));
-  if(!isFinite(la) || !isFinite(lo)) return;
-  const inUT = la>=36.9 && la<=42.1 && lo>=-114.1 && lo<=-108.9;
-  setTimeout(()=>{
-    if(inUT){ [...$("stateSeg").children].find(b=>b.dataset.v==="UT")?.click(); }
-    const coordsBtn=[...$("modeSeg").children].find(b=>b.dataset.v==="coords");
-    if(coordsBtn) coordsBtn.click();
-    $("coords").value = la+", "+lo;
-    $("goBtn").click();
-  }, 120);
-})();
+/* Restore from the URL — whether that came from the area finder, a bookmark,
+   or a link someone was sent. Runs after the controls exist. */
+setTimeout(readUrl, 80);
 
 /* Browsers restore form values across reloads and back-navigation, which puts
    numbers back into fields we deliberately left empty — indistinguishable from
@@ -1475,6 +1506,7 @@ async function lookup(){
     state.local=null; state.drillers=null; state.utLogs=null; list.innerHTML="";
     msg.innerHTML='<div class="banner b-local">Querying Utah water rights…</div>';
     try{
+      state.lastPoint = {lat:+lat.toFixed(6), lon:+lng.toFixed(6)};
       const wr=await fetch("/api/waterrights?lat="+lat+"&lon="+lng+"&radius="+Math.min(dist,8047));
       const wj=await wr.json();
       state.rights = wj.ok ? wj : null;
@@ -1582,6 +1614,7 @@ async function lookup(){
       // Deferred: makeCollapsible() relocates this node into a <details>
       // wrapper during render(), and a Leaflet map does not survive being
       // moved. Stash the data and build once the DOM has settled.
+      state.lastPoint = {lat:+lat.toFixed(6), lon:+lng.toFixed(6)};
       state.pendingWellMap = {j, lat, lng};
       renderTrend(lat, lng);
     }
@@ -2394,6 +2427,133 @@ $("pickGo").addEventListener("click", () => {
   $("goBtn").click();
 });
 
+/* Tabs, and the URL as the save file.
+
+   One lookup, three views. The status strip and the cost hero stay above,
+   because they are the answer and must never hide behind a tab.
+
+   Everything needed to reproduce a report lives in the query string, so a
+   saved parcel is just a link — bookmark it, send it to someone, come back in
+   a year. Results are not stored, only the inputs; the app refetches, and the
+   APIs cache at the edge so the second load is quick.
+
+   "Show everything" flattens the tabs back to one page, because tabs break
+   Ctrl+F and printing, and diligence sometimes means saving the whole thing. */
+let TAB = "water";
+
+function setTab(name, push){
+  TAB = name;
+  const flat = $("flatView") && $("flatView").checked;
+  document.querySelectorAll("#tabs [role=tab]").forEach(b =>
+    b.setAttribute("aria-selected", b.dataset.tab === name));
+  document.querySelectorAll(".pane").forEach(p =>
+    p.style.display = (flat || p.dataset.pane === name) ? "" : "none");
+  // Maps measure zero while hidden, so re-measure whatever just became visible.
+  setTimeout(() => {
+    if(WELLMAP) WELLMAP.invalidateSize({animate:false});
+    if(PICKMAP) PICKMAP.invalidateSize({animate:false});
+  }, 60);
+  if(push) writeUrl();
+}
+
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest("[role=tab]"); if(b) setTab(b.dataset.tab, true);
+});
+$("flatView").addEventListener("change", () => { setTab(TAB, true); });
+
+/* ---- URL state ------------------------------------------------------- */
+
+function writeUrl(){
+  const q = new URLSearchParams();
+  const L = state.lastPoint;
+  if(L){ q.set("lat", L.lat); q.set("lon", L.lon); }
+  if(state.region !== "AZ") q.set("state", state.region);
+  if(state.county) q.set("county", state.county);
+  const price = $("price").value.trim(), years = $("years").value.trim();
+  if(price) q.set("price", price);
+  if(years) q.set("years", years);
+  if(state.water)  q.set("water", state.water);
+  if(state.septic) q.set("septic", state.septic);
+  if(state.power)  q.set("power", state.power);
+  const r = $("radius").value; if(r && r !== "3220") q.set("radius", r);
+  if(TAB !== "water") q.set("tab", TAB);
+  if($("flatView").checked) q.set("flat", "1");
+  const url = location.pathname + (q.toString() ? "?" + q : "");
+  history.replaceState(null, "", url);
+}
+
+/* Restore from the URL. Applies the choices first, then runs the lookup, so
+   the report that appears is the one that was shared. */
+async function readUrl(){
+  const q = new URLSearchParams(location.search);
+  const lat = parseFloat(q.get("lat")), lon = parseFloat(q.get("lon"));
+  if(q.get("state") === "UT") [...$("stateSeg").children].find(b=>b.dataset.v==="UT")?.click();
+  await new Promise(r => setTimeout(r, 60));
+
+  if(q.get("county") && [...$("county").options].some(o=>o.value===q.get("county"))){
+    $("county").value = q.get("county");
+    $("county").dispatchEvent(new Event("change",{bubbles:true}));
+  }
+  if(q.get("price")) $("price").value = q.get("price");
+  if(q.get("years")) $("years").value = q.get("years");
+  if(q.get("radius")) $("radius").value = q.get("radius");
+
+  const press = (seg, v) => {
+    if(!v) return;
+    const b = [...$(seg).children].find(x => x.dataset.v === v);
+    if(b) b.click();
+  };
+  press("waterSeg",  q.get("water"));
+  press("septicSeg", q.get("septic"));
+  press("powerSeg",  q.get("power"));
+
+  if(q.get("flat") === "1") $("flatView").checked = true;
+  if(q.get("tab")) TAB = q.get("tab");
+
+  if(isFinite(lat) && isFinite(lon)){
+    const cb = [...$("modeSeg").children].find(x => x.dataset.v === "coords");
+    if(cb) cb.click();
+    $("coords").value = lat + ", " + lon;
+    $("goBtn").click();
+  }
+}
+
+/* Copy a link to exactly this report. */
+function copyShareLink(btn){
+  writeUrl();
+  const url = location.href;
+  const done = ok => {
+    btn.textContent = ok ? "Link copied" : "Copy failed";
+    setTimeout(() => btn.textContent = "Copy link to this report", 2200);
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(url).then(()=>done(true), ()=>done(false));
+  }else{
+    // Fallback for insecure contexts, where the clipboard API is unavailable.
+    const t = document.createElement("textarea");
+    t.value = url; t.style.position="fixed"; t.style.opacity="0";
+    document.body.appendChild(t); t.select();
+    let ok=false; try{ ok = document.execCommand("copy"); }catch(_){}
+    document.body.removeChild(t); done(ok);
+  }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("#shareBtn"); if(b) copyShareLink(b);
+});
+
+/* Recently viewed, per browser. Guarded — private browsing can throw on write. */
+function rememberParcel(){
+  const L = state.lastPoint; if(!L) return;
+  try{
+    const key = "bog-recent";
+    const list = JSON.parse(localStorage.getItem(key) || "[]")
+      .filter(x => !(Math.abs(x.lat-L.lat)<0.0005 && Math.abs(x.lon-L.lon)<0.0005));
+    list.unshift({ lat:L.lat, lon:L.lon, region:state.region, county:state.county,
+                   url: location.pathname + location.search, at: Date.now() });
+    localStorage.setItem(key, JSON.stringify(list.slice(0, 12)));
+  }catch(_){}
+}
+
 function utLogsHtml(d){
   if(!d.logs || !d.logs.length){
     return "<div class='wells' style='margin-top:12px'><div class='maphdr'>Utah well logs</div>"+
@@ -3053,6 +3213,13 @@ function render(){
       "we made for you would look just as confident as one built from your actual plans.</div>";
     renderTopVerdict();
   renderStatusStrip();
+  if(state.lastPoint){
+    $("tabs").style.display = "";
+    $("shareRow").style.display = "";
+    setTab(TAB, false);
+    writeUrl();
+    rememberParcel();
+  }
     makeCollapsible($("wellList"));
     renderCtaDrillers();
     flushWellMap();
@@ -3095,6 +3262,13 @@ function render(){
     $("assumptions").innerHTML = "";
     renderTopVerdict();
   renderStatusStrip();
+  if(state.lastPoint){
+    $("tabs").style.display = "";
+    $("shareRow").style.display = "";
+    setTab(TAB, false);
+    writeUrl();
+    rememberParcel();
+  }
     makeCollapsible($("wellList"));
     return;
   }
@@ -3214,6 +3388,13 @@ function render(){
 
   renderTopVerdict();
   renderStatusStrip();
+  if(state.lastPoint){
+    $("tabs").style.display = "";
+    $("shareRow").style.display = "";
+    setTab(TAB, false);
+    writeUrl();
+    rememberParcel();
+  }
   makeCollapsible($("wellList"));
   renderCtaDrillers();
   flushWellMap();
