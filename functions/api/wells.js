@@ -18,7 +18,7 @@ const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
  * it, so old payloads are abandoned rather than served for another month.
  * v2 — added lat/lon/miles per well for the map.
  */
-const SCHEMA = "v2";
+const SCHEMA = "v3";   // v3 adds stats.med — the real median depth, not the mean
 
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 const sdev = a => {
@@ -112,6 +112,12 @@ export async function onRequestGet({ request }) {
     withDepth: depths.length,
     stats: depths.length ? {
       avg: mean(depths),
+      // The median was missing, so the UI was labelling the MEAN as a median and
+      // comparing it against the county's real median. One deep outlier — these
+      // sets run to 1,500 ft — drags a mean well above typical ground, which
+      // makes a cheap area look expensive. Both are returned now; the median is
+      // the planning number and the mean is only useful next to sd.
+      med: median(depths),
       sd: sdev(depths),
       min: Math.min(...depths),
       max: Math.max(...depths),

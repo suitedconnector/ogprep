@@ -95,6 +95,23 @@
     color:var(--muted);font-size:15px;pointer-events:none}
   .money>input[type=number]{padding-left:26px}
   .money:focus-within>span{color:var(--accent)}
+  /* Water uses. Deliberately checkboxes rather than a segmented control: these
+     are not alternatives, and the categories are the ones Utah's own records
+     use (D domestic, I irrigation, S stock), so the answer compares directly
+     against a right instead of being inferred from it. */
+  .useRow{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+  .useChk{flex:1;min-width:150px;display:flex;align-items:center;gap:8px;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);
+    padding:10px 12px;font-size:13px;font-weight:600;transition:border-color .12s,background .12s}
+  .useChk:hover{border-color:var(--accent);background:var(--panel)}
+  .useChk:has(input:checked){background:var(--accent-fill);color:var(--on-accent);
+    border-color:var(--accent-fill);font-weight:700}
+  .useChk input{accent-color:var(--accent2);width:15px;height:15px;margin:0;cursor:pointer}
+  .useMatch{margin-top:10px;padding:10px 12px;border-radius:var(--r);
+    border:1px solid var(--line);background:var(--panel2);font-size:13.5px}
+  .useMatch.um-bad{border-color:var(--bad);color:var(--bad-ink)}
+  .useMatch.um-ok{border-color:var(--good);color:var(--good-ink)}
+
   .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
   .seg button{flex:1;min-width:104px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
     border-radius:var(--r);padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer;
@@ -846,6 +863,26 @@
     <div class="note">The asking price, or your offer — whichever you're testing. This is the
       one number you control, and usually the smallest part of the total.</div>
 
+    <!-- Asked in the vocabulary the water record already uses, so the answer can
+         be compared against a right rather than inferred from it. Domestic is
+         ticked by default because household water is this tool's premise, not
+         an assumption about preference — the plan segments below still start
+         unselected. Acreage only appears if irrigation is ticked: it is the one
+         answer that changes a cost, and a single irrigated acre is 4.0 af
+         against 0.45 for the whole house. -->
+    <label>What will you need water for?</label>
+    <div class="useRow" id="useRow">
+      <label class="useChk"><input type="checkbox" id="useDom" checked> Drinking &amp; household</label>
+      <label class="useChk"><input type="checkbox" id="useIrr"> Irrigation</label>
+      <label class="useChk"><input type="checkbox" id="useStk"> Livestock</label>
+    </div>
+    <div id="irrWrap" style="display:none">
+      <label for="irrAcres">Roughly how much will you irrigate? (acres)</label>
+      <input type="number" id="irrAcres" min="0" step="0.25" placeholder="e.g. 0.25" autocomplete="off">
+      <div class="note">A guess is fine. For scale, Utah counts one irrigated acre as
+        4 acre-feet a year — about nine times what a household uses indoors.</div>
+    </div>
+
     <label>Water plan</label>
     <div class="seg" id="waterSeg">
       <button data-v="well" aria-pressed="false">Drill a well</button>
@@ -1023,6 +1060,11 @@ const C = {
 // be typed against Mohave and come back with a real parcel in the wrong place —
 // the failure looks like a success. Same reason water, septic and power start
 // null: the page asks rather than assuming.
+/* What the buyer needs water FOR, in the categories Utah's records use.
+   Kept separate from `water` (well / haul / catchment), which is how they mean
+   to get it. A right can cover the second question and fail the first. */
+let needs={domestic:true,irrigation:false,stock:false,irrAcres:null};
+
 let state={county:"",water:null,septic:null,power:null,region:"AZ",
            local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,
            utDepths:null,septicTouched:false};
@@ -1469,6 +1511,25 @@ seg("waterSeg","water");seg("septicSeg","septic");seg("powerSeg","power");
 $("waterSeg").addEventListener("click",()=>{
   $("rainPanel").style.display = state.water==="rain" ? "" : "none";
 });
+/* Water-use answers. Changing one re-renders the water-right card in place, so
+   the comparison updates without anyone re-pasting the right number. */
+function syncNeeds(){
+  needs.domestic   = $("useDom").checked;
+  needs.irrigation = $("useIrr").checked;
+  needs.stock      = $("useStk").checked;
+  $("irrWrap").style.display = needs.irrigation ? "" : "none";
+  if(!needs.irrigation){ $("irrAcres").value=""; needs.irrAcres=null; }
+  if(LAST_WR) $("wrResult").innerHTML = wrResultHtml(LAST_WR);
+  render();
+}
+["useDom","useIrr","useStk"].forEach(id=>$(id).addEventListener("change",syncNeeds));
+$("irrAcres").addEventListener("input",e=>{
+  const v=parseFloat(e.target.value);
+  needs.irrAcres = (isFinite(v) && v>0) ? v : null;
+  if(LAST_WR) $("wrResult").innerHTML = wrResultHtml(LAST_WR);
+  render();
+});
+
 ["roof","usegpd"].forEach(id=>$(id).addEventListener("input",render));
 document.addEventListener("input",e=>{ if(e.target && e.target.id==="rainIn") render(); });
 $("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
@@ -1782,14 +1843,19 @@ async function lookup(){
       list.innerHTML="";
     }else{
       const s=j.stats;
-      state.local={n:j.withDepth,total:j.found,avg:s.avg,med:s.avg,sd:s.sd,
+      // med was set to the mean, which made "median depth nearby" a lie and
+      // compared a mean against the county's true median. Fall back to the mean
+      // only for responses cached before /api/wells started returning a median.
+      state.local={n:j.withDepth,total:j.found,avg:s.avg,med:(s.med!=null?s.med:s.avg),sd:s.sd,
         min:s.min,max:s.max,dtw:s.medianDepthToWater,miles:miles,lat:lat,lng:lng};
       // No county set (map or coordinate entry) means no county median to
       // compare against. The local number stands on its own.
       const cAvg=(COUNTIES[state.county]||{}).med;
       let cmp="";
       if(cAvg>0){
-        const ratio=state.local.avg/cAvg;
+        // Median against median. Comparing the local mean to the county median
+        // made skewed neighbourhoods look deeper than they are.
+        const ratio=(state.local.med||state.local.avg)/cAvg;
         if(ratio>1.35) cmp=" — about <strong>"+ratio.toFixed(1)+"× deeper</strong> than the "+state.county+
           " county median of "+cAvg+" ft. The county number would badly understate your cost here.";
         else if(ratio<0.7) cmp=" — noticeably <strong>shallower</strong> than the "+state.county+
@@ -2321,6 +2387,9 @@ async function checkWaterRight(){
   out.innerHTML="<div class='wrPending'>Reading the state record for "+wr+"…</div>";
   try{
     const j=await (await fetch("/api/waterright?wr="+encodeURIComponent(wr))).json();
+    // Held so the card can be re-rendered when the water-use answers change,
+    // without making anyone paste the right number again.
+    LAST_WR = j.ok ? j : null;
     out.innerHTML = j.ok ? wrResultHtml(j)
       : "<div class='wrBad'>"+(j.error||"Lookup failed.")+
         (j.checkAt?" <a href='"+j.checkAt+"' target='_blank' rel='noopener'>Check on the Division's site</a>":"")+
@@ -2329,6 +2398,48 @@ async function checkWaterRight(){
     out.innerHTML="<div class='wrBad'>Couldn't reach the lookup: "+(e.message||e)+"</div>";
   }
   btn.disabled=false; btn.textContent="Check it";
+}
+
+let LAST_WR = null;
+
+/* Does this right cover what they said they need?
+   The record's USES are single letters decoded server-side to Domestic /
+   Irrigation / Stock / Municipal / Power / Mining. We only ever ask about the
+   first three, so the comparison is direct — no interpretation in between.
+   This is the check the marketplaces do not make: they tell you a right exists
+   and what it costs, not whether it permits the thing you intend to do. */
+function useMatchHtml(j){
+  const LABEL={Domestic:"drinking and household use",Irrigation:"irrigation",Stock:"livestock"};
+  const want=[];
+  if(needs.domestic)   want.push("Domestic");
+  if(needs.irrigation) want.push("Irrigation");
+  if(needs.stock)      want.push("Stock");
+  if(!want.length) return "";
+
+  const have=j.uses||[];
+  const missing=want.filter(u=>!have.includes(u));
+
+  if(missing.length){
+    return "<div class='useMatch um-bad'><b>Doesn't cover "+
+      missing.map(u=>LABEL[u]).join(" or ")+".</b> You said you need "+
+      want.map(u=>LABEL[u]).join(", ")+"; this right is approved for "+
+      (have.length?have.join(", ").toLowerCase():"nothing on record")+
+      ". Changing the approved use needs the State Engineer's sign-off, and that "+
+      "is an application with an outcome, not a formality.</div>";
+  }
+
+  // Covered on paper — but volume is a separate question from permission.
+  let vol="";
+  if(needs.irrigation && needs.irrAcres && j.supports && j.supports.irrigatedAcres!=null){
+    const cap=j.supports.irrigatedAcres;
+    vol = needs.irrAcres > cap
+      ? " But the volume is short: "+j.acreFeet+" af covers about <b>"+cap+
+        "</b> irrigated acres and you want <b>"+needs.irrAcres+"</b>."
+      : " The volume also stretches to about <b>"+cap+"</b> irrigated acres, so "+
+        needs.irrAcres+" fits.";
+  }
+  return "<div class='useMatch "+(vol.startsWith(" But")?"um-bad":"um-ok")+"'>"+
+    "Covers what you said you need — "+want.map(u=>LABEL[u]).join(", ")+"."+vol+"</div>";
 }
 
 function wrResultHtml(j){
@@ -2350,6 +2461,8 @@ function wrResultHtml(j){
       "<div><span>Area</span><b>"+(j.policyArea?"Area "+j.policyArea:"—")+"</b></div>"+
       "<div><span>Owner of record</span><b>"+(j.owner||"—")+"</b></div>"+
     "</div>"+
+
+    useMatchHtml(j)+
 
     (j.supports ? "<div class='wrSupports'>That volume supports about <b>"+
       j.supports.typicalHomesteads+"</b> household"+(j.supports.typicalHomesteads===1?"":"s")+
@@ -3270,7 +3383,7 @@ function renderTopVerdict(){
     }
   }else{
     if(L){
-      head="Wells nearby average "+Math.round(L.med||L.avg)+" ft.";
+      head="Wells nearby run a median "+Math.round(L.med||L.avg)+" ft.";
       body="That depth drives the cost estimate below, drawn from "+L.n+" wells within "+
            L.miles+" miles rather than a county-wide average.";
       if(L.sd/(L.med||L.avg) > 0.5){
@@ -3427,7 +3540,16 @@ function render(){
 
   $("wellStats").innerHTML = !src ? "" : usingLocal ? `
     <div class="stat"><span>Wells with recorded depth</span><b>${L.n}</b></div>
-    <div class="stat"><span>Average depth nearby</span><b>${Math.round(L.avg).toLocaleString()} ft</b></div>
+    <!-- Median first and labelled as such: it is the planning number, and it is
+         what the county row below is, so the two are finally comparable. The
+         mean sits beside it because the gap between them is the skew — one
+         1,500 ft well moves the mean and not the median. -->
+    <div class="stat"><span>Median depth nearby</span><b>${Math.round(L.med||L.avg).toLocaleString()} ft</b></div>
+    ${L.med!=null && Math.abs(L.avg-L.med) >= Math.max(15, 0.15*L.med)
+      ? `<div class="stat"><span>Average, for contrast</span><b>${Math.round(L.avg).toLocaleString()} ft</b>
+           <em style="display:block;font-size:12px;color:var(--muted);font-style:normal">
+           Pulled up by a few deep wells — the median is the better planning figure.</em></div>`
+      : ""}
     <div class="stat"><span>Shallowest / deepest</span><b>${L.min.toLocaleString()} – ${L.max.toLocaleString()} ft</b></div>
     <div class="stat"><span>Median depth to water</span><b>${L.dtw?Math.round(L.dtw).toLocaleString()+" ft":"no data"}</b></div>
     ${L.utah
