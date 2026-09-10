@@ -246,6 +246,17 @@
   .colkey b{color:var(--ink)}
   .colkey strong{color:var(--accent)}
 
+  /* Linear flow — one question, then answers, then pricing. */
+  .step{position:relative;padding-top:24px}
+  .stepHead{margin-top:26px;position:relative;padding-top:6px}
+  .stepHead h2{margin:0 0 4px;font-size:15px;text-transform:uppercase;
+    letter-spacing:.12em;color:var(--accent)}
+  .stepNum{position:absolute;top:-13px;left:18px;width:26px;height:26px;border-radius:50%;
+    background:var(--accent-fill);color:var(--on-accent);display:grid;place-items:center;
+    font-size:13px;font-weight:800;line-height:1}
+  .stepHead .stepNum{left:0;top:-6px;position:static;margin-bottom:8px}
+  #stepFind .lookup{margin-top:10px}
+
   /* Tabs. */
   .tabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:20px;
     border-bottom:1px solid var(--line);padding-bottom:0}
@@ -672,56 +683,15 @@
        screen, or Arizona visitors are shown a Utah closed basin. -->
 </div>
 
-<div class="grid">
+<!-- Step 1. The only thing on screen until there is something to show.
+     Asking for a land price and three plan choices before someone has even
+     found their parcel was the confusion: it read as homework, and it was
+     ambiguous whether to fill it in before or after searching. -->
+<div class="card step" id="stepFind">
+  <div class="stepNum">1</div>
+  <h2>Where is the parcel?</h2>
+  <p class="note" style="margin-top:-4px">Find it on the map, or enter a parcel number or coordinates. Nothing else is needed yet.</p>
   <div class="card">
-    <h2>Your parcel</h2>
-
-    <label for="county">County</label>
-    <select id="county"></select>
-
-    <label for="price">Land price</label>
-    <div class="money"><span>$</span><input type="number" id="price" placeholder="e.g. 8,000" min="0" step="500"
-      autocomplete="off"></div>
-    <div class="note">The asking price, or your offer — whichever you're testing. This is the
-      one number you control, and usually the smallest part of the total.</div>
-
-    <label>Water plan</label>
-    <div class="seg" id="waterSeg">
-      <button data-v="well" aria-pressed="false">Drill a well</button>
-      <button data-v="haul" aria-pressed="false">Cistern + hauling</button>
-      <button data-v="rain" aria-pressed="false">Rainwater catchment</button>
-    </div>
-    <div id="rainPanel" style="display:none">
-      <label for="roof">Catchment roof area (sq ft)</label>
-      <input type="number" id="roof" value="1200" min="100" step="100">
-      <label for="usegpd">Household use (gallons per day)</label>
-      <input type="number" id="usegpd" value="50" min="5" step="5">
-      <div class="note">50 gal/day is a common off-grid figure — roughly a quarter of average US mains use.</div>
-    </div>
-
-    <label>Wastewater</label>
-    <div class="seg" id="septicSeg">
-      <button data-v="conv" aria-pressed="false">Conventional septic</button>
-      <button data-v="alt" aria-pressed="false">Alternative / ATU</button>
-      <button data-v="none" aria-pressed="false">Composting</button>
-    </div>
-
-    <label>Power</label>
-    <div class="seg" id="powerSeg">
-      <button data-v="solar" aria-pressed="false">Off-grid solar</button>
-      <button data-v="grid" aria-pressed="false">Grid at road</button>
-      <button data-v="none" aria-pressed="false">Skip for now</button>
-    </div>
-
-    <label for="years">Years to compare (hauling adds up)</label>
-    <input type="number" id="years" placeholder="e.g. 10" min="1" max="30" autocomplete="off">
-  </div>
-
-  <div class="card">
-    <h2 id="statsTitle">What the well records say</h2>
-    <div id="wellStats"></div>
-    <div class="note" id="confNote"></div>
-
     <label>Check a specific parcel — search by</label>
     <div class="seg" id="modeSeg">
       <button data-v="map" aria-pressed="false">Pick on map</button>
@@ -770,10 +740,16 @@
 
     <div id="lookupMsg"></div>
   </div>
-</div>
 
 <!-- Reading order is: ask → answer → price → evidence. The verdict sits
      directly under the controls that produced it, not above them. -->
+<div class="stepHead" id="stepResults" style="display:none">
+  <div class="stepNum">2</div>
+  <h2>What's true about this land</h2>
+  <p class="note" style="margin-top:-4px">Straight from state records. No input from you —
+    this is what the parcel is, regardless of what you plan to build.</p>
+</div>
+
 <div class="strip" id="statusStrip" style="display:none"></div>
 
 <div class="topv tv-idle" id="topVerdict" style="display:none"></div>
@@ -786,7 +762,7 @@
 <!-- Tabs. One lookup, four views. The status strip and verdict sit above and
      stay put, so the summary is always on screen and each chip switches tabs. -->
 
-<div class="headline">
+<div class="headline" id="heroWrap">
   <div style="color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em;font-weight:700"
        id="heroLabel">Estimated water cost</div>
   <div class="big" id="waterBig">—</div>
@@ -817,6 +793,13 @@
 </div>
 
 <div class="pane" data-pane="water">
+  <div class="card" id="statsCard">
+<h2 id="statsTitle">What the well records say</h2>
+    <div id="wellStats"></div>
+    <div class="note" id="confNote"></div>
+
+    
+  </div>
   <div id="trendBox"></div>
   <div class="cmpWrap" id="compare"></div>
 </div>
@@ -829,6 +812,57 @@
 </div>
 
 <div class="pane" data-pane="cost">
+<!-- Step 3. Revealed once there are results, because only then does anyone
+     have a reason to care what a septic system costs. -->
+<div class="card step" id="stepPlan" style="display:none">
+  <div class="stepNum">3</div>
+  <h2>Now price your build</h2>
+  <p class="note" style="margin-top:-4px">These four choices turn the records above into a cost. Change any of them and the totals update.</p>
+  
+    
+
+    <label for="county">County</label>
+    <select id="county"></select>
+
+    <label for="price">Land price</label>
+    <div class="money"><span>$</span><input type="number" id="price" placeholder="e.g. 8,000" min="0" step="500"
+      autocomplete="off"></div>
+    <div class="note">The asking price, or your offer — whichever you're testing. This is the
+      one number you control, and usually the smallest part of the total.</div>
+
+    <label>Water plan</label>
+    <div class="seg" id="waterSeg">
+      <button data-v="well" aria-pressed="false">Drill a well</button>
+      <button data-v="haul" aria-pressed="false">Cistern + hauling</button>
+      <button data-v="rain" aria-pressed="false">Rainwater catchment</button>
+    </div>
+    <div id="rainPanel" style="display:none">
+      <label for="roof">Catchment roof area (sq ft)</label>
+      <input type="number" id="roof" value="1200" min="100" step="100">
+      <label for="usegpd">Household use (gallons per day)</label>
+      <input type="number" id="usegpd" value="50" min="5" step="5">
+      <div class="note">50 gal/day is a common off-grid figure — roughly a quarter of average US mains use.</div>
+    </div>
+
+    <label>Wastewater</label>
+    <div class="seg" id="septicSeg">
+      <button data-v="conv" aria-pressed="false">Conventional septic</button>
+      <button data-v="alt" aria-pressed="false">Alternative / ATU</button>
+      <button data-v="none" aria-pressed="false">Composting</button>
+    </div>
+
+    <label>Power</label>
+    <div class="seg" id="powerSeg">
+      <button data-v="solar" aria-pressed="false">Off-grid solar</button>
+      <button data-v="grid" aria-pressed="false">Grid at road</button>
+      <button data-v="none" aria-pressed="false">Skip for now</button>
+    </div>
+
+    <label for="years">Years to compare (hauling adds up)</label>
+    <input type="number" id="years" placeholder="e.g. 10" min="1" max="30" autocomplete="off">
+  </div>
+
+</div>
 
 <div class="card">
   <h2>The rest of what it takes</h2>
@@ -3079,6 +3113,7 @@ const NEED_TARGET = { price:"price", years:"years",
 document.addEventListener("click",e=>{
   const b=e.target.closest(".needBtn"); if(!b) return;
   const el=$(NEED_TARGET[b.dataset.need]); if(!el) return;
+  if(el.closest('[data-pane="cost"]')) setTab("cost", true);
   el.scrollIntoView({behavior:"smooth", block:"center"});
   el.classList.add("flash");
   setTimeout(()=>el.classList.remove("flash"), 1400);
@@ -3219,6 +3254,9 @@ function render(){
         wLabel = chosen?chosen.label:null, wDetail = chosen?chosen.detail:null;
 
   if(missing.length){
+    // Hidden rather than nagging: the comparison below answers the water
+    // question without any of these choices, and step 2 promised no homework.
+    $("heroWrap").style.display = state.water ? "" : "none";
     $("heroLabel").textContent = "Your parcel, so far";
     $("waterBig").textContent = chosen ? money(wMid) : "—";
     $("waterBig").style.fontSize = chosen ? "" : "40px";
@@ -3245,6 +3283,8 @@ function render(){
   if(state.lastPoint){
     $("tabs").style.display = "";
     $("shareRow").style.display = "";
+    $("stepResults").style.display = "";
+    $("stepPlan").style.display = "";
     setTab(TAB, false);
     writeUrl();
     rememberParcel();
@@ -3294,6 +3334,8 @@ function render(){
   if(state.lastPoint){
     $("tabs").style.display = "";
     $("shareRow").style.display = "";
+    $("stepResults").style.display = "";
+    $("stepPlan").style.display = "";
     setTab(TAB, false);
     writeUrl();
     rememberParcel();
@@ -3377,6 +3419,7 @@ function render(){
   const swing = i => highs[i]-lows[i];
   const spreads = [swing(1), swing(2), swing(3), swing(4)];
   const waterShare = spreads[0] / (spreads.reduce((a,b)=>a+b,0) || 1);
+  $("heroWrap").style.display = "";
   $("lines").closest("table").style.display = "";
   document.querySelector(".colkey").style.display = "";
   $("emptyLines").style.display = "none";
@@ -3420,6 +3463,8 @@ function render(){
   if(state.lastPoint){
     $("tabs").style.display = "";
     $("shareRow").style.display = "";
+    $("stepResults").style.display = "";
+    $("stepPlan").style.display = "";
     setTab(TAB, false);
     writeUrl();
     rememberParcel();
