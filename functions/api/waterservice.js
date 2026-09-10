@@ -80,12 +80,29 @@ async function esri(url, params, signal) {
   return j.features || [];
 }
 
-const atPoint = (url, fields, lat, lon, signal) =>
+const atPoint = (url, fields, lat, lon, signal, withGeom = false) =>
   esri(url, {
     geometry: `${lon},${lat}`, geometryType: "esriGeometryPoint", inSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
-    outFields: fields, returnGeometry: "false", resultRecordCount: "5"
+    outFields: fields,
+    // Generalised hard when we do want it: the point is to show the reader
+    // roughly where the line runs, not to reproduce the utility's survey.
+    ...(withGeom
+      ? { returnGeometry: "true", outSR: "4326",
+          maxAllowableOffset: "0.002", geometryPrecision: "5" }
+      : { returnGeometry: "false" }),
+    resultRecordCount: "5"
   }, signal);
+
+/* Esri rings [x,y] → Leaflet [lat,lon], thinned again so a large system's
+   boundary does not arrive as ten thousand points. */
+const toBoundary = geom => {
+  if (!geom || !Array.isArray(geom.rings)) return null;
+  return geom.rings.map(r => {
+    const step = Math.max(1, Math.ceil(r.length / 400));
+    return r.filter((_, i) => i % step === 0).map(v => [+v[1], +v[0]]);
+  });
+};
 
 /* Great-circle distance in miles. Rings come back in 4326. */
 const MI = 3958.8;
@@ -126,7 +143,8 @@ async function nearestSystem(lat, lon, signal) {
         phone: clean(a.PHONE),
         population: a.POPULATION > 0 ? Math.round(a.POPULATION) : null,
         active: String(a.STATUS || "").toUpperCase() === "A",
-        miles: +d.toFixed(1)
+        miles: +d.toFixed(1),
+        boundary: toBoundary(f.geometry)
       };
     }
   }
@@ -156,7 +174,7 @@ export async function onRequestGet({ request }) {
   let served = null, ccn = null, ama = null, nearest = null, err = null;
   try {
     const [cwsF, ccnF, amaF] = await Promise.all([
-      atPoint(CWS, "CWS_NAME,OWNER_NAME,PHONE,POPULATION,STATUS,COUNTY,ADEQ_ID", lat, lon, ctl.signal),
+      atPoint(CWS, "CWS_NAME,OWNER_NAME,PHONE,POPULATION,STATUS,COUNTY,ADEQ_ID", lat, lon, ctl.signal, true),
       atPoint(CCN, "*", lat, lon, ctl.signal).catch(() => []),
       atPoint(AMA, "*", lat, lon, ctl.signal).catch(() => [])
     ]);
@@ -169,7 +187,8 @@ export async function onRequestGet({ request }) {
         phone: clean(a.PHONE),
         population: a.POPULATION > 0 ? Math.round(a.POPULATION) : null,
         active: String(a.STATUS || "").toUpperCase() === "A",
-        systemId: clean(a.ADEQ_ID)
+        systemId: clean(a.ADEQ_ID),
+        boundary: toBoundary(cwsF[0].geometry)
       };
     } else {
       nearest = await nearestSystem(lat, lon, ctl.signal).catch(() => null);

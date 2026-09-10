@@ -2107,6 +2107,31 @@ function buildWellMap(j, lat, lng){
   const pts=(j.wells||[]).filter(w=>w.lat!=null&&w.lon!=null);
   const group=L.featureGroup().addTo(WELLMAP);
 
+  /* The water system's boundary, if there is one in range. Being 200 feet
+     outside the line is a different conversation with that utility than being
+     four miles outside, and a distance in text does not convey which you are.
+     Drawn in blue so it never reads as a depth band. */
+  const SV = state.service;
+  const svPoly = SV && ((SV.served && SV.served.boundary) || (SV.nearest && SV.nearest.boundary));
+  if(svPoly){
+    const inside = !!(SV.served && SV.served.boundary);
+    const who = (SV.served || SV.nearest || {}).name || "Water system";
+    L.polygon(svPoly, {
+      color:"#3d6f96", weight:2, dashArray: inside ? null : "5 5",
+      fill:true, fillOpacity: inside ? 0.10 : 0.05
+    }).addTo(group).bindPopup("<b>"+who+"</b><br>"+
+      (inside ? "This point is inside the mapped service area."
+              : "Nearest mapped service area — your point is outside it.")+
+      "<br><em>A boundary is not a connection. Ask them whether a main reaches the road.</em>");
+
+    // The legend is written before this data arrives, so extend it here rather
+    // than guessing at lookup time whether a system would turn up.
+    const leg = document.querySelector(".wmLegend");
+    if(leg) leg.insertAdjacentHTML("beforeend",
+      "<span><i style='background:none;border:2px solid #3d6f96'></i>"+
+      (inside?"water service area":"nearest service area")+"</span>");
+  }
+
   /* The searched area, drawn. Without it an empty map is ambiguous — the reader
      cannot tell whether nothing was found or nothing was looked for. */
   if(j.radiusMeters > 0){
