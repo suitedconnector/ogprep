@@ -1,3 +1,10 @@
 .DS_Store
 node_modules/
 *.log
+
+# Arizona parcel crawl scratch. raw.jsonl runs to a few hundred MB for ~3.5M
+# parcels and crawl-state.json is a resume marker — neither belongs in git.
+# The sharded output under data/az-parcels/shards/ IS committed; that is what
+# Pages serves.
+data/az-parcels/raw.jsonl
+data/az-parcels/crawl-state.json

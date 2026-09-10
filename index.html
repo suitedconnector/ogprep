@@ -292,6 +292,13 @@
   .pickFoot{display:flex;gap:12px;align-items:center;justify-content:space-between;
     flex-wrap:wrap;margin-top:10px}
   #pickReadout{font-size:13px;color:var(--muted)}
+  #pickIdent{display:block;font-size:13px;margin-top:3px}
+  .identWait{color:var(--muted);font-style:italic}
+  .identNone{color:var(--muted)}
+  .identHit{color:var(--ink);font-weight:600}
+  .identHit b{color:var(--accent)}
+  .identAddr{display:block;font-size:12px;color:var(--muted)}
+  .pickFoot{align-items:flex-start}
   #pickReadout b{color:var(--ink);font-variant-numeric:tabular-nums}
   .pickOut{color:var(--bad-ink)}
   #pickGo{background:var(--info-fill);color:var(--on-info);border:0;border-radius:var(--r);
@@ -713,6 +720,7 @@
       <div id="pickMap" class="pickMap"></div>
       <div class="pickFoot">
         <span id="pickReadout">Tap the map to drop a pin on your parcel.</span>
+        <span id="pickIdent"></span>
         <button type="button" id="pickGo" disabled>Check this spot</button>
       </div>
     </div>
@@ -1018,9 +1026,23 @@ const sdev=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.ma
 const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const i=Math.floor(s.length/2);
   return s.length%2?s[i]:(s[i-1]+s[i])/2;};
 
-// Arizona counties with a bespoke assessor adapter. Everywhere else in Arizona
-// is coordinates-only, because each assessor runs their own GIS.
-const APN_COUNTIES=["Mohave","Yavapai"];
+// Arizona counties with a bespoke assessor adapter, which is what gives us the
+// rich record: acreage as assessed, zoning, land value, improved vs vacant.
+// Each assessor runs their own GIS, so each is its own piece of work.
+const RICH_COUNTIES=["Mohave","Yavapai"];
+
+// ...but parcel-number search now works in all 15, via the AZGeo statewide
+// layer. That layer can only be searched by number once the county narrows it
+// first — its APN field is unindexed, so a statewide scan times out, while the
+// same scan inside one county envelope returns immediately, Maricopa included.
+// Hence the county selector is required rather than a convenience. The result
+// is thinner: parcel number, address, and acreage measured off the boundary.
+const APN_COUNTIES=["Apache","Cochise","Coconino","Gila","Graham","Greenlee","La Paz","Maricopa",
+  "Mohave","Navajo","Pima","Pinal","Santa Cruz","Yavapai","Yuma"];
+
+// Address search stays with the bespoke adapters — the statewide layer's
+// address field is too patchy on rural parcels to search against.
+const ADDRESS_COUNTIES=RICH_COUNTIES;
 
 // Every Utah county supports parcel search. A 2005 statute requires all 29 to
 // publish to one statewide layer with an identical schema, so one adapter
@@ -1132,9 +1154,11 @@ const STATES = {
 
 const sel=$("county"), leadSel=$("leadCounty");
 Object.keys(COUNTIES).forEach(k=>{
-  const supported=APN_COUNTIES.includes(k);
+  // Every Arizona county now takes a parcel number. The two with their own
+  // assessor adapter return more per parcel, so say which those are rather
+  // than letting the difference show up only after a search.
   const o=document.createElement("option");o.value=k;
-  o.textContent=k+(supported?"":"  — coordinates only");
+  o.textContent=k+(RICH_COUNTIES.includes(k)?"  — full assessor record":"");
   if(k===state.county)o.selected=true;sel.appendChild(o);
   const o2=document.createElement("option");o2.value=k;o2.textContent=k;
   if(k===state.county)o2.selected=true;leadSel.appendChild(o2);
@@ -1345,19 +1369,41 @@ function syncModeAvailability(){
       [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===mode)); }
     return;
   }
-  const supported=APN_COUNTIES.includes(state.county);
+  // Arizona: parcel-number search in all 15 counties now, address only where we
+  // speak the assessor's own GIS.
+  const canApn=APN_COUNTIES.includes(state.county);
+  const canAddr=ADDRESS_COUNTIES.includes(state.county);
   [...$("modeSeg").children].forEach(b=>{
-    const off = !supported && b.dataset.v!=="coords" && b.dataset.v!=="map";
+    const v=b.dataset.v;
+    const off = (v==="apn" && !canApn) || (v==="address" && !canAddr);
     b.disabled=off; b.style.opacity=off?".4":"";
-    b.title=off?"Parcel and address search aren't available for "+state.county+" yet":"";
+    b.title = !off ? ""
+      : v==="address"
+        ? "Address search needs the county assessor's own records, which we have for "+
+          ADDRESS_COUNTIES.join(" and ")+". Use the parcel number or the map instead."
+        : "Parcel search isn't available for "+state.county+" yet";
   });
-  if(!supported && mode!=="coords"){
+  if(mode==="address" && !canAddr){
+    mode = canApn ? "apn" : "coords";
+    [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===mode));
+    $("coords").placeholder=MODES[mode].ph;
+    $("modeHint").textContent = canApn
+      ? "Address search isn't available in "+state.county+" — the statewide layer's addresses "+
+        "are too patchy on rural parcels. Search by parcel number instead."
+      : MODES.coords.hint;
+  }else if(mode==="apn" && !canApn){
     mode="coords";
     [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v==="coords"));
     $("coords").placeholder=MODES.coords.ph;
     $("modeHint").textContent="Parcel search isn't available for "+state.county+
       " yet — enter the parcel's GPS coordinates instead. Well and soil data work anywhere in Arizona. "+
       "In Google Maps, right-click the parcel and click the coordinates that appear to copy them.";
+  }else if(mode==="apn" && canApn && !RICH_COUNTIES.includes(state.county)){
+    // Say plainly what the thinner tier does and does not include, before the
+    // search rather than after it.
+    $("modeHint").textContent="Parcel number for "+state.county+" County. Returns the parcel's "+
+      "location and acreage measured from its mapped boundary. Zoning, assessed value and "+
+      "improved-versus-vacant come from the county assessor and aren't in the statewide layer.";
   }
 }
 
@@ -1390,7 +1436,7 @@ const APN_RE=/^\s*\d{3}\s*-?\s*\d{2}\s*-?\s*\d{3}\s*[A-Za-z]?\s*$/;
 const COORD_RE=/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/;
 
 const MODES={
-  apn:     {ph:"306-32-007J  or  800-11-044T", hint:"Parcel number for Mohave or Yavapai County. We'll search both."},
+  apn:     {ph:"306-32-007J", hint:"Parcel number, in the county selected above. Pick the right county first — Arizona parcel numbers repeat across counties, so the wrong one can return a real parcel in the wrong place."},
   address: {ph:"5413 W Brook Dr", hint:"Street address as the assessor has it, in Mohave or Yavapai. Many rural parcels have no address on file — use the parcel number if this comes up empty."},
   coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Arizona returns well depths and costs; Utah returns water rights."},
   map:     {ph:"", hint:"Find your parcel on the satellite view and tap it. Drag the pin to fine-tune — you can see the tracks, washes and neighbouring buildings while you place it."}
@@ -1419,9 +1465,63 @@ function applyPickMode(){
   }
 }
 
+/* Arizona counties without a bespoke adapter go to /api/apn, which searches the
+   statewide layer inside that county's envelope. Different endpoint, different
+   response shape, so normalise it into what the rest of this function expects
+   rather than teaching every caller about two formats. */
+async function resolveViaStatewide(apn,county,pbox){
+  const r=await fetch("/api/apn?county="+encodeURIComponent(county)+"&apn="+encodeURIComponent(apn));
+  const j=await r.json();
+  if(!j.ok) return j;
+
+  if(j.count>1){
+    pbox.innerHTML='<div class="banner b-local"><strong>'+j.count+' parcels match'+
+      (j.exact?'':' that number')+'.</strong> Pick one:</div>'+
+      '<div class="matchlist">'+j.matches.map((x,i)=>
+        '<button type="button" class="matchbtn" data-i="'+i+'">'+(x.address||x.place||x.apn)+
+        ' <span>'+x.apn+(x.acres?" · ≈"+x.acres+" ac":"")+'</span></button>').join("")+'</div>';
+    return { ok:true, multiple:true, _statewide:j };
+  }
+  const p=j.parcel;
+  return { ok:true, apn:p.apn, county:p.county, address:p.address, acres:p.acres,
+           acresSource:p.acresSource, boundary:p.boundary, thin:true,
+           lat:p.centroid?p.centroid.lat:null, lon:p.centroid?p.centroid.lon:null };
+}
+
 async function resolveParcel(qs,label){
   const pbox=$("parcelBox");
   pbox.innerHTML='<div class="banner b-local">Looking up '+label+'…</div>';
+
+  // Route by what the county actually offers. Mohave and Yavapai have their own
+  // assessor adapters and return the full record; the rest of Arizona goes to
+  // the statewide layer, which is thinner but covers everywhere.
+  const params=new URLSearchParams(qs);
+  if(state.region==="AZ" && params.get("apn") && !RICH_COUNTIES.includes(state.county)){
+    let sj;
+    try{ sj=await resolveViaStatewide(params.get("apn"), state.county, pbox); }
+    catch(e){ sj={ok:false,error:"Parcel lookup failed: "+(e.message||e)}; }
+    if(sj.multiple){
+      const list=sj._statewide;
+      // Re-run the whole lookup with the exact number, the same way the
+      // assessor-adapter path does. The second search matches one parcel, so it
+      // falls straight through to the normal flow.
+      [...pbox.querySelectorAll(".matchbtn")].forEach(b=>b.addEventListener("click",()=>{
+        $("coords").value=list.matches[+b.dataset.i].apn;
+        $("coords").placeholder=MODES.apn.ph;
+        lookup();
+      }));
+      return null;
+    }
+    if(!sj.ok){
+      pbox.innerHTML='<div class="banner '+(sj.notFound?"b-thin":"b-err")+'">'+
+        (sj.error||"Couldn't locate that parcel.")+'</div>';
+      return null;
+    }
+    state.parcel=sj;
+    pbox.innerHTML=parcelHtml(sj);
+    return sj;
+  }
+
   const pr=await fetch("/api/parcel?"+qs);
   const pj=await pr.json();
   if(pj.ok && pj.multiple){
@@ -2439,6 +2539,54 @@ function pickDrop(lat, lon, zoom){
   $("pickReadout").innerHTML = ok
     ? "<b>"+PICKAT.lat+", "+PICKAT.lon+"</b> · drag the pin to fine-tune"
     : "<span class='pickOut'>That point is outside Arizona and Utah — the only states covered so far.</span>";
+  if(ok) identifyPin(lat, lon);
+}
+
+/* Name the parcel under the pin.
+
+   Arizona has no per-county adapter for most of the state, but AZGeo's
+   statewide layer answers a spatial query in about a tenth of a second — so
+   dropping a pin anywhere in Arizona now returns an APN and address, which
+   typed parcel search still cannot do outside Mohave and Yavapai.
+
+   Debounced, because dragging a pin fires this continuously. */
+let IDENT_SEQ = 0, IDENT_TIMER = null;
+
+function identifyPin(lat, lon){
+  clearTimeout(IDENT_TIMER);
+  const box = $("pickIdent");
+  if(box) box.innerHTML = "<span class='identWait'>Finding the parcel…</span>";
+  IDENT_TIMER = setTimeout(async () => {
+    const seq = ++IDENT_SEQ;
+    try{
+      const q = "/api/identify?lat="+lat+"&lon="+lon+
+                (state.county ? "&county="+encodeURIComponent(state.county) : "");
+      const j = await (await fetch(q)).json();
+      if(seq !== IDENT_SEQ || !box) return;      // a later pin already won
+      box.innerHTML = j.ok ? identHtml(j)
+        : "<span class='identNone'>"+(j.error||"No parcel found here.")+"</span>";
+      // Remember it so the report can name the parcel rather than a coordinate.
+      state.pinParcel = j.ok ? j : null;
+    }catch(e){
+      if(seq === IDENT_SEQ && box) box.innerHTML =
+        "<span class='identNone'>Couldn't reach the parcel service — coordinates still work.</span>";
+    }
+  }, 350);
+}
+
+function identHtml(j){
+  const bits = [];
+  if(j.apn)   bits.push("<b>"+j.apn+"</b>");
+  if(j.county) bits.push(j.county+" County");
+  // Acreage from /api/identify is measured off the mapped boundary, not read
+  // from an assessor record. Mark it approximate so nobody quotes it as the
+  // deeded figure — old rural splits can differ by a lot.
+  if(j.acres) bits.push(j.acresSource
+    ? "<span title='Measured from the mapped parcel boundary — the assessor&#39;s drawing, "+
+      "not a survey. Confirm against the deed before it matters.'>≈"+j.acres+" acres</span>"
+    : j.acres+" acres");
+  return "<span class='identHit'>"+bits.join(" · ")+"</span>"+
+    (j.address ? "<span class='identAddr'>"+j.address+"</span>" : "");
 }
 
 function buildPickMap(){
@@ -2487,6 +2635,12 @@ $("pickGo").addEventListener("click", () => {
   const cb=[...$("modeSeg").children].find(x=>x.dataset.v==="coords");
   if(cb) cb.click();
   $("coords").value = PICKAT.lat+", "+PICKAT.lon;
+  // The pin already told us which parcel this is; keep it for the report.
+  if(state.pinParcel) state.parcel = Object.assign({}, state.parcel, {
+    apn: state.pinParcel.apn, address: state.pinParcel.address,
+    acres: state.pinParcel.acres, county: state.pinParcel.county,
+    fromPin: true
+  });
   $("goBtn").click();
 });
 
@@ -2811,7 +2965,12 @@ function parcelHtml(p){
   return "<div class='parcelbox'>"+
     "<div class='soilname'>"+p.apn+(p.address?" · "+p.address:"")+"</div>"+
     "<div class='soilrow'><span>County</span><b>"+p.county+"</b></div>"+
-    "<div class='soilrow'><span>Size</span><b>"+(p.acres!=null?p.acres+" acres":"—")+"</b></div>"+
+    // Acreage measured off the mapped boundary is marked approximate; acreage
+    // read from an assessor record is not. Those are different claims.
+    "<div class='soilrow'><span>Size</span><b"+
+      (p.acresSource?" title='Measured from the mapped parcel boundary — the assessor&#39;s "+
+        "drawing, not a survey. Confirm against the deed before it matters.'":"")+">"+
+      (p.acres!=null?(p.acresSource?"≈":"")+p.acres+" acres":"—")+"</b></div>"+
     (p.use?"<div class='soilrow'><span>Use / subdivision</span><b>"+p.use+"</b></div>":"")+
     (p.zoning?"<div class='soilrow'><span>Zoning</span><b>"+p.zoning+"</b></div>":"")+
     (p.landValue!=null?"<div class='soilrow'><span>Assessed land value</span><b>"+money(p.landValue)+"</b></div>":"")+
@@ -2821,7 +2980,18 @@ function parcelHtml(p){
       :"")+
     dens+
     districtHtml(p)+
-    "<div class='src'>Source: "+p.source.publisher+".</div></div>";
+    // The statewide layer carries none of the assessor detail above, so say so
+    // rather than letting the absent rows read as "nothing to report".
+    (p.thin
+      ? "<div class='banner b-thin' style='margin:10px 0 0'>Location and size only. "+
+        "Zoning, assessed value and whether anything is built here live with the "+p.county+
+        " County Assessor — the statewide layer doesn't carry them.</div>"
+      : "")+
+    "<div class='src'>Source: "+
+      (p.source && p.source.publisher
+        ? p.source.publisher
+        : "AZGeo statewide parcel cache — Arizona State Land Department / county assessors")+
+    ".</div></div>";
 }
 
 // Pass/fail factors — the things a dollar figure can't express.
@@ -3057,7 +3227,12 @@ function renderCompare(options, years, price, yearsSet, priceSet){
         verdict = "<b class='warn'>No domestic water right — may not be permitted</b>";
       }
     }else if(k==="haul"){
-      verdict = "No permit needed · works from day one";
+      /* Was "No permit needed · works from day one" — an overclaim I could not
+         support. Hauling needs no WATER RIGHT, which is the verifiable part and
+         the one that matters in a closed basin. A cistern is still a plumbing
+         fixture and counties generally permit potable storage; a large tank can
+         need structural review as well. Say the part we know. */
+      verdict = "No water right needed · check tank permits with the county";
     }else{
       const c=o.coverage!=null?Math.round(o.coverage*100):null;
       verdict = c!=null
