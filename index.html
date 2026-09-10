@@ -523,6 +523,11 @@
   .maphdr{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
     color:var(--paper-muted);margin-bottom:8px}
   /* Leaflet well map, replacing the old inline SVG scatter. */
+  /* Numbered well pins. */
+  .wellPin{background:none;border:0}
+  .wellPin span{display:block;border-radius:50%;border:2px solid #fff;color:#14160f;
+    font-weight:800;text-align:center;font-size:11.5px;
+    box-shadow:0 1px 3px rgba(0,0,0,.45);font-variant-numeric:tabular-nums}
   .wellMapBox.dim .leaflet-tile-pane{filter:grayscale(.85) brightness(1.14) contrast(.78) opacity(.62)}
   /* Fixed height for the same reason as the finder map: vh is unreliable in
      embedded and in-app browsers. */
@@ -1670,7 +1675,7 @@ function wellMapHtml(j,lat,lng){
   const pts=(j.wells||[]).filter(w=>w.lat!=null&&w.lon!=null);
   if(!pts.length) return "";
   return "<div class='mapwrap'>"+
-    "<div class='maphdr'>Wells within "+(j.radiusMiles||2)+" miles · tap any well for its record</div>"+
+    "<div class='maphdr'>Wells near your point · numbers match the table below · tap any for its record</div>"+
     "<div class='wmTools'><div class='seg wmSeg' id='wmSeg'>"+
       "<button data-v='sat' aria-pressed='true'>Satellite</button>"+
       "<button data-v='topo' aria-pressed='false'>Terrain</button>"+
@@ -1705,7 +1710,7 @@ function buildWellMap(j, lat, lng){
   if(!host || typeof L==="undefined") return;
   if(WELLMAP){ WELLMAP.remove(); WELLMAP=null; WELLBASE=null; }
 
-  WELLMAP=L.map(host,{preferCanvas:true, scrollWheelZoom:false});
+  WELLMAP=L.map(host,{scrollWheelZoom:false});
   host.classList.toggle("dim", !$("wmDim") || $("wmDim").checked);
   wmSetBase("sat");
   L.control.scale({imperial:true,metric:false}).addTo(WELLMAP);
@@ -1724,12 +1729,23 @@ function buildWellMap(j, lat, lng){
       .addTo(group).bindPopup("Your point");
   }
 
-  pts.forEach(w=>{
-    L.circleMarker([w.lat,w.lon],{
-      radius: Math.min(11, 4 + Math.log10(Math.max(w.depth,10))*2.4),
-      color:"#fff", weight:1.4, fillColor:wmColour(w.depth), fillOpacity:.92
+  /* Numbered to match the table below, so "well 7" means the same thing in
+     both places. divIcon rather than circleMarker — a canvas circle cannot
+     carry a label, and the number is the point. */
+  const near = [...pts].sort((a,b)=>(a.miles??99)-(b.miles??99));
+  near.forEach(w=>{
+    const size = Math.min(30, 20 + Math.round(Math.log10(Math.max(w.depth,10))*4));
+    L.marker([w.lat,w.lon], {
+      icon: L.divIcon({
+        className:"wellPin",
+        html:"<span style='background:"+wmColour(w.depth)+";width:"+size+"px;height:"+size+
+             "px;line-height:"+(size-3)+"px'>"+(w.n??"")+"</span>",
+        iconSize:[size,size], iconAnchor:[size/2,size/2]
+      }),
+      title: w.depth.toLocaleString()+" ft"
     }).addTo(group).bindPopup(
       "<div class='pop'><b>"+w.depth.toLocaleString()+" ft</b> deep"+
+      (w.n!=null?" <span style='color:var(--muted);font-size:12px'>· well "+w.n+" in the table</span>":"")+
       "<div class='popRow'><span>Depth to water</span><b>"+
         (w.depthToWater?Math.round(w.depthToWater).toLocaleString()+" ft":"not recorded")+"</b></div>"+
       "<div class='popRow'><span>Drilled</span><b>"+(w.drilled||"—")+"</b></div>"+
@@ -1739,8 +1755,18 @@ function buildWellMap(j, lat, lng){
 
   // Utah: who owns the water next door. A cluster of diversions on one point is
   // what a shared system looks like from above.
-  try{ WELLMAP.fitBounds(group.getBounds().pad(0.15)); }
-  catch(_){ WELLMAP.setView([lat,lng],13); }
+  /* Frame the parcel and its closest neighbours, not every well returned. One
+     well five miles out was dragging the view so far back that the parcel was
+     a speck — which is the opposite of useful. Fit the nearest handful, and
+     cap how far out that is allowed to push us. */
+  try{
+    const focus = L.latLngBounds([[lat,lng]]);
+    near.slice(0, 8).forEach(w => focus.extend([w.lat, w.lon]));
+    if(P && P.boundary && P.boundary.length) P.boundary.forEach(r => r.forEach(pt => focus.extend(pt)));
+    WELLMAP.fitBounds(focus.pad(0.25), { maxZoom:17 });
+    // Never end up so far out that the parcel is invisible.
+    if(WELLMAP.getZoom() < 13) WELLMAP.setView([lat,lng], 14);
+  }catch(_){ WELLMAP.setView([lat,lng],15); }
 
   const resize=()=>WELLMAP && WELLMAP.invalidateSize({animate:false});
   setTimeout(resize,60); setTimeout(resize,400);
