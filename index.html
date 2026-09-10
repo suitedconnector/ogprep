@@ -1008,7 +1008,11 @@ const C = {
   site:[4000,9000,16000]
 };
 
-let state={county:"Mohave",water:null,septic:null,power:null,region:"AZ",
+// County starts unset. Defaulting to Mohave meant a Pinal parcel number could
+// be typed against Mohave and come back with a real parcel in the wrong place —
+// the failure looks like a success. Same reason water, septic and power start
+// null: the page asks rather than assuming.
+let state={county:"",water:null,septic:null,power:null,region:"AZ",
            local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,
            utDepths:null,septicTouched:false};
 
@@ -1161,6 +1165,11 @@ const STATES = {
 };
 
 const sel=$("county"), leadSel=$("leadCounty");
+/* Nothing preselected — the first option is a prompt, not a county. */
+const COUNTY_PLACEHOLDER = "Select a county…";
+sel.appendChild(Object.assign(document.createElement("option"),
+  { value:"", textContent:COUNTY_PLACEHOLDER }));
+
 Object.keys(COUNTIES).forEach(k=>{
   // Every Arizona county now takes a parcel number. The two with their own
   // assessor adapter return more per parcel, so say which those are rather
@@ -1171,6 +1180,7 @@ Object.keys(COUNTIES).forEach(k=>{
   const o2=document.createElement("option");o2.value=k;o2.textContent=k;
   if(k===state.county)o2.selected=true;leadSel.appendChild(o2);
 });
+sel.value = state.county;   // "" → the placeholder shows
 
 /**
  * Switching state changes which questions the tool can answer, so the intro
@@ -1196,7 +1206,9 @@ function applyState(code){
   $("leadApnHint").textContent = off.apnHint;
   const counties = code==="UT" ? UT_COUNTIES : Object.keys(COUNTIES);
   leadSel.innerHTML = counties.map(c=>"<option>"+c+"</option>").join("");
-  leadSel.value = code==="UT" ? "Iron" : state.county;
+  // The lead form keeps its own default; blanking it would leave that select
+  // showing nothing, since it has no placeholder of its own.
+  leadSel.value = code==="UT" ? "Iron" : (state.county || "Mohave");
 
   // Rebuilt on every state switch, and shown again — switching states changes
   // the question the tool answers, so the promise has to be re-read.
@@ -1245,14 +1257,17 @@ function applyState(code){
      stuck on "Mohave" and sent every Utah parcel lookup to Arizona. */
   $("county").parentElement.querySelector('label[for="county"]').style.display = "";
   $("county").style.display = "";
-  sel.innerHTML = counties.map(c=>{
-    const coordsOnly = code==="AZ" && !APN_COUNTIES.includes(c);
-    return "<option value='"+c+"'>"+c+(coordsOnly?"  — coordinates only":"")+"</option>";
-  }).join("");
-  // Keep the current county if it exists in the new list, else pick a default.
-  sel.value = counties.includes(state.county) ? state.county : (code==="UT" ? "Iron" : "Mohave");
+  sel.innerHTML = "<option value=''>"+COUNTY_PLACEHOLDER+"</option>" +
+    counties.map(c=>{
+      const rich = code==="AZ" && RICH_COUNTIES.includes(c);
+      return "<option value='"+c+"'>"+c+(rich?"  — full assessor record":"")+"</option>";
+    }).join("");
+  // Keep the current county only if it exists in the new list. Switching states
+  // otherwise carries a county across a border, or silently picks one the user
+  // never chose — both of which produce a confident answer about the wrong place.
+  sel.value = counties.includes(state.county) ? state.county : "";
   state.county = sel.value;
-  leadSel.value = state.county;
+  if(state.county) leadSel.value = state.county;
 
   document.getElementById("statsTitle").style.display = az?"":"none";
   $("wellStats").style.display = az?"":"none";
@@ -1366,6 +1381,22 @@ $("demoStrip").addEventListener("click", async e=>{
 });
 
 function syncModeAvailability(){
+  // No county chosen yet: parcel and address search are meaningless, but the
+  // map and coordinates are not — both carry their own location, and the map
+  // will fill the county in once a pin lands.
+  if(!state.county){
+    [...$("modeSeg").children].forEach(b=>{
+      const off = b.dataset.v==="apn" || b.dataset.v==="address";
+      b.disabled=off; b.style.opacity=off?".4":"";
+      b.title=off?"Choose a county first — parcel numbers are only unique within one":"";
+    });
+    if(mode==="apn"||mode==="address"){
+      $("modeHint").textContent="Choose a county above to search by parcel number, "+
+        "or pick the parcel on the map and we'll work out the county for you.";
+    }
+    return;
+  }
+
   // Utah: parcel search everywhere, address search nowhere.
   if(state.region==="UT"){
     [...$("modeSeg").children].forEach(b=>{
@@ -1377,6 +1408,7 @@ function syncModeAvailability(){
       [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===mode)); }
     return;
   }
+
   // Arizona: parcel-number search in all 15 counties now, address only where we
   // speak the assessor's own GIS.
   const canApn=APN_COUNTIES.includes(state.county);
@@ -1550,7 +1582,7 @@ async function resolveParcel(qs,label){
     return null;
   }
   // Guard against a cross-county match slipping through.
-  if(pj.county && pj.county.toLowerCase()!==state.county.toLowerCase()){
+  if(pj.county && state.county && pj.county.toLowerCase()!==state.county.toLowerCase()){
     pbox.innerHTML='<div class="banner b-err"><strong>County mismatch.</strong> You selected '+
       state.county+', but that parcel number resolved in '+pj.county+
       '. Arizona parcel numbers repeat across counties — check which county the parcel is actually in.</div>';
@@ -1607,6 +1639,14 @@ async function lookup(){
   }else{
     // Always scope to the selected county. Arizona APNs repeat across counties,
     // so an unscoped search can match the wrong one and look convincing.
+    if(!state.county){
+      msg.innerHTML='<div class="banner b-err"><strong>Choose a county first.</strong> '+
+        'Parcel numbers are only unique within a county — the same number can exist in '+
+        'several, so searching without one can return a real parcel hundreds of miles '+
+        'from the land you mean. If you don\'t know the county, pick the parcel on the map instead.</div>';
+      $("county").focus();
+      return;
+    }
     const cKey = state.county.toLowerCase().replace(/[^a-z]/g,"");
     const qs = ((mode==="address"&&!looksApn)
       ? "address="+encodeURIComponent(raw)
@@ -1733,14 +1773,18 @@ async function lookup(){
       const s=j.stats;
       state.local={n:j.withDepth,total:j.found,avg:s.avg,med:s.avg,sd:s.sd,
         min:s.min,max:s.max,dtw:s.medianDepthToWater,miles:miles,lat:lat,lng:lng};
-      const cAvg=COUNTIES[state.county].med;
-      const ratio=state.local.avg/cAvg;
+      // No county set (map or coordinate entry) means no county median to
+      // compare against. The local number stands on its own.
+      const cAvg=(COUNTIES[state.county]||{}).med;
       let cmp="";
-      if(ratio>1.35) cmp=" — about <strong>"+ratio.toFixed(1)+"× deeper</strong> than the "+state.county+
-        " county median of "+cAvg+" ft. The county number would badly understate your cost here.";
-      else if(ratio<0.7) cmp=" — noticeably <strong>shallower</strong> than the "+state.county+
-        " county median of "+cAvg+" ft. Better than the county picture suggests.";
-      else cmp=" — broadly in line with the "+state.county+" county median of "+cAvg+" ft.";
+      if(cAvg>0){
+        const ratio=state.local.avg/cAvg;
+        if(ratio>1.35) cmp=" — about <strong>"+ratio.toFixed(1)+"× deeper</strong> than the "+state.county+
+          " county median of "+cAvg+" ft. The county number would badly understate your cost here.";
+        else if(ratio<0.7) cmp=" — noticeably <strong>shallower</strong> than the "+state.county+
+          " county median of "+cAvg+" ft. Better than the county picture suggests.";
+        else cmp=" — broadly in line with the "+state.county+" county median of "+cAvg+" ft.";
+      }
       const wide = dist>8100
         ? '<div class="banner b-thin" style="margin-top:8px"><strong>Wide search.</strong> '+
           'Arizona is basin-and-range country — at 10 miles these wells may sit in different '+
@@ -2647,8 +2691,19 @@ $("pickGo").addEventListener("click", () => {
   if(state.pinParcel) state.parcel = Object.assign({}, state.parcel, {
     apn: state.pinParcel.apn, address: state.pinParcel.address,
     acres: state.pinParcel.acres, county: state.pinParcel.county,
+    acresSource: state.pinParcel.acresSource,
     fromPin: true
   });
+  // The county selector starts empty on purpose, so let the pin answer it —
+  // step 3 needs a county for the well-median comparison, and making someone
+  // re-state what they just pointed at is the kind of friction that reads as
+  // the tool not paying attention.
+  if(state.pinParcel && state.pinParcel.county){
+    const c = state.pinParcel.county;
+    if([...$("county").options].some(o=>o.value===c)){
+      $("county").value = c; state.county = c; syncModeAvailability();
+    }
+  }
   $("goBtn").click();
 });
 
