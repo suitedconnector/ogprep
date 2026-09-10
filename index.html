@@ -1543,7 +1543,11 @@ $("irrAcres").addEventListener("input",e=>{
 ["roof","usegpd"].forEach(id=>$(id).addEventListener("input",render));
 document.addEventListener("input",e=>{ if(e.target && e.target.id==="rainIn") render(); });
 $("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
-sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;state.parcel=null;state.soil=null;state.service=null;
+sel.addEventListener("change",e=>{state.county=e.target.value;
+  // Keep the quote form in step with the search. It was left on its own default,
+  // so a request for an Apache parcel went out labelled Mohave.
+  if(state.county && [...leadSel.options].some(o=>o.value===state.county)) leadSel.value=state.county;
+  state.local=null;state.parcel=null;state.soil=null;state.service=null;
   $("lookupMsg").innerHTML=""; $("wellList").innerHTML=""; $("parcelBox").innerHTML="";
   $("drillersBox").innerHTML=""; state.drillers=null; state.rights=null;
   syncModeAvailability(); render();});
@@ -1925,6 +1929,13 @@ async function lookup(){
       // geography rather than by county line.
       const gf = state.region==="AZ" ? await gridFallback(lat,lng) : null;
       state.local = gf;
+      /* Breadcrumb. At the Greenlee test the banner reported the grid block
+         while the costs below it reported county figures, which can only mean
+         state.local was set here and null by the time render() ran. I cannot
+         reproduce that by reading the code, so record the intent separately:
+         if this survives and state.local does not, something between here and
+         render() is clearing it, and the console will say so. */
+      state.localTrace = gf ? { src:"grid", med:gf.med, at:Date.now() } : { src:"none", at:Date.now() };
 
       msg.innerHTML = gf
         ? '<div class="banner b-thin"><strong>Only '+j.withDepth+' well record'+
@@ -1962,6 +1973,7 @@ async function lookup(){
       // med was set to the mean, which made "median depth nearby" a lie and
       // compared a mean against the county's true median. Fall back to the mean
       // only for responses cached before /api/wells started returning a median.
+      state.localTrace = { src:"radius", at:Date.now() };
       state.local={n:j.withDepth,total:j.found,avg:s.avg,med:(s.med!=null?s.med:s.avg),sd:s.sd,
         min:s.min,max:s.max,dtw:s.medianDepthToWater,miles:miles,lat:lat,lng:lng};
       // No county set (map or coordinate entry) means no county median to
@@ -2769,19 +2781,42 @@ async function renderTrend(lat, lon){
   const [ , , before, after, change ] = c;
   const worse = change > 0;
   const big = Math.abs(change) >= 50;
-  const cls = !worse ? "trendGood" : (big ? "trendBad" : "trendWarn");
+  // Class is decided after the local comparison below, so a cell that
+  // disagrees with the measured wells cannot paint the panel red.
+  let cls = !worse ? "trendGood" : (big ? "trendBad" : "trendWarn");
 
   const head = !worse
     ? (change === 0 ? "Water is holding steady here" : "Water is shallower than it used to be")
     : (big ? "Water here is falling fast" : "Water is slowly getting deeper");
 
+  /* Reconcile against the wells actually measured at this point.
+     The trend grid is 2.8-mile cells and will accept one ring out, so it can be
+     describing ground three miles away. At the Apache test parcel it announced
+     "water at 218 ft" in red while the 19 wells within 2 miles put it at 37 ft.
+     Both numbers were right about their own ground; only one was about this
+     parcel. When they disagree materially, the local measurement wins the
+     headline and the trend is demoted to regional context. */
+  const localDtw = state.local && state.local.dtw != null ? Math.round(state.local.dtw) : null;
+  const conflict = localDtw != null && after != null &&
+                   Math.abs(after - localDtw) > Math.max(60, localDtw);
+
   const body = worse
     ? "Wells drilled since 2005 hit water at <b>"+after+" ft</b>. Wells drilled here before 1995 "+
       "hit it at <b>"+before+" ft</b>. That is <b>"+change+" ft deeper</b> in roughly two decades."+
-      (big ? " At that rate, budget for a deeper well than today's figures suggest — and ask a "+
-             "local driller what they are seeing now." : "")
+      (big && !conflict
+        ? " At that rate, budget for a deeper well than today's figures suggest — and ask a "+
+          "local driller what they are seeing now." : "")
     : "Wells drilled since 2005 hit water at <b>"+after+" ft</b>, against <b>"+before+" ft</b> "+
       "before 1995. It has not receded"+(change<0 ? " — it has risen "+Math.abs(change)+" ft." : ".");
+
+  if(conflict && cls === "trendBad") cls = "trendWarn";
+
+  const reconcile = conflict
+    ? "<div class='banner b-thin' style='margin:10px 0 0'><strong>This disagrees with the wells "+
+      "at your point,</strong> which hit water at about <b>"+localDtw+" ft</b>. The trend above is "+
+      "measured over a wider block that may be different ground. Trust the nearby wells for this "+
+      "parcel and read the trend as regional direction, not as a depth here.</div>"
+    : "";
 
   box.innerHTML =
     "<div class='trend "+cls+"'>"+
@@ -2795,6 +2830,7 @@ async function renderTrend(lat, lon){
       "compares snapshots decades apart, not a monitored series. Same-area comparison, but well "+
       "purpose and construction also changed over that time."+
       (ring ? " Nearest data is about three miles from your point." : "")+"</div>"+
+      reconcile+
     "</div>";
 }
 
@@ -3782,6 +3818,13 @@ function render(){
   const cty=COUNTIES[state.county] || null;
   const L=state.local;
   const usingLocal=!!L;
+  // See the note where localTrace is set. Silent disagreement is what made the
+  // Greenlee output contradict itself; this makes it noisy instead.
+  if(state.localTrace && state.localTrace.src !== "none" && !L){
+    console.warn("[costtolivable] state.local was cleared after being set from "+
+      state.localTrace.src+" — the panel and the costs will disagree with the banner.",
+      state.localTrace);
+  }
   const src = usingLocal ? L : cty;
 
   // Empty is a distinct state from zero. "" means not answered yet; 0 is a

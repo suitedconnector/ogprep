@@ -1,6 +1,6 @@
-# Two emails to send
+# Three emails to send
 
-Both are short on purpose. Agencies get long rambling requests constantly; a specific
+All short on purpose. Agencies get long rambling requests constantly; a specific
 ask with named fields is far more likely to get actioned.
 
 ---
@@ -114,6 +114,66 @@ tfrei320@gmail.com
 
 ---
 
+## 3. Yavapai County GIS — allowlist request
+
+**To:** Yavapai County GIS / IT
+**Find current contact at:** https://gis.yavapaiaz.gov (GIS Division), or the
+County IT department via https://www.yavapaiaz.gov
+
+**Subject:** Request to allow server-side access to the public Districts feature service
+
+### What's actually happening
+
+`gis.yavapaiaz.gov/arcgis/rest/services/Districts/FeatureServer/15` answers a
+browser normally, and returns **403** to a request originating from Cloudflare's
+network. Tested with and without a `User-Agent` header — same result — so it is
+the source IP that is refused, not the request shape. Almost certainly a blanket
+WAF rule against datacentre address ranges rather than any decision about this
+project.
+
+Consequence today: Yavapai parcels resolve through the state AZGeo layer instead,
+so location and mapped acreage still work, but **zoning, assessed value and
+improved-vs-vacant are gone for the county.** Those come only from the Districts
+service.
+
+**Do not try to work around this.** Spoofing browser headers to defeat a block is
+both dishonest and fragile. Ask, or do without.
+
+### Email
+
+To whom it may concern,
+
+I run a small free tool that helps people evaluate rural land before buying it —
+it shows nearby well depths, likely water cost, and soil suitability for septic,
+all from public records.
+
+For Yavapai parcels I read your public Districts feature service
+(`/arcgis/rest/services/Districts/FeatureServer/15`) to show parcel size, zoning
+and district assignments. Requests from a browser succeed; requests from my server
+receive a 403. I've tested with and without a descriptive User-Agent and the result
+is the same, so I believe the block is on the originating IP range rather than
+anything about the request. My requests come from Cloudflare Workers.
+
+The volume is very low — one query per parcel a user looks up, cached for thirty
+days afterwards — and every request identifies itself as:
+
+    BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; parcel lookup; contact via site)
+
+Would it be possible to allow that traffic? If there is a preferred route for
+programmatic access, or an API key arrangement, I'm happy to use that instead.
+
+I'm also glad to add whatever attribution wording the County would like displayed
+alongside the data.
+
+Thank you for keeping these records publicly available.
+
+Best regards,
+Tal Freibergs
+714.713.5129
+tfrei320@gmail.com
+
+---
+
 ## Notes before you send
 
 - **Verify the current email addresses** on both agency sites. Phone numbers and staff
@@ -126,3 +186,10 @@ tfrei320@gmail.com
   export — but getting it in writing costs nothing and protects you later.
 - **Don't mention the 503s.** You've already fixed the behaviour that caused them.
   Leading with "your server rejected me" invites a block rather than a conversation.
+- **Yavapai is the odd one out** — it's the only request where the problem is a
+  refusal rather than a gate, so it's the only one where naming the 403 is the point.
+  Keep the tone as "I think this is incidental", because it almost certainly is.
+- **Check Mohave before sending.** If `mcgis.mohave.gov` blocks the same way, send
+  both letters together and treat it as one pattern rather than two incidents —
+  and if that happens, Arizona has no assessor-detail tier at all until someone
+  replies.
