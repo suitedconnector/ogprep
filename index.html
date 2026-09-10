@@ -1097,7 +1097,14 @@ const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const 
 // Arizona counties with a bespoke assessor adapter, which is what gives us the
 // rich record: acreage as assessed, zoning, land value, improved vs vacant.
 // Each assessor runs their own GIS, so each is its own piece of work.
-const RICH_COUNTIES=["Mohave","Yavapai"];
+/* Yavapai is deliberately absent. Their GIS answers Cloudflare's egress with
+   403 — verified with and without a User-Agent, so it is the source IP, not the
+   header. Spoofing a browser to get round a refusal is not something we do, so
+   Yavapai routes to the open statewide layer like the other twelve. The adapter
+   stays in parcel.js: if they ever unblock, putting it back is one word here.
+   Worth an email to Yavapai GIS asking to be allowed — that would restore
+   zoning and assessed value for the county. */
+const RICH_COUNTIES=["Mohave"];
 
 // ...but parcel-number search now works in all 15, via the AZGeo statewide
 // layer. That layer can only be searched by number once the county narrows it
@@ -1589,12 +1596,44 @@ async function resolveViaStatewide(apn,county,pbox){
   const j=await r.json();
   if(!j.ok) return j;
 
+  /* Several rows sharing one parcel number are parts of one parcel, not a
+     choice. AZGeo holds 115-08-070A as two polygons of 0.02 and 0.42 acres;
+     offering those as alternatives asks the reader to pick between two halves
+     of their own land. Merge them and report the total. */
+  const merged = (()=>{
+    if(j.count<2) return null;
+    const k = m => String(m.apn||"").toUpperCase();
+    if(!j.matches.every(m=>k(m)===k(j.matches[0]))) return null;
+    const biggest = j.matches.reduce((a,b)=>((b.acres||0)>(a.acres||0)?b:a));
+    const total = j.matches.reduce((s,m)=>s+(m.acres||0),0);
+    return { ...biggest,
+      acres: total>0 ? +total.toFixed(2) : null,
+      parts: j.matches.length,
+      boundary: j.matches.flatMap(m=>m.boundary||[]) };
+  })();
+
+  if(merged){
+    return { ok:true, apn:merged.apn, county:merged.county, address:merged.address,
+             acres:merged.acres, acresSource:merged.acresSource, boundary:merged.boundary,
+             parts:merged.parts, thin:true,
+             lat:merged.centroid?merged.centroid.lat:null,
+             lon:merged.centroid?merged.centroid.lon:null };
+  }
+
   if(j.count>1){
     pbox.innerHTML='<div class="banner b-local"><strong>'+j.count+' parcels match'+
       (j.exact?'':' that number')+'.</strong> Pick one:</div>'+
-      '<div class="matchlist">'+j.matches.map((x,i)=>
-        '<button type="button" class="matchbtn" data-i="'+i+'">'+(x.address||x.place||x.apn)+
-        ' <span>'+x.apn+(x.acres?" · ≈"+x.acres+" ac":"")+'</span></button>').join("")+'</div>';
+      // Only show the number in the detail line when it is not already the
+      // heading, or it prints twice with nothing to tell the rows apart.
+      '<div class="matchlist">'+j.matches.map((x,i)=>{
+        const head = x.address || x.place || x.apn;
+        const bits = [];
+        if(head !== x.apn) bits.push(x.apn);
+        if(x.acres) bits.push("≈"+x.acres+" ac");
+        if(x.place && head !== x.place) bits.push(x.place);
+        return '<button type="button" class="matchbtn" data-i="'+i+'">'+head+
+               (bits.length?' <span>'+bits.join(" · ")+'</span>':'')+'</button>';
+      }).join("")+'</div>';
     return { ok:true, multiple:true, _statewide:j };
   }
   const p=j.parcel;
@@ -3407,7 +3446,11 @@ function parcelHtml(p){
     "<div class='soilrow'><span>Size</span><b"+
       (p.acresSource?" title='Measured from the mapped parcel boundary — the assessor&#39;s "+
         "drawing, not a survey. Confirm against the deed before it matters.'":"")+">"+
-      (p.acres!=null?(p.acresSource?"≈":"")+p.acres+" acres":"—")+"</b></div>"+
+      (p.acres!=null?(p.acresSource?"≈":"")+p.acres+" acres":"—")+
+      // A parcel mapped as several polygons: say so, because the total will not
+      // match any single shape the reader sees on the map.
+      (p.parts>1?"<em style='display:block;font-size:12px;color:var(--muted);font-style:normal'>"+
+        "Total across "+p.parts+" mapped parts.</em>":"")+"</b></div>"+
     (p.use?"<div class='soilrow'><span>Use / subdivision</span><b>"+p.use+"</b></div>":"")+
     (p.zoning?"<div class='soilrow'><span>Zoning</span><b>"+p.zoning+"</b></div>":"")+
     (p.landValue!=null?"<div class='soilrow'><span>Assessed land value</span><b>"+money(p.landValue)+"</b></div>":"")+
