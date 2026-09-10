@@ -876,41 +876,52 @@
 
     <label for="years">Years to compare (hauling adds up)</label>
     <input type="number" id="years" placeholder="e.g. 10" min="1" max="30" autocomplete="off">
+  <!-- The breakdown belongs inside step 3: it is the output of the four
+       choices above it. As a sibling it appeared with no step number and
+       an empty table before anyone had chosen anything. -->
+  <div class="card">
+    <h3 style="margin:18px 0 2px">What it adds up to</h3>
+    <!-- Was "The rest of what it takes", which described the non-water lines
+         but sat above a table containing land, water, septic, power and access.
+         The apology that followed it ("here for context") also told people to
+         discount the table before reading it — the tags say which lines are
+         soft, and the honesty block below says it precisely. -->
+    <p class="note" style="margin:-6px 0 12px">Every line is tagged with where its number came from.
+    Water is the one this tool measures at your parcel; the rest lean on statewide ranges
+    until you get a quote.</p>
+    <div class="keymap">
+      <span class="tag t-parcel">parcel data</span>
+      <span class="tag t-county">county data</span>
+      <span class="tag t-typical">typical range</span>
+      <span class="tag t-you">you</span>
+    </div>
+    <table>
+      <thead><tr><th>Item</th>
+        <th class="n" title="Everything goes right: shallow water, easy access, no surprises">Low</th>
+        <th class="n" title="The midpoint — not a quote, and not what you should budget">Likely</th>
+        <th class="n" title="What to actually budget for. Deep water, difficult ground, long runs">High</th>
+      </tr></thead>
+      <tbody id="lines"></tbody>
+    </table>
+    <div class="emptyLines" id="emptyLines">Choose a water, wastewater and power plan
+      and this fills in with your numbers.</div>
+    <!-- "Likely" gets read as a quote. It isn't one, and the gap between it and
+         High is where people get hurt. Said once, plainly, under the table. -->
+    <div class="colkey">
+      <div><b>Low</b> — everything goes right: shallow water, easy access, no surprises.</div>
+      <div><b>Likely</b> — the midpoint of published ranges. A planning figure, <em>not a quote</em>.</div>
+      <div><b>High</b> — <strong>what to actually budget.</strong> Deep water, hard ground, long runs.
+        Off-grid builds land here more often than people expect.</div>
+    </div>
+    <div class="swing" id="swingNote"></div>
+    <div class="note" id="assumptions"></div>
   </div>
 
 </div>
 
-<div class="card">
-  <h2>The rest of what it takes</h2>
-  <p class="note" style="margin:-6px 0 12px">Water is what this tool is built to answer well. These other
-  lines are here for context — they use published statewide ranges except where tagged otherwise.</p>
-  <div class="keymap">
-    <span class="tag t-parcel">parcel data</span>
-    <span class="tag t-county">county data</span>
-    <span class="tag t-typical">typical range</span>
-    <span class="tag t-you">you</span>
-  </div>
-  <table>
-    <thead><tr><th>Item</th>
-      <th class="n" title="Everything goes right: shallow water, easy access, no surprises">Low</th>
-      <th class="n" title="The midpoint — not a quote, and not what you should budget">Likely</th>
-      <th class="n" title="What to actually budget for. Deep water, difficult ground, long runs">High</th>
-    </tr></thead>
-    <tbody id="lines"></tbody>
-  </table>
-  <div class="emptyLines" id="emptyLines">Choose a water, wastewater and power plan
-    and this fills in with your numbers.</div>
-  <!-- "Likely" gets read as a quote. It isn't one, and the gap between it and
-       High is where people get hurt. Said once, plainly, under the table. -->
-  <div class="colkey">
-    <div><b>Low</b> — everything goes right: shallow water, easy access, no surprises.</div>
-    <div><b>Likely</b> — the midpoint of published ranges. A planning figure, <em>not a quote</em>.</div>
-    <div><b>High</b> — <strong>what to actually budget.</strong> Deep water, hard ground, long runs.
-      Off-grid builds land here more often than people expect.</div>
-  </div>
-  <div class="swing" id="swingNote"></div>
-  <div class="note" id="assumptions"></div>
+  
 </div>
+
 
 <!-- The offer is no longer the data — the page gives that away. It is contact
      with the people who actually drilled the wells shown above, carrying the
