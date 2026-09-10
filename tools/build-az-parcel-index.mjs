@@ -1,4 +1,20 @@
 /**
+ * ⚠ SUPERSEDED — DO NOT RUN. Kept only as a record of the approach.
+ *
+ * This crawls the whole state to make parcel numbers searchable. It works, and
+ * it is no longer needed: /api/apn does the same lookup live by pairing the APN
+ * predicate with a county-sized envelope, which lets the spatial index narrow
+ * the scan before it starts. Verified against Apache and against Maricopa at
+ * roughly 1.5M parcels — the worst case in Arizona — both returning promptly.
+ *
+ * Running this now costs several hours, a few hundred MB, and leaves a copy of
+ * Arizona that starts going stale the moment it finishes. The county selector
+ * in step 1 is what made it unnecessary.
+ *
+ * The guard below stops an accidental run. Read the code freely; if there is
+ * ever a real reason to crawl again, pass --i-know to bypass it.
+ *
+ * ---------------------------------------------------------------------------
  * Build a searchable index of every Arizona parcel.
  *
  *   node tools/build-az-parcel-index.mjs          # crawl (resumable)
@@ -315,6 +331,20 @@ async function shard() {
   if (sorted.length)
     console.log(`  Acreage on ${sorted.length.toLocaleString()}: ` +
                 `median ${pick(0.50)}, p10 ${pick(0.10)}, p90 ${pick(0.90)}.`);
+}
+
+/* Superseded by /api/apn — see the header. Refuse to run without an explicit
+   override, so this cannot be started by muscle memory or an old shell line. */
+if (!process.argv.includes("--i-know")) {
+  console.error(
+    "\nThis tool is superseded and should not be run.\n\n" +
+    "  /api/apn now resolves a parcel number live, by searching inside the\n" +
+    "  selected county's envelope so the spatial index narrows the scan first.\n" +
+    "  Verified on Apache and on Maricopa (~1.5M parcels).\n\n" +
+    "  Crawling costs hours and produces a copy of Arizona that immediately\n" +
+    "  begins to go stale.\n\n" +
+    "  If you genuinely need it, re-run with --i-know\n");
+  process.exit(1);
 }
 
 if (process.argv.includes("--shard")) await shard();

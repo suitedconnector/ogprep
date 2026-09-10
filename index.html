@@ -2980,18 +2980,41 @@ function drillersHtml(d){
         (x.city?" <span class='dcity'>"+x.city+"</span>":"")+"</div>"+
       "<div class='dstats'>"+
         "<span><b>"+x.wells+"</b> well"+(x.wells===1?"":"s")+" nearby</span>"+
-        "<span>median <b>"+(x.medianDepth?x.medianDepth.toLocaleString()+" ft":"—")+"</b></span>"+
-        (x.medianYieldGpm?"<span>~<b>"+x.medianYieldGpm+" gpm</b></span>":"")+
+        // A single well is not a median. Calling it one dresses an anecdote as
+        // a statistic, and this panel is where that reads most convincingly —
+        // it sits beside a real median computed from hundreds of wells.
+        "<span>"+
+          (x.medianDepth==null ? "—"
+            : x.wells===1 ? "one well at <b>"+x.medianDepth.toLocaleString()+" ft</b>"
+            : "median <b>"+x.medianDepth.toLocaleString()+" ft</b>")+
+        "</span>"+
+        (x.medianYieldGpm&&x.wells>1?"<span>~<b>"+x.medianYieldGpm+" gpm</b></span>":"")+
         (x.firstYear?"<span>"+x.firstYear+"–"+x.lastYear+"</span>":"")+
       "</div>"+
 
     "</div>";
   }).join("");
+  /* This panel searches wider than the well statistics above it — you need a
+     bigger net to find companies than to characterise ground. At Wikieup that
+     produced an apparent contradiction: 119 ft from the well stats, against
+     drillers listing 565, 700 and 935 ft. Neither figure was wrong; they were
+     answering different questions over different radii. Say so, rather than
+     leaving the reader to conclude one of the two is broken. */
+  const dRad = d.scope.radiusMiles || 10;
+  const lRad = state.local && state.local.miles;
+  const radNote = (lRad && Math.abs(lRad - dRad) >= 1)
+    ? "<div class='banner b-thin' style='margin:8px 0'>Searched <strong>"+dRad+" miles</strong> "+
+      "to find companies, against <strong>"+lRad+" miles</strong> for the depth figures above. "+
+      "Depths here can differ a lot from the local median for that reason alone — a driller "+
+      "working the far edge of this circle may be in different ground entirely.</div>"
+    : "";
+
   return "<div class='drillers'>"+
     "<div class='maphdr'>Drillers who have worked near here</div>"+
     "<p class='dintro'>From "+d.wellsConsidered.toLocaleString()+" filed wells within "+
-      (d.scope.radiusMiles||10)+" miles. This is the drilling record, not a paid listing — "+
+      dRad+" miles. This is the drilling record, not a paid listing — "+
       "it shows who works this ground and how deep their wells go.</p>"+
+    radNote+
     rows+
     "<div class='src'>Companies from ADWR's licensed driller list; well counts from the Wells55 "+
     "registry. Filing a well here doesn't mean they're currently taking work."+
