@@ -1835,12 +1835,43 @@ async function lookup(){
     const miles=j.radiusMiles;
 
     if(j.withDepth<3){
-      state.local=null;
-      msg.innerHTML='<div class="banner b-thin"><strong>Only '+j.withDepth+
-        ' well record'+(j.withDepth===1?'':'s')+' with a depth within '+miles+
-        ' miles.</strong> Not enough to say anything useful about this spot — try a wider radius. '+
-        'Falling back to the county picture, which may be a poor guide here.</div>';
-      list.innerHTML="";
+      // Too thin to characterise from the radius query. Before dropping all the
+      // way to a county median, try the 1.4-mile grid — same wells, binned by
+      // geography rather than by county line.
+      const gf = state.region==="AZ" ? await gridFallback(lat,lng) : null;
+      state.local = gf;
+
+      msg.innerHTML = gf
+        ? '<div class="banner b-thin"><strong>Only '+j.withDepth+' well record'+
+          (j.withDepth===1?'':'s')+' with a depth within '+miles+' miles.</strong> '+
+          'Using the nearest mapped block instead — '+gf.n+' well'+(gf.n===1?'':'s')+
+          ' in a 1.4-mile cell '+(gf.miles<0.8?'over your point':gf.miles+' miles away')+
+          ', median <strong>'+Math.round(gf.med).toLocaleString()+' ft</strong>. '+
+          'That is a better guide than the county figure, but it is still not your parcel.</div>'
+        : '<div class="banner b-thin"><strong>Only '+j.withDepth+' well record'+
+          (j.withDepth===1?'':'s')+' with a depth within '+miles+' miles</strong>, and no '+
+          'mapped block within 6 miles either. This ground is genuinely untested — try a '+
+          'wider radius, and treat the county figure below as a placeholder rather than an '+
+          'estimate for this spot.</div>';
+      // Still draw the map. Thin ground is exactly where someone needs to see
+      // how empty it is. Note that j.wells is already filtered server-side to
+      // records that report a depth, so a gap between found and withDepth means
+      // wells exist nearby that simply never filed one — worth saying, because
+      // "nobody drilled here" and "nobody wrote it down" are different facts.
+      const unlogged = (j.found||0) - (j.withDepth||0);
+      list.innerHTML=wellMapHtml(j,lat,lng)+
+        (unlogged > 0
+          ? "<div class='banner b-thin' style='margin-top:8px'><strong>"+j.found+
+            " well record"+(j.found===1?"":"s")+" within "+miles+" miles, but only "+
+            j.withDepth+" report a depth.</strong> People have drilled here; the depths "+
+            "just were not filed. That is a reason to ask a local driller rather than to "+
+            "assume the ground is untested.</div>"
+          : "")+
+        "<div class='src'>Source: ADWR Groundwater Site Inventory"+
+        (j.cached?" (cached)":", queried live")+".</div>";
+      state.lastPoint = {lat:+lat.toFixed(6), lon:+lng.toFixed(6)};
+      state.pendingWellMap = {j, lat, lng};
+      renderTrend(lat, lng);
     }else{
       const s=j.stats;
       // med was set to the mean, which made "median depth nearby" a lie and
@@ -1923,6 +1954,69 @@ async function lookup(){
    question people ask straight after depth — can I even get a rig in there.
 
    Returns a placeholder div; the map is created after it lands in the DOM. */
+/* ---- grid fallback -------------------------------------------------------
+   When the live radius query finds fewer than three wells, the old behaviour
+   fell straight back to the county median. That is a 15-bucket answer to a
+   parcel-level question, and it can be catastrophically wrong: the shallowest
+   cells in Arizona (24 ft) sit in Navajo County, whose median is 335 ft. A
+   buyer standing there would have been told to expect fourteen times the
+   drilling they actually face — the direction that kills a good deal.
+
+   data/az-depth-grid.json already bins 163,719 wells into 8,588 cells of 0.02°
+   (about 1.4 miles), so the honest fallback is the nearest cell, not the
+   county. Loaded lazily: it is 362KB and most lookups never need it. */
+
+let AZ_GRID = null, AZ_GRID_TRIED = false;
+
+async function loadAzGrid(){
+  if(AZ_GRID || AZ_GRID_TRIED) return AZ_GRID;
+  AZ_GRID_TRIED = true;
+  try{
+    const r = await fetch("/data/az-depth-grid.json");
+    const j = await r.json();
+    if(j && j.cells) AZ_GRID = j;
+  }catch(_){ AZ_GRID = null; }
+  return AZ_GRID;
+}
+
+const MI_PER_DEG_LAT = 69.05;
+
+/* Nearest well-evidenced cell to a point, or null if nothing is close enough.
+   Capped at 6 miles: past that the cell is describing different ground and the
+   county figure is no more wrong than a distant cell pretending to be local. */
+async function gridFallback(lat, lon){
+  const g = await loadAzGrid();
+  if(!g) return null;
+
+  const kx = Math.cos(lat * Math.PI/180) * MI_PER_DEG_LAT;
+  let best = null, bestD = Infinity;
+  for(const c of g.cells){
+    if(c[2] < 3 || !c[3]) continue;                  // wells, medianDepthFt
+    const dy = (c[0]-lat)*MI_PER_DEG_LAT, dx = (c[1]-lon)*kx;
+    const d = Math.sqrt(dy*dy + dx*dx);
+    if(d < bestD){ bestD = d; best = c; }
+  }
+  if(!best || bestD > 6) return null;
+
+  const [clat, clon, n, med, min, max, wl, dom, ci] = best;
+  return {
+    n, med, avg: med,          // the grid stores a median; no mean was kept
+    // No standard deviation in the grid, so approximate it from the range.
+    // The range rule (range/4) is crude but honest, and it only feeds the
+    // "depths vary widely here" warning and the low/high band — both of which
+    // should err wide rather than pretend to a precision we do not have.
+    sd: Math.max((max-min)/4, med*0.2),
+    sdApprox: true,
+    min, max,
+    dtw: wl || null,
+    miles: +bestD.toFixed(1),
+    cellMiles: 1.4,
+    county: (g.counties||[])[ci] || null,
+    fromGrid: true,
+    lat, lng: lon
+  };
+}
+
 let WELLMAP = null, WELLBASE = null;
 
 const WM_BASEMAPS = {
@@ -1939,9 +2033,15 @@ const wmColour = d => WM_BANDS.find(b => d <= b[0])[1];
 
 function wellMapHtml(j,lat,lng){
   const pts=(j.wells||[]).filter(w=>w.lat!=null&&w.lon!=null);
-  if(!pts.length) return "";
+  /* Previously this returned nothing when no well had coordinates, so the
+     sparsest ground — where a buyer most needs to see what is around them —
+     got no map at all. An empty circle is a finding: it says nobody within this
+     radius has filed a well. Render it, and say that plainly. */
+  const empty = !pts.length;
   return "<div class='mapwrap'>"+
-    "<div class='maphdr'>Wells near your point · numbers match the table below · tap any for its record</div>"+
+    "<div class='maphdr'>"+(empty
+      ? "No filed wells within "+(j.radiusMiles||2)+" miles of your point"
+      : "Wells near your point · numbers match the table below · tap any for its record")+"</div>"+
     "<div class='wmTools'><div class='seg wmSeg' id='wmSeg'>"+
       "<button data-v='sat' aria-pressed='true'>Satellite</button>"+
       "<button data-v='topo' aria-pressed='false'>Terrain</button>"+
@@ -1949,6 +2049,7 @@ function wellMapHtml(j,lat,lng){
     "</div>"+
     "<label class='chk'><input type='checkbox' id='wmDim' checked> Dim the basemap</label></div>"+
     "<div id='wellMap' class='wellMapBox'></div>"+
+    (empty ? "" :
     "<div class='wmLegend'>"+
       "<span><i style='background:#00b34a'></i>&lt;150 ft</span>"+
       "<span><i style='background:#9ede1f'></i>150–300</span>"+
@@ -1956,10 +2057,15 @@ function wellMapHtml(j,lat,lng){
       "<span><i style='background:#ff7a00'></i>600–1,000</span>"+
       "<span><i style='background:#e0231a'></i>&gt;1,000 ft</span>"+
       "<span><i style='background:none;border:2px solid #c8a24a'></i>your parcel</span>"+
-    "</div>"+
-    "<div class='src'>"+pts.length+" of "+(j.withDepth||pts.length)+" wells have mapped coordinates. "+
-      "Well locations are derived from filed records and are not survey grade — treat a dot as "+
-      "\"about here\", not an exact spot.</div></div>";
+    "</div>")+
+    "<div class='src'>"+(empty
+      ? "The circle is the area searched. An absence of records is not proof there is no "+
+        "water — it may mean nobody has tried, or that older wells were never filed. But it "+
+        "does mean there is no local evidence either way, and the county figures below are "+
+        "standing in for evidence this spot does not have."
+      : pts.length+" of "+(j.withDepth||pts.length)+" wells have mapped coordinates. "+
+        "Well locations are derived from filed records and are not survey grade — treat a dot as "+
+        "\"about here\", not an exact spot.")+"</div></div>";
 }
 
 function wmSetBase(k){
@@ -1983,6 +2089,13 @@ function buildWellMap(j, lat, lng){
 
   const pts=(j.wells||[]).filter(w=>w.lat!=null&&w.lon!=null);
   const group=L.featureGroup().addTo(WELLMAP);
+
+  /* The searched area, drawn. Without it an empty map is ambiguous — the reader
+     cannot tell whether nothing was found or nothing was looked for. */
+  if(j.radiusMeters > 0){
+    L.circle([lat,lng],{radius:j.radiusMeters,color:"#c8a24a",weight:1,
+      opacity:.55,dashArray:"4 5",fill:false}).addTo(group);
+  }
 
   // Your parcel, if the county publishes a boundary rather than just a point.
   const P=state.parcel;
@@ -3534,18 +3647,26 @@ function render(){
   const dMid  = src ? Math.round(centre) : 0;
   const dHigh = src ? Math.round(centre+src.sd) : 0;
 
-  $("statsTitle").textContent = usingLocal
-    ? "Wells within "+L.miles+" miles of your point"
-    : "What the county records say";
+  // Say which of the three resolutions this is. A grid cell is not "wells near
+  // your point" and must not be dressed as one, but it is a great deal better
+  // than a county line — so it gets its own heading rather than either label.
+  $("statsTitle").textContent = !usingLocal
+    ? "What the county records say"
+    : L.fromGrid
+      ? "The nearest mapped block, about 1.4 miles across"
+      : "Wells within "+L.miles+" miles of your point";
 
   $("wellStats").innerHTML = !src ? "" : usingLocal ? `
-    <div class="stat"><span>Wells with recorded depth</span><b>${L.n}</b></div>
+    <div class="stat"><span>Wells with recorded depth</span><b>${L.n}</b>${
+      L.fromGrid ? `<em style="display:block;font-size:12px;color:var(--muted);font-style:normal">
+        In the block, not within a radius of your point${
+          L.miles >= 0.8 ? ` — its centre is ${L.miles} miles away` : ""}.</em>` : ""}</div>
     <!-- Median first and labelled as such: it is the planning number, and it is
          what the county row below is, so the two are finally comparable. The
          mean sits beside it because the gap between them is the skew — one
          1,500 ft well moves the mean and not the median. -->
-    <div class="stat"><span>Median depth nearby</span><b>${Math.round(L.med||L.avg).toLocaleString()} ft</b></div>
-    ${L.med!=null && Math.abs(L.avg-L.med) >= Math.max(15, 0.15*L.med)
+    <div class="stat"><span>${L.fromGrid?"Median depth in the block":"Median depth nearby"}</span><b>${Math.round(L.med||L.avg).toLocaleString()} ft</b></div>
+    ${!L.fromGrid && L.med!=null && Math.abs(L.avg-L.med) >= Math.max(15, 0.15*L.med)
       ? `<div class="stat"><span>Average, for contrast</span><b>${Math.round(L.avg).toLocaleString()} ft</b>
            <em style="display:block;font-size:12px;color:var(--muted);font-style:normal">
            Pulled up by a few deep wells — the median is the better planning figure.</em></div>`
