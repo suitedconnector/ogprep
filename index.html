@@ -838,6 +838,9 @@
 
 <div class="pane" data-pane="evidence">
   <div id="resultsHost">
+    <!-- Whether a main already reaches this parcel comes before how deep the
+         well would be: if there is a connection, the drilling question is moot. -->
+    <div id="serviceBox"></div>
     <div id="wellList"></div>
     <div id="drillersBox"></div>
   </div>
@@ -1353,7 +1356,7 @@ function applyState(code){
   if($("pickGo")) $("pickGo").disabled = true;
   if($("pickReadout")) $("pickReadout").textContent = "Tap the map to drop a pin on your parcel.";
   // Clear anything from the other state.
-  state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.drillers=null;
+  state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.service=null; state.drillers=null;
   state.utLogs=null; state.utDepths=null;
   $("coords").value=""; $("lookupMsg").innerHTML=""; $("wellList").innerHTML="";
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
@@ -1533,7 +1536,7 @@ $("irrAcres").addEventListener("input",e=>{
 ["roof","usegpd"].forEach(id=>$(id).addEventListener("input",render));
 document.addEventListener("input",e=>{ if(e.target && e.target.id==="rainIn") render(); });
 $("septicSeg").addEventListener("click",()=>{state.septicTouched=true;});
-sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;state.parcel=null;state.soil=null;
+sel.addEventListener("change",e=>{state.county=e.target.value;state.local=null;state.parcel=null;state.soil=null;state.service=null;
   $("lookupMsg").innerHTML=""; $("wellList").innerHTML=""; $("parcelBox").innerHTML="";
   $("drillersBox").innerHTML=""; state.drillers=null; state.rights=null;
   syncModeAvailability(); render();});
@@ -1686,6 +1689,20 @@ async function runSoilAndRain(lat,lng){
       }
     }else{ state.soil=null; }
   }catch(_){ state.soil=null; }
+
+  /* Is a main already here? Arizona only — these are ADWR layers. Asked at the
+     same time as soil because it changes the whole shape of the answer: inside
+     a service area the well question may not arise at all. */
+  if(state.region==="AZ"){
+    try{
+      const sr=await fetch("/api/waterservice?lat="+lat+"&lon="+lng);
+      const sj=await sr.json();
+      state.service = sj.ok ? sj : null;
+    }catch(_){ state.service=null; }
+    $("serviceBox").innerHTML = serviceHtml(state.service);
+  }else{
+    state.service=null; $("serviceBox").innerHTML="";
+  }
 
   // Rainfall for catchment sizing. Optional — the panel works without it.
   try{
@@ -3259,6 +3276,49 @@ function drillersHtml(d){
       " on nearby wells but no longer on ADWR's active list — most likely retired.":"")+
     "</div>"+
   "</div>";
+}
+
+/* Water service, AMA status, and the nearest system if there is none here.
+   Deliberately does not turn any of this into a cost: a service area is not a
+   connection, and a hookup quote comes from the utility, not from us. */
+function serviceHtml(s){
+  if(!s || !s.ok) return "";
+  const rows=[];
+
+  if(s.served){
+    rows.push("<div class='soilrow'><span>Water system</span><b>"+s.served.name+
+      (s.served.active?"":" <em style='font-weight:400'>(inactive on record)</em>")+"</b></div>");
+    if(s.served.population) rows.push("<div class='soilrow'><span>People served</span><b>"+
+      s.served.population.toLocaleString()+"</b></div>");
+    if(s.served.phone) rows.push("<div class='soilrow'><span>Ask them directly</span><b>"+
+      s.served.phone+"</b></div>");
+  }else if(s.nearest){
+    rows.push("<div class='soilrow'><span>Nearest water system</span><b>"+s.nearest.name+"</b></div>");
+    rows.push("<div class='soilrow'><span>Distance to its edge</span><b>~"+s.nearest.miles+
+      " miles</b></div>");
+    if(s.nearest.phone) rows.push("<div class='soilrow'><span>Worth one call</span><b>"+
+      s.nearest.phone+"</b></div>");
+  }
+  if(s.ccn && s.ccn.holder)
+    rows.push("<div class='soilrow'><span>Franchise territory (CCN)</span><b>"+s.ccn.holder+
+      "</b></div>");
+  if(s.ama)
+    rows.push("<div class='soilrow'><span>"+s.ama.type+"</span><b>"+(s.ama.name||"yes")+"</b></div>");
+
+  // b-local is the affirmative banner in this stylesheet; there is no b-good.
+  const tone = s.served ? "b-local" : "b-thin";
+  return "<div class='parcelbox'>"+
+    "<div class='soilname'>"+(s.served
+      ? "A water system already covers this point"
+      : "No mapped water system at this point")+"</div>"+
+    rows.join("")+
+    "<div class='banner "+tone+"' style='margin:10px 0 0'>"+s.note+"</div>"+
+    (s.ama
+      ? "<div class='banner b-thin' style='margin:8px 0 0'><strong>Inside an "+s.ama.type+
+        ".</strong> Groundwater rules are tighter here than in the rest of rural Arizona — "+
+        "do not assume a domestic exempt well is automatic. Confirm with ADWR before you buy.</div>"
+      : "")+
+    "<div class='src'>"+s.source.caveat+" Source: "+s.source.publisher+".</div></div>";
 }
 
 function parcelHtml(p){
