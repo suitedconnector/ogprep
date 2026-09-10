@@ -2785,7 +2785,7 @@ async function renderTrend(lat, lon){
   // disagrees with the measured wells cannot paint the panel red.
   let cls = !worse ? "trendGood" : (big ? "trendBad" : "trendWarn");
 
-  const head = !worse
+  let head = !worse
     ? (change === 0 ? "Water is holding steady here" : "Water is shallower than it used to be")
     : (big ? "Water here is falling fast" : "Water is slowly getting deeper");
 
@@ -2809,7 +2809,13 @@ async function renderTrend(lat, lon){
     : "Wells drilled since 2005 hit water at <b>"+after+" ft</b>, against <b>"+before+" ft</b> "+
       "before 1995. It has not receded"+(change<0 ? " — it has risen "+Math.abs(change)+" ft." : ".");
 
-  if(conflict && cls === "trendBad") cls = "trendWarn";
+  if(conflict){
+    // The headline is the loudest thing on the panel. Leaving "falling fast"
+    // above a note saying the local wells disagree just makes the page argue
+    // with itself — say what the cell actually describes instead.
+    if(cls === "trendBad") cls = "trendWarn";
+    head = worse ? "Water is receding across this area" : "Water is steady across this area";
+  }
 
   const reconcile = conflict
     ? "<div class='banner b-thin' style='margin:10px 0 0'><strong>This disagrees with the wells "+
@@ -2894,7 +2900,16 @@ function renderStatusStrip(){
 
   /* 4 — Is the water table falling. Arizona only for now. */
   if(state.region==="AZ"){
+    /* Same reconciliation as the trend panel. This chip counts toward "things to
+       resolve before you buy", so a cell describing ground three miles away must
+       not raise a red flag against a parcel whose own wells disagree. Demoted to
+       a warning and labelled as regional when they conflict. */
+    const lDtw = state.local && state.local.dtw != null ? Math.round(state.local.dtw) : null;
+    const tAfter = T ? T[3] : null;
+    const tConflict = lDtw != null && tAfter != null &&
+                      Math.abs(tAfter - lDtw) > Math.max(60, lDtw);
     chips.push(!T ? chip("trend","Water table","none","no trend data","trendBox")
+      : tConflict ? chip("trend","Water table","warn","down "+T[4]+" ft regionally","trendBox")
       : T[4]>50 ? chip("trend","Water table","bad","down "+T[4]+" ft","trendBox")
       : T[4]>0  ? chip("trend","Water table","warn","down "+T[4]+" ft","trendBox")
       : chip("trend","Water table","good","holding","trendBox"));
