@@ -28,6 +28,12 @@
  *    serve there. It does not mean a main is in the ground.
  */
 
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const ROOT = "https://services.arcgis.com/C34zQ7veRS0V1t04/ArcGIS/rest/services/";
 const CWS  = ROOT + "CWS_Service_Area/FeatureServer/0/query";
 const CCN  = ROOT + "CCN_2024/FeatureServer/0/query";
@@ -73,7 +79,7 @@ const nameCase = s => {
 async function esri(url, params, signal) {
   const q = new URL(url);
   Object.entries({ f: "json", ...params }).forEach(([k, v]) => q.searchParams.set(k, v));
-  const r = await fetch(q.toString(), { signal });
+  const r = await fetch(q.toString(), { signal, headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error("service returned " + r.status);
   const j = await r.json();
   if (j.error) throw new Error(j.error.message || "query failed");

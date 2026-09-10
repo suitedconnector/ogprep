@@ -16,6 +16,12 @@
  * produces candidates for title work, not an answer.
  */
 
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const WRPOD = "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Utah_Points_of_Diversion/FeatureServer/0/query";
 // Short deliberately: if the upstream hangs, Cloudflare kills the Worker and
 // serves its own 502 before our catch can return anything readable. Better to
@@ -64,7 +70,7 @@ export async function onRequestGet({ request }) {
     const ctl0 = new AbortController();
     const t0 = setTimeout(() => ctl0.abort(), TIMEOUT_MS);
     try {
-      const r = await fetch(WRPOD.replace(/\/query$/, "") + "?f=json", { signal: ctl0.signal });
+      const r = await fetch(WRPOD.replace(/\/query$/, "") + "?f=json", { signal: ctl0.signal, headers: { "User-Agent": UA } });
       const txt = await r.text();
       clearTimeout(t0);
       let parsed = null;
@@ -121,7 +127,7 @@ export async function onRequestGet({ request }) {
   const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   let feats;
   try {
-    const r = await fetch(q.toString(), { signal: ctl.signal });
+    const r = await fetch(q.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
     if (!r.ok) throw new Error("WRPOD returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.error.message || "query failed");

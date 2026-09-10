@@ -12,6 +12,12 @@
  *   rating: "not_limited" | "somewhat_limited" | "very_limited" | "unknown"
  */
 
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const SDA = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest";
 const RULE = "ENG - Septic Tank Absorption Fields";
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // 30 days
@@ -36,6 +42,7 @@ const SEVERITY = { unknown: 0, not_limited: 1, somewhat_limited: 2, very_limited
 
 async function sdaQuery(sql, signal) {
   const r = await fetch(SDA, {
+    headers: { "User-Agent": UA },
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: sql, format: "JSON" }),

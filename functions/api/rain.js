@@ -12,6 +12,12 @@
  * back to a user-entered figure — the feature must not depend on it.
  */
 
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const ARCHIVE = "https://archive-api.open-meteo.com/v1/archive";
 const YEARS = 10;
 const TIMEOUT_MS = 15000;
@@ -58,7 +64,7 @@ export async function onRequestGet({ request }) {
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   let daily;
   try {
-    const r = await fetch(q.toString(), { signal: ctl.signal });
+    const r = await fetch(q.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
     if (!r.ok) throw new Error("archive returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.reason || "archive error");

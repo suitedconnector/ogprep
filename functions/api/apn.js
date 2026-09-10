@@ -25,6 +25,12 @@
 
 import { measure } from "./_geom.js";
 
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const AZ_PARCELS =
   "https://azgeo.az.gov/arcgis/rest/services/TerraSystems/AZParcel_Cache/MapServer/0/query";
 
@@ -82,6 +88,18 @@ const clean = v => {
    SQL string below, so no escaping question arises. */
 const normApn = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
+/* Not every row in this layer is a parcel. The coverage check turned up "NAP"
+   sitting in AZ_APN in Pinal — road right-of-way, water, and similar slivers get
+   placeholder values rather than numbers. Two reasons to catch them: a prefix
+   search must not match junk, and a placeholder returned as a result would look
+   like a real parcel with a strange number. Also rejects all-zero and
+   single-repeated-digit numbers, which counties use the same way. */
+const PLACEHOLDER = /^(NAP|ROW|ROWS|NONE|NA|N|UNK|UNKNOWN|TBD|NOPARCEL|WATER|RIVER|RR)$/;
+const isPlaceholderApn = a => {
+  const s = normApn(a);
+  return !s || s.length < 4 || PLACEHOLDER.test(s) || /^(\d)\1*$/.test(s);
+};
+
 /* Render back into the dashed form Arizona assessors print, when it fits the
    common 8-digit-plus-optional-letter shape. */
 function prettyApn(raw) {
@@ -93,7 +111,7 @@ function prettyApn(raw) {
 async function esri(params, signal) {
   const q = new URL(AZ_PARCELS);
   Object.entries({ f: "json", ...params }).forEach(([k, v]) => q.searchParams.set(k, v));
-  const r = await fetch(q.toString(), { signal });
+  const r = await fetch(q.toString(), { signal, headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error("service returned " + r.status);
   const j = await r.json();
   if (j.error) throw new Error(j.error.message || "query failed");
@@ -144,6 +162,12 @@ export async function onRequestGet({ request }) {
     return json({ ok: false, error: `Unknown county "${countyKey}".`,
       counties: Object.values(COUNTY_NAMES) }, 400);
   }
+  if (isPlaceholderApn(apn)) {
+    return json({ ok: false, error:
+      `"${url.searchParams.get("apn")}" is not a parcel number. Some rows in the state layer ` +
+      `carry placeholders like NAP for road right-of-way and similar slivers; searching for ` +
+      `one would return those rather than a parcel.` }, 400);
+  }
   const county = COUNTY_NAMES[countyKey];
 
   const key = `https://apn/${SCHEMA}/${countyKey}/${apn}`;
@@ -177,7 +201,8 @@ export async function onRequestGet({ request }) {
   // The envelope is generous on purpose, so drop anything the layer attributes
   // to a different county rather than quietly returning a neighbour's parcel.
   const inCounty = feats.filter(f =>
-    String(f.attributes.Source || "").toLowerCase().startsWith(countyKey));
+    String(f.attributes.Source || "").toLowerCase().startsWith(countyKey) &&
+    !isPlaceholderApn(f.attributes.AZ_APN));
 
   if (!inCounty.length) {
     return json({ ok: false, notFound: true, county, apn: prettyApn(apn),

@@ -9,6 +9,12 @@
  * show its working rather than just a number.
  */
 
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const GWSI = "https://services.arcgis.com/C34zQ7veRS0V1t04/arcgis/rest/services/GWSI_Sites_2024/FeatureServer/0/query";
 const TIMEOUT_MS = 20000;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
@@ -90,7 +96,7 @@ export async function onRequestGet({ request }) {
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   let recs;
   try {
-    const r = await fetch(q.toString(), { signal: ctl.signal });
+    const r = await fetch(q.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
     if (!r.ok) throw new Error("ADWR returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.error.message || "ADWR query failed");
