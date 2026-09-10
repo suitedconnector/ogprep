@@ -1234,11 +1234,13 @@ sel.appendChild(Object.assign(document.createElement("option"),
   { value:"", textContent:COUNTY_PLACEHOLDER }));
 
 Object.keys(COUNTIES).forEach(k=>{
-  // Every Arizona county now takes a parcel number. The two with their own
-  // assessor adapter return more per parcel, so say which those are rather
-  // than letting the difference show up only after a search.
+  /* No tier label here. The mode hint says what a county returns before the
+     search, and the result banner says it after, both in plain language. A
+     third statement, in jargon, in a dropdown, only makes fourteen counties
+     look deficient about something the reader cannot act on — nobody chooses
+     which county their land is in. */
   const o=document.createElement("option");o.value=k;
-  o.textContent=k+(RICH_COUNTIES.includes(k)?"  — full assessor record":"");
+  o.textContent=k;
   if(k===state.county)o.selected=true;sel.appendChild(o);
   const o2=document.createElement("option");o2.value=k;o2.textContent=k;
   if(k===state.county)o2.selected=true;leadSel.appendChild(o2);
@@ -1322,8 +1324,7 @@ function applyState(code){
   $("county").style.display = "";
   sel.innerHTML = "<option value=''>"+COUNTY_PLACEHOLDER+"</option>" +
     counties.map(c=>{
-      const rich = code==="AZ" && RICH_COUNTIES.includes(c);
-      return "<option value='"+c+"'>"+c+(rich?"  — full assessor record":"")+"</option>";
+      return "<option value='"+c+"'>"+c+"</option>";
     }).join("");
   // Keep the current county only if it exists in the new list. Switching states
   // otherwise carries a county across a border, or silently picks one the user
