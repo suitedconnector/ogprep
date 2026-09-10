@@ -699,6 +699,13 @@
   <h2>Where is the parcel?</h2>
   <p class="note" style="margin-top:-4px">Find it on the map, or enter a parcel number or coordinates. Nothing else is needed yet.</p>
   <div class="card">
+    <!-- County belongs here, not in the pricing step. A parcel number is only
+         unique within its county — Arizona reuses number patterns statewide —
+         and the statewide layer can only be searched once the county narrows
+         it, so this has to be answered before the search, not after. -->
+    <label for="county">County</label>
+    <select id="county" style="margin-bottom:10px"></select>
+
     <label>Check a specific parcel — search by</label>
     <div class="seg" id="modeSeg">
       <button data-v="map" aria-pressed="false">Pick on map</button>
@@ -728,7 +735,7 @@
       <input type="text" id="coords" placeholder="306-32-007J" autocomplete="off">
       <button id="goBtn" type="button">Look it up</button>
     </div>
-    <div class="note" id="modeHint">Parcel number for Mohave or Yavapai County. We'll search both.</div>
+    <div class="note" id="modeHint">Parcel number, in the county selected above. Pick the right county first — Arizona parcel numbers repeat across counties, so the wrong one can return a real parcel in the wrong place.</div>
 
     <!-- Says what comes back, before they commit. The mode hint tells them what
          to type; nothing was telling them what they would get for it. -->
@@ -829,8 +836,9 @@
   
     
 
-    <label for="county">County</label>
-    <select id="county"></select>
+    <!-- County moved to step 1, where it gates the parcel search. It still
+         drives the county well-median comparison down here; it just gets
+         answered earlier. -->
 
     <label for="price">Land price</label>
     <div class="money"><span>$</span><input type="number" id="price" placeholder="e.g. 8,000" min="0" step="500"
