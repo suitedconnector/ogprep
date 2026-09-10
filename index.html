@@ -1638,7 +1638,36 @@ async function resolveParcel(qs,label){
   }
 
   const pr=await fetch("/api/parcel?"+qs);
-  const pj=await pr.json();
+  let pj=await pr.json();
+
+  /* Mohave and Yavapai go to their own assessors, which is where the rich
+     record comes from — but those servers can refuse us, and Yavapai currently
+     does. When that happens the honest answer is not "no such parcel", because
+     the statewide layer usually has it. Fall back to the thin tier and say what
+     is missing, rather than telling someone their parcel does not exist. */
+  if(state.region==="AZ" && params.get("apn") && (!pj.ok || pj.lat==null)
+     && !pj.unsupportedCounty){
+    let sj=null;
+    try{ sj=await resolveViaStatewide(params.get("apn"), state.county, pbox); }catch(_){}
+    if(sj && sj.multiple){
+      const list=sj._statewide;
+      [...pbox.querySelectorAll(".matchbtn")].forEach(b=>b.addEventListener("click",()=>{
+        $("coords").value=list.matches[+b.dataset.i].apn;
+        $("coords").placeholder=MODES.apn.ph; lookup();
+      }));
+      return null;
+    }
+    if(sj && sj.ok){
+      sj.degraded = true;   // found, but without the assessor detail
+      state.parcel=sj;
+      pbox.innerHTML=parcelHtml(sj)+
+        "<div class='banner b-thin' style='margin:8px 0 0'><strong>"+state.county+
+        " County's assessor service didn't answer.</strong> This came from the state "+
+        "parcel layer instead, so zoning, assessed value and improvements are missing. "+
+        "Location and size are unaffected.</div>";
+      return sj;
+    }
+  }
   if(pj.ok && pj.multiple){
     pbox.innerHTML='<div class="banner b-local"><strong>'+pj.matches.length+' parcels match.</strong> Pick one:</div>'+
       '<div class="matchlist">'+pj.matches.map(x=>
