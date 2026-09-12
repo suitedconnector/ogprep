@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can an LLM do this? — Test 0 results, parcel 203-81-015</title>
+<style>
+  :root{
+    --bg:#f7f7f2; --panel:#fff; --panel2:#f1f2ea; --line:#dcdfd0;
+    --ink:#1a1d15; --muted:#61684f; --accent:#8a6d1f; --accent2:#4f7030;
+    --bad:#a33d1e; --warn:#a8551c; --good:#4f7030; --info:#3d6f96;
+    --r:5px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 20px 70px}
+  .kicker{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:clamp(26px,4.4vw,38px);line-height:1.12;letter-spacing:-.02em;margin:12px 0 10px;max-width:22ch}
+  .lede{color:var(--muted);max-width:70ch;font-size:17px;margin:0 0 8px}
+  .meta{color:var(--muted);font-size:13px;margin-top:14px}
+  h2{font-size:clamp(19px,2.8vw,24px);margin:44px 0 6px;letter-spacing:-.01em}
+  h3{font-size:16px;margin:26px 0 6px}
+  p{max-width:74ch}
+  .sub{color:var(--muted);margin:0 0 16px;max-width:74ch}
+
+  .verdict{background:var(--panel);border:1px solid var(--accent);border-left:4px solid var(--accent);
+    border-radius:var(--r);padding:18px 20px;margin:26px 0}
+  .verdict b{color:var(--accent)}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--r);overflow:hidden;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .truth td{background:#fbfbf3;font-weight:650}
+
+  .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+    padding:2px 7px;border-radius:var(--r);border:1px solid}
+  .t-ok{color:var(--good);border-color:var(--good)}
+  .t-bad{color:var(--bad);border-color:var(--bad)}
+  .t-ref{color:var(--info);border-color:var(--info)}
+  .t-warn{color:var(--warn);border-color:var(--warn)}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
+  .card h4{margin:0 0 4px;font-size:14.5px}
+  .card .big{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:2px 0 4px}
+  .card p{margin:0;font-size:13px;color:var(--muted)}
+  .card.danger{border-color:var(--bad)}
+  .card.danger .big{color:var(--bad)}
+  .card.good{border-color:var(--good)}
+  .card.good .big{color:var(--good)}
+
+  blockquote{margin:12px 0;padding:11px 15px;background:var(--panel2);border-left:3px solid var(--line);
+    border-radius:0 var(--r) var(--r) 0;font-size:14.5px;color:var(--ink)}
+  blockquote cite{display:block;margin-top:6px;font-size:12.5px;color:var(--muted);font-style:normal}
+
+  .note{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;
+    font-size:14px;color:var(--muted);margin:16px 0}
+  footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  @media(max-width:640px){ table{font-size:13px} th,td{padding:8px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Strawman · Test 0</div>
+  <h1>Can a general-purpose model already do this?</h1>
+  <p class="lede">Four models were given the same parcel the app was given, asked for the same five
+  answers, and offered no hints about where to look. The question under test: is the app assembling
+  something defensible, or is it a nicer interface on a commodity?</p>
+  <div class="meta">Parcel <b>203-81-015</b>, Apache County, Arizona · tested 12 September 2026 ·
+    ChatGPT, Perplexity, Gemini, Meta AI</div>
+
+  <div class="verdict">
+    <b>Result: none of the four produced the local depth figure.</b> Two refused to guess and said so
+    plainly. Two produced confident numbers that were wrong by <b>2.5× to 8×</b>. All four got the
+    legal question right. None found that the parcel already sits inside a water system's service
+    area — and one asserted the opposite.
+  </div>
+
+  <div class="cards">
+    <div class="card good"><h4>Correct depth figures</h4><div class="big">0 of 4</div>
+      <p>No model retrieved the well set behind the median.</p></div>
+    <div class="card danger"><h4>Confidently wrong</h4><div class="big">2 of 4</div>
+      <p>Gemini and Meta AI published ranges they had not measured.</p></div>
+    <div class="card"><h4>Legal answer right</h4><div class="big">4 of 4</div>
+      <p>Exempt well under A.R.S. § 45-454. This half is commodity.</p></div>
+    <div class="card danger"><h4>Found the water system</h4><div class="big">0 of 4</div>
+      <p>The app found it, with a phone number.</p></div>
+  </div>
+
+  <h2>What the app returned</h2>
+  <p class="sub">The benchmark. Every figure traceable to a named record set.</p>
+  <table>
+    <tbody>
+      <tr><td>Wells with a recorded depth within 2 miles</td><td class="n"><b>19</b></td></tr>
+      <tr><td>Median depth nearby</td><td class="n"><b>100 ft</b></td></tr>
+      <tr><td>Mean, for contrast</td><td class="n">142 ft <span style="color:var(--muted);font-weight:400">(skewed by a 400 ft outlier)</span></td></tr>
+      <tr><td>Shallowest / deepest</td><td class="n">16 – 400 ft</td></tr>
+      <tr><td>Median depth to water</td><td class="n"><b>37 ft</b></td></tr>
+      <tr><td>Apache County median, for contrast</td><td class="n">260 ft</td></tr>
+      <tr><td>Cost to drill</td><td class="n"><b>$15,500</b> <span style="color:var(--muted);font-weight:400">($9,500–$29,700)</span></td></tr>
+      <tr><td>Legal</td><td class="n">Exempt well allowed</td></tr>
+      <tr><td>Community water system</td><td class="n"><b>City of St Johns</b> · 3,460 served · 928-337-2031</td></tr>
+      <tr><td>Time</td><td class="n">~10 seconds</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Side by side</h2>
+  <table>
+    <thead>
+      <tr><th></th><th>Median depth</th><th>Records</th><th>Depth to water</th><th>Water system</th><th>Time</th></tr>
+    </thead>
+    <tbody>
+      <tr class="truth">
+        <td>Build Off Grid</td><td>100 ft</td><td>19</td><td>37 ft</td>
+        <td>St Johns, with phone</td><td>~10 s</td>
+      </tr>
+      <tr>
+        <td><b>ChatGPT</b></td>
+        <td><span class="tag t-ref">refused</span></td>
+        <td><span class="tag t-ref">refused</span></td>
+        <td><span class="tag t-ref">refused</span></td>
+        <td><span class="tag t-ref">could not establish</span></td>
+        <td>~7 min</td>
+      </tr>
+      <tr>
+        <td><b>Perplexity</b></td>
+        <td><span class="tag t-ref">refused</span></td>
+        <td><span class="tag t-ref">refused</span></td>
+        <td><span class="tag t-ref">refused</span></td>
+        <td><span class="tag t-ref">unconfirmed</span></td>
+        <td>~6 min</td>
+      </tr>
+      <tr>
+        <td><b>Gemini</b></td>
+        <td>250–450 ft <span class="tag t-bad">2.5–4.5× high</span></td>
+        <td>—</td>
+        <td>150–300 ft <span class="tag t-bad">4–8× high</span></td>
+        <td>“typically unserviced” <span class="tag t-bad">wrong</span></td>
+        <td><b>42 s</b></td>
+      </tr>
+      <tr>
+        <td><b>Meta AI</b></td>
+        <td>300–350 ft <span class="tag t-bad">3–3.5× high</span></td>
+        <td>15–40 <span class="tag t-ok">brackets 19</span></td>
+        <td>120–180 ft <span class="tag t-bad">3–5× high</span></td>
+        <td>—</td>
+        <td>~12 min</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>The two that refused</h2>
+  <p class="sub">Both located the right databases, described the correct method, and declined to
+  produce a number they had not computed. This is the behaviour you want from a research tool, and
+  it is also a clear statement that the task was beyond them.</p>
+
+  <blockquote>
+    “ADWR's public well database is an interactive application, and in this environment I could
+    verify the database and its methodology but could not reliably extract the parcel's coordinates
+    and the underlying 2-mile well set. I therefore won't invent the two medians or pretend I
+    computed them.”
+    <cite>ChatGPT</cite>
+  </blockquote>
+
+  <blockquote>
+    “A defensible figure requires querying the official ADWR well-record database spatially around
+    the parcel boundary/centroid, then calculating the median from returned completed-well depths…
+    the accessible search results establish the source, but did not expose a downloadable/queryable
+    set of wells inside the requested 2-mile buffer.”
+    <cite>Perplexity</cite>
+  </blockquote>
+
+  <p>Perplexity went furthest on method: it separated depth-to-water from total depth, warned that
+  the former must only be computed from records that actually report a static level, and recommended
+  a <b>$30,000–$45,000 contingency reserve</b> until a driller reads the real logs. That reserve is
+  roughly <b>double</b> what the app's measured figure supports — the correct advice in the absence
+  of data, and an expensive way to buy land.</p>
+
+  <h2>The two that guessed</h2>
+
+  <h3>Gemini — 42 seconds, wrong on everything measurable</h3>
+  <p>The fastest answer and the most dangerous one. It named the right sources, cited “ADWR Wells 55
+  Registry &amp; Groundwater Site Inventory” beneath figures it never retrieved, and attributed the
+  parcel to the “Coconino / C-Aquifer formation.” Its depth-to-water estimate of 150–300 ft against
+  a measured 37 ft is wrong by a factor of four to eight.</p>
+  <p>It also stated the parcel is “typically unserviced by piped municipal water mains.” The parcel
+  falls inside the City of St Johns service area. A buyer acting on that sentence would drill a well
+  they may not need.</p>
+
+  <h3>Meta AI — knew better, did it anyway</h3>
+  <blockquote>
+    “I cannot provide a citable median for exactly 2 miles of 203-81-015 without the live GIS query.
+    Any number I gave without that export would be fabricated.”
+    <cite>Meta AI — immediately before giving 300–350 ft</cite>
+  </blockquote>
+  <p>Meta AI was the most self-aware of the four and had the best legal detail, correctly noting that
+  the 100-foot rule near an assured-supply provider applies only inside AMA boundaries. It also
+  bracketed the record count at 15–40, which contains the true 19.</p>
+  <p>But it placed the parcel in <b>Vernon / Show Low Highlands</b>, roughly 34.26, −109.69. The
+  parcel is near St Johns, about 30 miles away. Its depth figures are plausible — for somewhere
+  else. That is the failure mode in one line: <b>right method, wrong ground, confident output.</b></p>
+
+  <h2>What this establishes</h2>
+
+  <h3>1. The legal layer is commodity</h3>
+  <p>All four correctly identified the exempt-well rule, the 35 gpm threshold, the Notice of Intent
+  requirement and the licensed-driller obligation. That is published statute and agency prose, which
+  models read well. Any part of the product resting on explaining the law is not defensible.</p>
+
+  <h3>2. The spatial query is not</h3>
+  <p>Not one model ran a 2-mile buffer against a GIS layer and computed a median. Two said outright
+  they could not; one was blocked by the registry's own security policy. The moat is not the data —
+  it is public — and not the reading. It is <b>the query</b>, and the joining that follows it.</p>
+
+  <h3>3. The expensive errors run in one direction</h3>
+  <p>Every wrong estimate was <em>too deep</em>: 250–450 ft and 300–350 ft against a measured 100 ft;
+  120–300 ft to water against 37 ft. Priced at Arizona rates, the difference between a 100 ft well
+  and a 350 ft well is roughly <b>$11,000</b>, and Perplexity's honest contingency advice would have
+  a buyer reserving $30,000–$45,000. Bad depth data does not merely mislead — it kills viable
+  parcels.</p>
+
+  <h3>4. The highest-value finding was missed by all four</h3>
+  <p>The parcel sits inside the City of St Johns service area. Whether a main actually reaches the
+  road is a separate question — a boundary is not a connection — but it is the first call a buyer
+  should make, and it could replace a $15,500 well with a hookup fee. Four models, roughly 26 minutes
+  of combined research, and none of them surfaced it.</p>
+
+  <div class="note">
+    <b>Honest limits of this test.</b> One parcel, one run each, no retries. Browsing configurations
+    differ between products and change without notice. Meta AI was explicitly blocked by ADWR's
+    security policy rather than failing on capability. And the app's own figures are neighbour
+    evidence, not a measurement of this parcel — a nearby record is not a promise about your ground.
+  </div>
+
+  <h2>What would change this verdict</h2>
+  <ul>
+    <li>A model that can drive an ArcGIS REST endpoint directly rather than a human-facing map viewer.</li>
+    <li>ADWR publishing a plain query API that returns a buffered well set as JSON.</li>
+    <li>Any competitor doing the binning work once and publishing it.</li>
+  </ul>
+  <p>The first is the likeliest, and the timeline is short. <b>Re-run this test every six months.</b>
+  The date it flips is the date this business changes shape — and the honest answer then is that what
+  survives is the driller introductions, not the numbers.</p>
+
+  <footer>
+    Benchmark figures from the app's own Apache County output, 11 September 2026. Model transcripts
+    on file. Well records: Arizona Department of Water Resources — Groundwater Site Inventory, queried
+    live. Service areas: ADWR Community Water System Service Areas.
+  </footer>
+
+</div>
+</body>
+</html>

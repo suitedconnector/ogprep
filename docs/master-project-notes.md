@@ -71,12 +71,39 @@ turns "cost to livable" from a water tool into a buildability tool:
 
 Caveat stays: planning-scale interpretations, not a geotech report or a perc test.
 
-### 2. Utah bulk well depth
+### 2. Water quality — never discussed until now ⭐
+
+The app answers *will you hit water* and *what will it cost*. It says nothing about
+whether the water is drinkable. In Arizona that is a serious omission: **arsenic** is
+widespread in rural groundwater, and a well that produces 20 gpm at 100 ft but needs a
+treatment system is a different purchase from one that doesn't.
+
+**The structural fact to carry into the UI:** domestic wells are not regulated. Roughly
+300,000 Arizonans drink from wells that fall outside the Safe Drinking Water Act, so
+nobody tests them systematically and **parcel-level quality data does not exist**. What
+exists is ambient monitoring points — exactly the same shape as well depth, and the same
+honest framing: here is what was measured near you, not a measurement of your parcel.
+
+| Source | Covers | Notes |
+| ------ | ------ | ----- |
+| **Water Quality Portal** (`waterqualitydata.us`) | Both states, one adapter | USGS + EPA + 400 agencies. Documented web services, `well` and `spring` site types. Start here — it is the AZGeo of water chemistry. |
+| **ADEQ Arizona Water Quality Database** | AZ | Groundwater and surface chemistry from ADEQ and 100+ reporting agencies. Ambient monitoring since 1995, 200+ constituents. |
+| **ADWR GWSI** | AZ | Already queried for depth; also carries water-quality monitoring sites. May be free. |
+| Utah DEQ Division of Drinking Water | UT | **Unverified.** Check whether ambient groundwater chemistry is published separately from public-system compliance. |
+
+**What to surface, in priority order:** arsenic, nitrate, fluoride, uranium, TDS/salinity,
+hardness. Arsenic first — it is the one that drives a treatment budget in Arizona.
+
+**Do not state a parcel is safe or unsafe.** Report what was found nearby, the distance,
+and the standard it is measured against. A water test costs about $150 and is the actual
+answer; the app's job is to tell someone whether to expect that bill.
+
+### 3. Utah bulk well depth
 Call **801-538-7240** (Technical Services) for access to the WELLDB export at
 `waterrights.utah.gov/gisinfo/dbtables.asp`. Currently returns Access Denied. Unblocks a Utah
 depth map and ends per-well scraping entirely. Draft in `docs/agency-data-requests.md`.
 
-### 3. Multi-state expansion
+### 4. Multi-state expansion
 Model travels; implementation doesn't. Three things vary:
 - **Water law** — prior appropriation (West) vs riparian (East). Different product, not a config flag.
   Realistically the ~11 Western states, which is also where the cheap land is.
@@ -87,11 +114,11 @@ Model travels; implementation doesn't. Three things vary:
 
 **Do a data-availability scan first**, then pick build order. Don't guess.
 
-### 4. Demand-side capture
+### 5. Demand-side capture
 Let someone post "I need 1 af, domestic, Area 73." Nobody has that list, and it's what owners
 who are holding would actually respond to.
 
-### 5. Verify the ADWR discrepancy ⚠️
+### 6. Verify the ADWR discrepancy ⚠️
 At Wikieup the finder says wells average **119 ft**; the three drillers listed there filed wells
 at **565, 700 and 935 ft**. GWSI monitoring sites vs the Wells55 drilling registry disagreeing
 about the same ground. The 119 ft figure is on the Arizona demo card and feeds the cost model.
