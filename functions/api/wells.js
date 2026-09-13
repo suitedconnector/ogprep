@@ -1,12 +1,35 @@
 /**
  * Cloudflare Pages Function — /api/wells?lat=..&lon=..&radius=3220
  *
- * Proxies ADWR's Groundwater Site Inventory. Exists because the browser cannot
- * reliably call that service cross-origin, and because caching keeps a slow or
- * flaky upstream from breaking the page.
+ * Reads ADWR's Well Registry (the "Wells55" programme) for wells near a point.
  *
- * Returns depth statistics plus the individual well records, so the caller can
- * show its working rather than just a number.
+ * WHY THIS CHANGED, because it matters and is easy to get wrong again:
+ *
+ * Arizona keeps two well datasets and they are not interchangeable.
+ *
+ *   GWSI  — the Groundwater Site Inventory. Sites ADWR physically visits to
+ *           measure water levels. ADWR's own description: "Permission to access
+ *           and measure wells is entirely voluntary for the well owners. As
+ *           such, the dataset does not represent all wells in the state and
+ *           there may be large areas with sparse data coverage."
+ *
+ *   Wells55 — the drilling registry. Every well filed with the state, with the
+ *           depth, water level, casing, tested yield and driller licence taken
+ *           from the completion report.
+ *
+ * This endpoint used to read GWSI. At a test point near St Johns that returned
+ * 19 wells; the registry returns 322 at the same point and radius. We were
+ * computing "what will a well cost here" from a seventeenth of the evidence,
+ * and from a population selected for being monitored rather than for being
+ * someone's household well.
+ *
+ * It also explains the Wikieup discrepancy that sat unresolved in the project
+ * notes — the depth finder and the driller panel were not contradicting each
+ * other, they were counting different wells.
+ *
+ * The registry additionally carries things GWSI does not: tested yield in gpm,
+ * the driller's licence number, per-well AMA status, and a flag for whether a
+ * drill log was filed.
  */
 
 /* Identify ourselves to the agencies we query. A Worker's fetch sends no
@@ -15,7 +38,7 @@
    "you were refused". It also gives an administrator someone to contact if we
    are ever a nuisance. */
 const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
-const GWSI = "https://services.arcgis.com/C34zQ7veRS0V1t04/arcgis/rest/services/GWSI_Sites_2024/FeatureServer/0/query";
+const WELLS55 = "https://services.arcgis.com/C34zQ7veRS0V1t04/ArcGIS/rest/services/Well_Registry_2024/FeatureServer/0/query";
 const TIMEOUT_MS = 20000;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
 
@@ -24,7 +47,7 @@ const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
  * it, so old payloads are abandoned rather than served for another month.
  * v2 — added lat/lon/miles per well for the map.
  */
-const SCHEMA = "v3";   // v3 adds stats.med — the real median depth, not the mean
+const SCHEMA = "v4";   // v4 switches GWSI -> Wells55 registry; adds yield, registry id, AMA
 
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 const sdev = a => {
@@ -78,17 +101,35 @@ export async function onRequestGet({ request }) {
     return json({ ...body, cached: true }, 200, true);
   }
 
-  const q = new URL(GWSI);
+  const q = new URL(WELLS55);
   Object.entries({
     geometry: `${lon},${lat}`,
     geometryType: "esriGeometryPoint",
     inSR: "4326",
+    // The registry stores UTM 12N and carries no lat/lon columns, so the point
+    // has to come from the geometry rather than from an attribute.
+    outSR: "4326",
     distance: String(radius),
     units: "esriSRUnit_Meter",
     spatialRel: "esriSpatialRelIntersects",
-    outFields: "SITE_ID,WELL_DEPTH,WL_DTW,DRILL_DATE_TEXT,WATER_USE,DD_LAT,DD_LONG",
-    returnGeometry: "false",
-    resultRecordCount: "400",
+    outFields: [
+      "REGISTRY_ID",      // the 55-number, and the key to the filed record
+      "WELL_DEPTH",
+      "WATER_LEVEL",      // depth to water reported at drilling
+      "INSTALLED",
+      "WATER_USE",        // DOMESTIC, IRRIGATION, STOCK...
+      "SITE_USE",         // WATER PRODUCTION vs monitoring, exploration, etc.
+      "WELL_TYPE_GROUP",  // EXEMPT = the 35 gpm domestic class
+      "WELL_CANCELLED",
+      "TESTEDRATE",       // yield in gpm — GWSI has nothing like this
+      "CASING_DIAMETER",
+      "DLIC_NUM",         // driller licence, for the driller panel
+      "DRILL_LOG",        // "X" when a log was actually filed
+      "AMA"
+    ].join(","),
+    returnGeometry: "true",
+    geometryPrecision: "6",
+    resultRecordCount: "1200",
     f: "json"
   }).forEach(([k, v]) => q.searchParams.set(k, v));
 
@@ -100,7 +141,20 @@ export async function onRequestGet({ request }) {
     if (!r.ok) throw new Error("ADWR returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.error.message || "ADWR query failed");
-    recs = (j.features || []).map(f => f.attributes);
+    /* Keep the point with the attributes — the registry has no DD_LAT column.
+       Drop cancelled registrations and anything that is not a water-production
+       well: the registry also holds monitoring, exploration and injection
+       holes, and averaging those into "what will my household well cost" is
+       the same error as counting geothermal bores in Utah. */
+    recs = (j.features || [])
+      .filter(f => {
+        const a = f.attributes || {};
+        if (String(a.WELL_CANCELLED || "").toUpperCase() === "Y") return false;
+        const use = String(a.SITE_USE || "").toUpperCase();
+        return !use || use.includes("WATER PRODUCTION");
+      })
+      .map(f => ({ ...f.attributes, _x: f.geometry ? f.geometry.x : null,
+                                    _y: f.geometry ? f.geometry.y : null }));
   } catch (e) {
     clearTimeout(timer);
     return json({ ok: false, error: "ADWR groundwater service unavailable: " + (e.message || e) }, 502);
@@ -108,7 +162,8 @@ export async function onRequestGet({ request }) {
   clearTimeout(timer);
 
   const depths = recs.map(a => +a.WELL_DEPTH).filter(v => v > 0);
-  const dtw = recs.map(a => +a.WL_DTW).filter(v => v > 0);
+  const dtw    = recs.map(a => +a.WATER_LEVEL).filter(v => v > 0);
+  const yields = recs.map(a => +a.TESTEDRATE).filter(v => v > 0);
 
   const payload = {
     ok: true,
@@ -127,20 +182,42 @@ export async function onRequestGet({ request }) {
       sd: sdev(depths),
       min: Math.min(...depths),
       max: Math.max(...depths),
-      medianDepthToWater: median(dtw)
+      medianDepthToWater: median(dtw),
+      // Yield is new — the registry records what the well actually tested at.
+      // A 100 ft well at 3 gpm is a different purchase from one at 25 gpm, and
+      // until now the app could not tell the difference in either state.
+      withYield: yields.length,
+      medianYieldGpm: median(yields)
     } : null,
+
+    // Exempt wells are the 35 gpm domestic class. Reporting how many of the
+    // nearby wells are household wells tells a buyer whether this is ground
+    // people actually live on, or a farm basin with a few big irrigation bores.
+    exemptCount: recs.filter(a =>
+      String(a.WELL_TYPE_GROUP || "").toUpperCase() === "EXEMPT").length,
+    // Per-well AMA status, straight from the registry rather than inferred.
+    ama: (recs.find(a => a.AMA && !/NOT WITHIN ANY/i.test(a.AMA)) || {}).AMA || null,
+
     wells: recs
       .filter(a => +a.WELL_DEPTH > 0)
       .sort((a, b) => b.WELL_DEPTH - a.WELL_DEPTH)
       .slice(0, 60)
       .map(a => {
-        const wlat = parseFloat(a.DD_LAT), wlon = parseFloat(a.DD_LONG);
+        // outSR=4326 puts lon in x and lat in y.
+        const wlon = a._x, wlat = a._y;
         const hasPt = isFinite(wlat) && isFinite(wlon);
+        const yr = a.INSTALLED ? new Date(a.INSTALLED).getUTCFullYear() : null;
         return {
           use: a.WATER_USE || null,
-          drilled: (a.DRILL_DATE_TEXT || "").slice(0, 4) || null,
+          drilled: (yr && yr > 1850 && yr < 2100) ? String(yr) : null,
           depth: +a.WELL_DEPTH,
-          depthToWater: +a.WL_DTW > 0 ? +a.WL_DTW : null,
+          depthToWater: +a.WATER_LEVEL > 0 ? +a.WATER_LEVEL : null,
+          yieldGpm: +a.TESTEDRATE > 0 ? +a.TESTEDRATE : null,
+          exempt: String(a.WELL_TYPE_GROUP || "").toUpperCase() === "EXEMPT",
+          // The filed record. "X" means a drill log exists to go and read.
+          registryId: a.REGISTRY_ID || null,
+          hasLog: String(a.DRILL_LOG || "").toUpperCase() === "X",
+          drillerLicence: a.DLIC_NUM || null,
           lat: hasPt ? wlat : null,
           lon: hasPt ? wlon : null,
           // Straight-line distance from the search point, in miles.
@@ -148,9 +225,12 @@ export async function onRequestGet({ request }) {
         };
       }),
     source: {
-      dataset: "Groundwater Site Inventory (GWSI)",
+      dataset: "Well Registry (Wells55)",
       publisher: "Arizona Department of Water Resources",
-      service: GWSI.replace(/\/query$/, "")
+      note: "Every well filed with the state, with depth, water level, tested yield " +
+            "and casing taken from the driller's completion report. Cancelled " +
+            "registrations and non-production holes are excluded.",
+      service: WELLS55.replace(/\/query$/, "")
     },
     cached: false
   };
