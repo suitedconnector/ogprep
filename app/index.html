@@ -995,7 +995,7 @@
 
 <footer>
   <span class="pill">County data: 174,782 ADWR well records</span>
-  <span class="pill">Local lookup: ADWR GWSI (live)</span>
+  <span class="pill">Local lookup: ADWR Well Registry / Wells55 (live)</span>
   <span class="pill">Soil: USDA-NRCS SSURGO (live)</span>
   <span class="pill">Costs: 2026 published AZ ranges</span>
   <p><strong>Septic suitability</strong> comes from the Soil Survey Geographic Database (SSURGO), compiled by the
@@ -1023,7 +1023,9 @@
 /* Lead capture endpoint. Replace if you move to a different form service. */
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/xaewqnwk";
 
-const WELLS_API="/api/wells";   // Cloudflare Pages Function proxying ADWR GWSI
+const WELLS_API="/api/wells";   // Pages Function proxying ADWR's Wells55 registry.
+// Was GWSI — the monitoring network — which returned 19 wells at a point where
+// the registry returns 322. Same agency, different dataset, very different sample.
 
 const COUNTIES = {
   "Apache":      {n:5474, med:260, avg:308, sd:249, max:4143, wl:108, gpm:15},

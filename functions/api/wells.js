@@ -135,7 +135,7 @@ export async function onRequestGet({ request }) {
 
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  let recs;
+  let recs, dedupedFrom = 0;
   try {
     const r = await fetch(q.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
     if (!r.ok) throw new Error("ADWR returned " + r.status);
@@ -155,6 +155,36 @@ export async function onRequestGet({ request }) {
       })
       .map(f => ({ ...f.attributes, _x: f.geometry ? f.geometry.x : null,
                                     _y: f.geometry ? f.geometry.y : null }));
+
+    /* One physical well can hold several registrations — a deepening, a
+       replacement or a re-filing each get their own 55-number at the same spot.
+       Left alone they inflate the sample and drag the median toward whichever
+       well happened to be filed twice. Collapse on position plus depth, and
+       keep the richest filing: the one that actually reports a water level and
+       a date. Same fix as the Utah dedup by WIN. */
+    const byWell = new Map();
+    const score = a => (+a.WATER_LEVEL > 0 ? 4 : 0) + (a.INSTALLED ? 2 : 0) +
+                       (+a.TESTEDRATE > 0 ? 1 : 0);
+    for (const a of recs) {
+      const key = [
+        a._x == null ? "?" : a._x.toFixed(5),
+        a._y == null ? "?" : a._y.toFixed(5),
+        a.WELL_DEPTH == null ? "?" : a.WELL_DEPTH
+      ].join("|");
+      const prev = byWell.get(key);
+      if (!prev) { byWell.set(key, a); continue; }
+      // Keep the fuller record, but carry across any field the winner lacks.
+      const keep = score(a) > score(prev) ? a : prev;
+      const other = keep === a ? prev : a;
+      for (const k of ["WATER_LEVEL", "INSTALLED", "TESTEDRATE", "REGISTRY_ID",
+                       "DLIC_NUM", "WATER_USE", "DRILL_LOG"]) {
+        if ((keep[k] == null || keep[k] === "") && other[k] != null) keep[k] = other[k];
+      }
+      byWell.set(key, keep);
+    }
+    const before = recs.length;
+    recs = [...byWell.values()];
+    dedupedFrom = before;
   } catch (e) {
     clearTimeout(timer);
     return json({ ok: false, error: "ADWR groundwater service unavailable: " + (e.message || e) }, 502);
@@ -170,6 +200,9 @@ export async function onRequestGet({ request }) {
     radiusMeters: radius,
     radiusMiles: +(radius / 1609.34).toFixed(radius < 1000 ? 1 : 0),
     found: recs.length,
+    // How many rows collapsed, so the caller can say "19 filings, 14 wells"
+    // rather than silently reporting a smaller number than the registry shows.
+    registrations: dedupedFrom || recs.length,
     withDepth: depths.length,
     stats: depths.length ? {
       avg: mean(depths),
