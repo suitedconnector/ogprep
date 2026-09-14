@@ -1931,7 +1931,42 @@ async function lookup(){
       // way to a county median, try the 1.4-mile grid — same wells, binned by
       // geography rather than by county line.
       const gf = state.region==="AZ" ? await gridFallback(lat,lng) : null;
-      state.local = gf;
+
+      /* One or two real wells beat seven in a block a mile away.
+         At a Golden Valley parcel the two nearest filed wells were 1,518 ft and
+         1,292 ft, water at ~1,040. The nearest grid block sat 1.2 miles east on
+         the other side of the valley's depth gradient and reported 140 ft, water
+         at 52 — and the page then called it "a reasonably firm planning number".
+         A buyer budgeting from that would have been out by roughly $50,000.
+         The block is chosen by distance alone and knows nothing about whether
+         the ground is comparable, so whenever ANY local wells exist they get to
+         contradict it. */
+      const localDepths = (j.wells || []).map(w => +w.depth).filter(v => v > 0);
+      const localMed = localDepths.length
+        ? (localDepths.slice().sort((x,y)=>x-y)[localDepths.length >> 1]) : null;
+      const gridDisputed = gf && localMed != null &&
+        Math.max(gf.med / localMed, localMed / gf.med) >= 2;
+
+      /* When the block is disputed, price from the wells that are actually here.
+         Two wells normally fall below the three-well floor — but two wells that
+         AGREE with each other (1,518 and 1,292 ft, water within 4 ft) are better
+         evidence for this parcel than seven wells in different ground. Marked
+         thin so the page can say so rather than implying a firm number. */
+      if(gridDisputed){
+        const dtwLocal = (j.stats && j.stats.medianDepthToWater) || null;
+        const mean = localDepths.reduce((x,y)=>x+y,0)/localDepths.length;
+        state.local = {
+          n: localDepths.length, total: j.found,
+          med: localMed, avg: mean,
+          sd: Math.max(Math.abs(Math.max(...localDepths) - Math.min(...localDepths)) / 4, mean*0.25),
+          sdApprox: true,
+          min: Math.min(...localDepths), max: Math.max(...localDepths),
+          dtw: dtwLocal, miles: miles, thinSample: true,
+          lat: lat, lng: lng
+        };
+      } else {
+        state.local = gf;
+      }
       /* Breadcrumb. At the Greenlee test the banner reported the grid block
          while the costs below it reported county figures, which can only mean
          state.local was set here and null by the time render() ran. I cannot
@@ -1940,7 +1975,19 @@ async function lookup(){
          render() is clearing it, and the console will say so. */
       state.localTrace = gf ? { src:"grid", med:gf.med, at:Date.now() } : { src:"none", at:Date.now() };
 
-      msg.innerHTML = gf
+      msg.innerHTML = gridDisputed
+        ? '<div class="banner b-err"><strong>The few wells nearest you disagree with the '+
+          'surrounding area — badly.</strong> The '+j.withDepth+' well record'+
+          (j.withDepth===1?'':'s')+' within '+miles+' mile'+(miles===1?'':'s')+' of your point '+
+          (j.withDepth===1?'runs':'run')+' a median of <strong>'+
+          Math.round(localMed).toLocaleString()+' ft</strong>, while the nearest mapped block '+
+          (gf.miles<0.8?'over your point':gf.miles+' miles away')+' reports <strong>'+
+          Math.round(gf.med).toLocaleString()+' ft</strong> from '+gf.n+' wells. '+
+          'That is a change of ground, not a rounding difference — parts of Mohave shift by '+
+          'four times over five miles. <strong>Budget from the wells nearest you, and treat '+
+          'everything below as unreliable here.</strong> This is a parcel to ask a local '+
+          'driller about before you commit.</div>'
+        : gf
         ? '<div class="banner b-thin"><strong>Only '+j.withDepth+' well record'+
           (j.withDepth===1?'':'s')+' with a depth within '+miles+' miles.</strong> '+
           'Using the nearest mapped block instead — '+gf.n+' well'+(gf.n===1?'':'s')+
