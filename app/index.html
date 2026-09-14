@@ -112,6 +112,9 @@
   .useMatch.um-bad{border-color:var(--bad);color:var(--bad-ink)}
   .useMatch.um-ok{border-color:var(--good);color:var(--good-ink)}
 
+  .banner .bHead{font-weight:800;margin-bottom:8px}
+  .banner .bList{margin:0 0 10px;padding-left:18px}
+  .banner .bList li{margin:3px 0}
   .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
   .seg button{flex:1;min-width:104px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
     border-radius:var(--r);padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer;
@@ -1976,17 +1979,23 @@ async function lookup(){
       state.localTrace = gf ? { src:"grid", med:gf.med, at:Date.now() } : { src:"none", at:Date.now() };
 
       msg.innerHTML = gridDisputed
-        ? '<div class="banner b-err"><strong>The few wells nearest you disagree with the '+
-          'surrounding area — badly.</strong> The '+j.withDepth+' well record'+
-          (j.withDepth===1?'':'s')+' within '+miles+' mile'+(miles===1?'':'s')+' of your point '+
-          (j.withDepth===1?'runs':'run')+' a median of <strong>'+
-          Math.round(localMed).toLocaleString()+' ft</strong>, while the nearest mapped block '+
-          (gf.miles<0.8?'over your point':gf.miles+' miles away')+' reports <strong>'+
-          Math.round(gf.med).toLocaleString()+' ft</strong> from '+gf.n+' wells. '+
-          'That is a change of ground, not a rounding difference — parts of Mohave shift by '+
-          'four times over five miles. <strong>Budget from the wells nearest you, and treat '+
-          'everything below as unreliable here.</strong> This is a parcel to ask a local '+
-          'driller about before you commit.</div>'
+        ? '<div class="banner b-err">'+
+          '<div class="bHead">The wells nearest you disagree with the surrounding area.</div>'+
+          '<ul class="bList">'+
+            '<li><b>'+j.withDepth+' well'+(j.withDepth===1?'':'s')+' within '+miles+
+              ' mile'+(miles===1?'':'s')+'</b> of your point — median <b>'+
+              Math.round(localMed).toLocaleString()+' ft</b></li>'+
+            '<li><b>'+gf.n+' well'+(gf.n===1?'':'s')+' in the nearest mapped block</b>, '+
+              (gf.miles<0.8?'over your point':gf.miles+' miles away')+' — median <b>'+
+              Math.round(gf.med).toLocaleString()+' ft</b></li>'+
+          '</ul>'+
+          '<p style="margin:0 0 8px">That is a change of ground, not a rounding difference. '+
+          'Parts of Mohave shift fourfold in five miles.</p>'+
+          '<p style="margin:0"><b>The figures below use the wells nearest you</b>, not the '+
+          'block — but '+(j.withDepth<3?'two records are a thin basis':'this is a thin basis')+
+          ', so treat the number as a warning rather than a quote. Worth a call to a local '+
+          'driller before you commit.</p>'+
+          '</div>'
         : gf
         ? '<div class="banner b-thin"><strong>Only '+j.withDepth+' well record'+
           (j.withDepth===1?'':'s')+' with a depth within '+miles+' miles.</strong> '+
