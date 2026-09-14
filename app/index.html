@@ -3110,7 +3110,21 @@ $("pickGo").addEventListener("click", () => {
   // Drive the same control a typed lookup uses, so one path runs the report.
   const cb=[...$("modeSeg").children].find(x=>x.dataset.v==="coords");
   if(cb) cb.click();
-  $("coords").value = PICKAT.lat+", "+PICKAT.lon;
+  /* Use the parcel's centre, not where the pin landed.
+     Typed parcel search resolves to the centroid, so a pin drop was answering a
+     different question about the same parcel — and on thin ground a few hundred
+     feet decides whether a well falls inside the 2-mile circle. One parcel was
+     reporting 2 nearby wells by pin and a different figure by parcel number.
+     The app's answer is about the parcel, so both routes should ask about the
+     same point. Anyone wanting a specific spot can still use coordinates mode. */
+  const pc = state.pinParcel && state.pinParcel.centroid;
+  const usePt = (pc && isFinite(pc.lat) && isFinite(pc.lon)) ? pc : PICKAT;
+  $("coords").value = usePt.lat+", "+usePt.lon;
+  if(pc && state.pinParcel.apn){
+    const ro = $("pickReadout");
+    if(ro) ro.innerHTML = "Using the centre of parcel <b>"+state.pinParcel.apn+
+      "</b> rather than where the pin landed, so this matches a search by parcel number.";
+  }
   // The pin already told us which parcel this is; keep it for the report.
   if(state.pinParcel) state.parcel = Object.assign({}, state.parcel, {
     apn: state.pinParcel.apn, address: state.pinParcel.address,
