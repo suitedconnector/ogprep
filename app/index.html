@@ -2803,6 +2803,29 @@ async function renderTrend(lat, lon){
   const conflict = localDtw != null && after != null &&
                    Math.abs(after - localDtw) > Math.max(60, localDtw);
 
+  /* Beyond a certain gap this stops being a disagreement and becomes a
+     different aquifer. At one Mohave parcel the block reported water at 918 ft
+     while the wells at the point sat at 52 — seventeen times deeper. Printing
+     both, with bars and a body paragraph, made the page argue with itself: the
+     reader met 890 ft three times before reaching the line saying to ignore it.
+     When the ratio is this large there is no trend to report for this ground,
+     and saying so is shorter and truer than showing numbers and retracting
+     them. */
+  const ratio = (localDtw && after) ? Math.max(after / localDtw, localDtw / after) : 1;
+  const incomparable = conflict && ratio >= 4;
+
+  if(incomparable){
+    state.trendCell = c;
+    box.innerHTML =
+      "<div class='trend trendNone'><b>No comparable trend data for this ground.</b> "+
+      "The nearest block with enough wells to measure a trend is about three miles away "+
+      "and sits over much deeper water — it reports "+after+" ft where the wells at your "+
+      "point hit water at about "+localDtw+" ft. That is a different aquifer, not a "+
+      "disagreement, so there is nothing here worth reading as a trend for this parcel."+
+      "</div>";
+    return;
+  }
+
   const body = worse
     ? "Wells drilled since 2005 hit water at <b>"+after+" ft</b>. Wells drilled here before 1995 "+
       "hit it at <b>"+before+" ft</b>. That is <b>"+change+" ft deeper</b> in roughly two decades."+
