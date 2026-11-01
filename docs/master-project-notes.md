@@ -162,6 +162,37 @@ number should move, and it feeds the Arizona demo card and the cost model.
 
 ---
 
+## Parked — revisit only after someone has paid for the core app
+
+### Well pump affiliate page — PARKED 3 Oct 2026
+Google Trends shows strong national volume on `well pump pressure`, `submersible well pump`,
+`water pump for well`. **Rejected on intent, not volume.** Those are repair and replacement
+searches — the person already owns the well and it quit today. Our buyer doesn't have a well and
+is deciding whether to buy the land at all. No audience overlap. Amazon pays ~3% on hardware
+(~$18 on a $600 pump), most pump buyers go through a local supply house anyway, and the SERP is
+Home Depot / Lowe's / SupplyHouse / Amazon.
+
+**The adjacent play that *is* ours:** cisterns, tanks and haul-fill fittings — the page the app
+itself sends people to when the answer is "no well here, haul it." Tiny search volume, enormous
+intent, no competition, and we own the moment it happens. See item 3 (Haulagua handoff).
+
+### Well pump parts database — PARKED 3 Oct 2026
+Real product, different company. **The data doesn't exist for free.** Our Arizona edge is that
+ADWR publishes 174,782 records as an open API — nothing to assemble. Pump parts have no public
+registry: specs sit in Grundfos / Franklin Electric / Goulds / Pentair PDFs, each with its own
+numbering, and the cross-reference tables are the trade secret. Indefinite scraping and hand-
+mapping as models turn over. The people who already did it are distributors (SupplyHouse,
+PumpProducts, the Franklin dealer network) and they hold the catalog *and* the inventory, which
+is the part customers actually want. Serves installers and DIY repair — not pre-purchase buyers.
+Nothing transfers: not the data, not the audience, not the traffic.
+
+**Standing rule for this section:** three new builds were floated in a row while the core app
+still had no evidence anyone would pay. Each was interesting and each was a reason not to find
+out. Nothing leaves this section until ten manual parcel lookups have been done and at least one
+person has said what they would pay.
+
+---
+
 ## Known gaps
 
 - **Utah cost model uses Arizona per-foot rates.** The 460 ft is Utah data; the dollar figure is
