@@ -3029,6 +3029,10 @@ document.addEventListener("click", e => {
   const el = $(b.dataset.goto); if(!el) return;
   const det = el.closest("details") || el.querySelector("details");
   if(det) det.open = true;
+  /* A target inside a tab that is not showing has no box to scroll to, so the
+     click did nothing. Switch to its tab first, as the "Still needed" buttons do. */
+  const pane = el.closest(".pane");
+  if(pane && pane.style.display === "none") setTab(pane.dataset.pane, true);
   el.scrollIntoView({behavior:"smooth", block:"start"});
 });
 
@@ -4140,7 +4144,7 @@ function render(){
     $("totalRange").textContent = "";
     $("bar").innerHTML = "";
     $("lines").innerHTML = "";
-    $("assumptions").innerHTML = "";
+    $("assumptions").innerHTML = soilNoteHtml();
     $("swingNote").innerHTML = "";
     $("lines").closest("table").style.display = "none";
     document.querySelector(".colkey").style.display = "none";
@@ -4320,13 +4324,7 @@ function render(){
     (soilDrivesSeptic?"power and access":"septic, power and access")+
     " — are <em>published statewide ranges</em> that do not change with your coordinates. "+
     "Treat those as placeholders for a real quote, not estimates for your land.</div>"+
-    (state.soil ? "<div class='soilbox'>"+(SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown).note+
-      (state.soil.mapunit?" Soil map unit: <em>"+state.soil.mapunit+"</em>.":"")+
-      (state.soil.reasons&&state.soil.reasons.length
-        ? " Limiting features: "+state.soil.reasons.join(", ").toLowerCase()+"."
-        : "")+
-      soilProfileHtml(state.soil)+
-      " <span class='src'>Source: USDA-NRCS SSURGO, interpretation &ldquo;Septic Tank Absorption Fields.&rdquo;</span></div>" : "")+
+    soilNoteHtml()+
     rainPanelHtml()+
     "<p style='margin-top:10px'>Water assumption: "+wDetail+
     ". Grid extension varies most of all — it is priced per foot from the nearest line and can exceed these figures on a long run.</p>";
@@ -4345,6 +4343,21 @@ function render(){
   makeCollapsible($("wellList"));
   renderCtaDrillers();
   flushWellMap();
+}
+
+/* The soil note is a fact about the parcel, not about the plans, so it is built
+   on its own. It used to exist only inside the "assumptions" block, which stays
+   empty until water, wastewater, power and years are all chosen — and the Septic
+   chip in "What's true about this land" jumps there. */
+function soilNoteHtml(){
+  if(!state.soil) return "";
+  return "<div class='soilbox'>"+(SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown).note+
+    (state.soil.mapunit?" Soil map unit: <em>"+state.soil.mapunit+"</em>.":"")+
+    (state.soil.reasons&&state.soil.reasons.length
+      ? " Limiting features: "+state.soil.reasons.join(", ").toLowerCase()+"."
+      : "")+
+    soilProfileHtml(state.soil)+
+    " <span class='src'>Source: USDA-NRCS SSURGO, interpretation &ldquo;Septic Tank Absorption Fields.&rdquo;</span></div>";
 }
 
 /* The map is built here rather than when its markup is written, because
