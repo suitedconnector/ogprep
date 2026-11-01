@@ -25,9 +25,8 @@
   .note b{color:var(--accent)}
   header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .brand{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12.5px;color:var(--accent)}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-  .seg button{border:0;background:var(--paper);color:var(--ink);padding:8px 16px;font:inherit;font-weight:600;cursor:pointer;min-height:40px}
-  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .stateSel{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .stateSel select{min-height:40px;padding:8px 34px 8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit;font-size:15px;font-weight:600;letter-spacing:0;text-transform:none}
   h1{font-size:26px;line-height:1.2;margin:14px 0 4px}
   .sub{color:var(--muted);margin:0 0 14px}
   .box{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:16px;margin:12px 0}
@@ -79,14 +78,16 @@
 <body>
 <div class="wrap">
 
-  <div class="banner"><b>Wireframe, sample data.</b> Nothing here is looked up. Yellow notes are open questions or decisions to react to. Toggle Arizona / Utah to see how one page changes shape. Tap a checklist row to jump to its section; tap "Records" lines to expand evidence.</div>
+  <div class="banner"><b>Wireframe, sample data.</b> Nothing here is looked up. Yellow notes are open questions or decisions to react to. Use the State dropdown to see how one page changes shape. Tap a checklist row to jump to its section; tap "Records" lines to expand evidence.</div>
 
   <header>
     <div class="brand">Cost to Livable</div>
-    <div class="seg" role="group" aria-label="State">
-      <button id="bAZ" aria-pressed="true">Arizona</button>
-      <button id="bUT" aria-pressed="false">Utah</button>
-    </div>
+    <label class="stateSel">State
+      <select id="stateSel" aria-label="State">
+        <option value="AZ" selected>Arizona</option>
+        <option value="UT">Utah</option>
+      </select>
+    </label>
   </header>
 
   <h1>What it costs to make a parcel livable.</h1>
@@ -222,16 +223,14 @@
 </div>
 
 <script>
-  const az=document.getElementById('bAZ'), ut=document.getElementById('bUT');
+  const sel=document.getElementById('stateSel');
   function setState(s){
     document.body.classList.toggle('ut', s==='UT');
-    az.setAttribute('aria-pressed', s==='AZ'); ut.setAttribute('aria-pressed', s==='UT');
-    document.getElementById('lead').textContent = s==='UT' ? '2 things to resolve before you buy' : '2 things to resolve before you buy';
     document.getElementById('oWater').textContent = s==='UT'
       ? 'No domestic water right nearby. Utah will not let you drill for a home without one. No cost estimate yet.'
       : 'Wells here run deep: 40 ft median in a thin sample, but nearby wells disagree. Range $9,500–$29,000.';
   }
-  az.onclick=()=>setState('AZ'); ut.onclick=()=>setState('UT');
+  sel.addEventListener('change', ()=>setState(sel.value));
 </script>
 </body>
 </html>
