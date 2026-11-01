@@ -4066,6 +4066,43 @@ function render(){
     };
   }
 
+  /* Utah shows no dollar figures. The depths are Utah's own, but every price in
+     C is a published Arizona range — per-foot drilling, septic, power, hauling —
+     so any total would read as sourced while resting on the wrong state's rates.
+     Depth, water-right status and the legal gates still render; dollars return
+     once a Utah driller supplies a real per-foot rate. */
+  if(state.region==="UT"){
+    $("heroWrap").style.display = "none";
+    $("compare").innerHTML = "";
+    $("total").textContent = "—";
+    $("totalRange").textContent = "";
+    $("bar").innerHTML = "";
+    $("lines").innerHTML = "";
+    $("assumptions").innerHTML = "";
+    $("swingNote").innerHTML = "";
+    $("lines").closest("table").style.display = "none";
+    document.querySelector(".colkey").style.display = "none";
+    $("emptyLines").style.display = "none";
+    $("verdict").className = "verdict v-warn";
+    $("verdict").innerHTML = "<strong>No cost estimate for Utah yet.</strong> The depths and water-right "+
+      "checks above are Utah records, but our dollar ranges are Arizona figures and would not be honest here. "+
+      "In Utah the binding question is whether you may drill at all — check the water rights first, then "+
+      "get a quote from a local driller.";
+    renderTopVerdict();
+    renderStatusStrip();
+    if(state.lastPoint){
+      $("tabs").style.display = "";
+      $("shareRow").style.display = "";
+      $("stepResults").style.display = "";
+      $("stepPlan").style.display = "";
+      setTab(TAB, false);
+      writeUrl();
+      rememberParcel();
+    }
+    makeCollapsible($("wellList"));
+    return;
+  }
+
   const options = { well:costWater("well"), haul:costWater("haul"), rain:costWater("rain") };
   renderCompare(options, years, price, yearsSet, priceSet);
 
