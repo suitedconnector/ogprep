@@ -349,6 +349,15 @@
     min-height:36px;display:flex;align-items:center}
   #resultsHost{overflow-x:auto}   /* the well table is wider than a phone once nested in a section */
   @media (max-width:560px){ section.need{padding:14px 12px} }
+  .rightsBlock{margin:14px 0;padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:var(--r);background:var(--panel2)}
+  .rightsBlock h4{margin:0 0 6px;font-size:16px}
+  .rightsBlock p{margin:6px 0;font-size:14px;line-height:1.5}
+  .rightsBlock .links{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13.5px;margin:8px 0}
+  .rightsBlock .links a{font-weight:700}
+  .rightsBlock button{min-height:40px;padding:8px 14px;border:1px solid var(--accent);border-radius:var(--r);
+    background:var(--panel);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+  .rightsBlock .fine{font-size:12.5px;color:var(--muted)}
   .yearsRow{margin:14px 0 4px}
   .yearsRow input{width:90px}
   .needs{display:block;border-top:1px solid var(--line)}
@@ -845,6 +854,7 @@
     <input type="number" id="years" placeholder="10" min="1" max="30" autocomplete="off">
   </div>
   <div class="cmpWrap" id="compare"></div>
+  <div id="rightsBox"></div>
   <div id="rainBox"></div>
   <details class="inputs">
     <summary>Change what you will use water for</summary>
@@ -1160,10 +1170,10 @@ const STATES = {
            "Water is the difference between a build and a write-off.",
       a: { label:"A parcel where water works", county:"Iron", price:"8000",
            coords:"37.657426, -113.164702", radius:"3219",
-           note:"41 domestic rights nearby · wells 222–610 ft · no dry holes" },
+           note:"Domestic rights nearby · wells 222–568 ft · no dry holes" },
       b: { label:"A parcel where it may not", county:"Iron", price:"8000",
            coords:"37.65504, -113.09533", radius:"8047",
-           note:"Zero domestic rights · a dry hole 0.8 mi away · closed basin" }
+           note:"A dry hole 0.8 mi away · closed basin · who holds the rights matters" }
     },
     expect: ["Every water right on and around the parcel — status, use, seniority and volume",
              "Whether any are <strong>domestic</strong>, which is the one a home actually needs",
@@ -4035,8 +4045,10 @@ function render(){
   if(ut){
     $("compare").innerHTML = "";
     $("rainBox").innerHTML = "";
+    $("rightsBox").innerHTML = rightsBlockHtml();
     $("yearsRow").style.display = "none";
   }else{
+    $("rightsBox").innerHTML = "";
     $("yearsRow").style.display = "";
     const options = { well:costWater("well"), haul:costWater("haul"), rain:costWater("rain") };
     renderCompare(options, years, yearsSet);
@@ -4060,6 +4072,40 @@ function render(){
   renderCtaDrillers();
   flushWellMap();
 }
+
+/* Utah: buying a right is the way in when the parcel has none, so the route is
+   on the page, not three collapsed panels down. The full panel (price reference,
+   policy area, the three things to check) stays inside Records. */
+function rightsBlockHtml(){
+  const dom = state.rights ? state.rights.domesticCount : null;
+  const lead = dom===0
+    ? "No domestic right is on record near this point, so a purchased right (or a share in a water company) is the main way to get water here."
+    : "A right near the parcel is not automatically yours: in Utah a right is separate property from the land. If the parcel has none, buying one is how you get in.";
+  return "<div class='rightsBlock'><h4>If you need a water right</h4>"+
+    "<p>"+lead+"</p>"+
+    "<div class='links'><span>Where rights are listed:</span>"+
+      "<a href='https://utahwaterhub.com/listings' target='_blank' rel='noopener'>Utah Water Hub</a>"+
+      "<a href='https://utahwaterrightexchange.com/' target='_blank' rel='noopener'>Water Right Exchange</a>"+
+      "<a href='https://classifieds.ksl.com/search/Other-Real-Estate/Water-Rights' target='_blank' rel='noopener'>KSL</a>"+
+      "<a href='https://waterrights.utah.gov/contact.asp' target='_blank' rel='noopener'>Division of Water Rights</a>"+
+    "</div>"+
+    "<p><button type='button' class='openChecker'>Check a right you found</button></p>"+
+    "<p class='fine'>Paste any right number and we read the state's record: status, priority date, whether it can move to your area. "+
+    "We have no commercial relationship with these sites and take nothing on a sale.</p></div>";
+}
+
+// "Check a right you found" opens the Records, then the market panel, and focuses the checker.
+document.addEventListener("click", e => {
+  if(!e.target.closest(".openChecker")) return;
+  $("recWater").open = true;
+  const m = document.querySelector("details.market");
+  for(let p = m; p && p !== $("recWater"); p = p.parentElement){ if(p.tagName === "DETAILS") p.open = true; }
+  const inp = $("wrInput");
+  if(inp){
+    inp.scrollIntoView({block:"center", behavior:"smooth"});
+    setTimeout(() => inp.focus({preventScroll:true}), 400);
+  }
+});
 
 /* Wastewater: the range comes from the soil rating at the point, in Arizona.
    In Utah the soil facts show but the dollars do not, for the same reason as
