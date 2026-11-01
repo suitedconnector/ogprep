@@ -1929,6 +1929,11 @@ async function lookup(){
     const depths=j.wells.map(w=>w.depth);
     const miles=j.radiusMiles;
 
+    // Number every well once, here, before the branch. The map draws w.n, and
+    // the sparse branch renders a map too — numbering inside the table builder
+    // left those markers blank.
+    j.wells.forEach((w,i)=>{ w.n=i+1; });
+
     if(j.withDepth<3){
       // Too thin to characterise from the radius query. Before dropping all the
       // way to a county median, try the 1.4-mile grid — same wells, binned by
@@ -2058,8 +2063,8 @@ async function lookup(){
       msg.innerHTML='<div class="banner b-local"><strong>'+depths.length+' wells with recorded depth within '+
         miles+' miles</strong>'+cmp+'</div>'+wide;
 
-      // Shared numbering so the map and the table refer to the same wells.
-      j.wells.forEach((w,i)=>{ w.n=i+1; });
+      // Numbering already assigned above, before the sparse/dense branch, so
+      // the map and the table refer to the same wells in both branches.
       const rows=j.wells.slice(0,40).map(w=>
         "<tr><td class='wn'>"+w.n+"</td><td>"+(w.use||"—")+"</td><td>"+(w.drilled||"—")+
         "</td><td class='n'>"+w.depth.toLocaleString()+" ft</td><td class='n'>"+
