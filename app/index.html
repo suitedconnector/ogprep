@@ -841,6 +841,7 @@
     
   </div>
   <div id="trendBox"></div>
+  <div id="powerBox"></div>
   <div class="cmpWrap" id="compare"></div>
 </div>
 
@@ -1079,6 +1080,7 @@ const C = {
 let needs={domestic:true,irrigation:false,stock:false,irrAcres:null};
 
 let state={county:"",water:null,septic:null,power:null,region:"AZ",
+           utility:null,   // /api/power result: nearest mapped line + utility territories
            local:null,soil:null,parcel:null,rain:null,drillers:null,rights:null,utLogs:null,
            utDepths:null,septicTouched:false};
 
@@ -1375,6 +1377,7 @@ function applyState(code){
   if($("pickReadout")) $("pickReadout").textContent = "Tap the map to drop a pin on your parcel.";
   // Clear anything from the other state.
   state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.service=null; state.drillers=null;
+  state.utility=null; if($("powerBox")) $("powerBox").innerHTML="";
   state.utLogs=null; state.utDepths=null;
   $("coords").value=""; $("lookupMsg").innerHTML=""; $("wellList").innerHTML="";
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
@@ -1559,6 +1562,7 @@ sel.addEventListener("change",e=>{state.county=e.target.value;
   // so a request for an Apache parcel went out labelled Mohave.
   if(state.county && [...leadSel.options].some(o=>o.value===state.county)) leadSel.value=state.county;
   state.local=null;state.parcel=null;state.soil=null;state.service=null;
+  state.utility=null; if($("powerBox")) $("powerBox").innerHTML="";
   $("lookupMsg").innerHTML=""; $("wellList").innerHTML=""; $("parcelBox").innerHTML="";
   $("drillersBox").innerHTML=""; state.drillers=null; state.rights=null;
   syncModeAvailability(); render();});
@@ -1755,6 +1759,55 @@ async function resolveParcel(qs,label){
 
 // Soil and rainfall apply anywhere in the US, so both the Arizona and Utah
 // paths run them.
+const escHtml = s => String(s==null?"":s).replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Electric service at the point: which utilities' territories cover it, and the
+   nearest MAPPED high-voltage line. The line layer holds 69 kV and up only, so
+   the distance is a "is the grid anywhere near" signal and is never priced —
+   the grid-extension cost on the Full cost tab stays a statewide range. */
+async function runPower(lat,lng){
+  state.utility = null;
+  const box = $("powerBox"); if(box) box.innerHTML = "";
+  try{
+    const r = await fetch("/api/power?lat="+lat+"&lon="+lng);
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || "no data");
+    state.utility = j;
+  }catch(e){
+    state.utility = null;
+    if(box) box.innerHTML = "<div class='soilbox'><b>Electric service:</b> the power lookup is unavailable right now. "+
+      "Ask the local utility or cooperative directly.</div>";
+    return;
+  }
+  const j = state.utility;
+  const retail = (j.utilities||[]).filter(u=>!u.wholesale);
+  const wholesale = (j.utilities||[]).filter(u=>u.wholesale);
+  const shown = retail.slice(0,6);
+  let h = "<div class='soilbox'><b>Electric service near this point</b><br>";
+  h += j.utilitiesLookupFailed ? "Utility territories could not be checked. "
+    : retail.length===0 ? "No utility territory maps this point; it may be outside any mapped service area. "
+    : (j.overlapping
+        ? "Several service areas overlap here, so this does not say which one serves the parcel: "
+        : retail.length>1 ? "Territories that cover this point: " : "Territory that covers this point: ")+
+      shown.map(u=>"<em>"+escHtml(u.name)+"</em>"+(u.type?" ("+escHtml(u.type.toLowerCase())+")":"")+
+        (u.phone?" "+escHtml(u.phone):"")).join(", ")+
+      (retail.length>shown.length ? ", and "+(retail.length-shown.length)+" more" : "")+". ";
+  if(wholesale.length) h += "Federal power marketers also map here ("+wholesale.map(u=>escHtml(u.name)).join(", ")+
+    "); they sell wholesale to utilities and are not who you call for a hook-up. ";
+  h += "<br>";
+  const n = j.nearestLine;
+  h += j.lineLookupFailed ? "The nearest mapped line could not be checked."
+    : n ? "Nearest <em>mapped</em> high-voltage line: about <b>"+n.miles+" mi</b>"+
+        (n.kv?", "+n.kv+" kV":"")+(n.owner?", owned by "+escHtml(n.owner):"")+
+        (n.status?" ("+escHtml(n.status.toLowerCase())+")":"")+"."
+      : "No mapped high-voltage line within "+(64)+" km.";
+  h += " <span class='src'>Lines are mapped at 69 kV and up only, so the local distribution lines you would connect to "+
+       "are not shown and this is not the length of a power extension. The data is a snapshot of the retired HIFLD "+
+       "dataset (lines: December 2021). Confirm service and extension cost with the utility.</span></div>";
+  if(box) box.innerHTML = h;
+}
+
 async function runSoilAndRain(lat,lng){
   // Soil / septic suitability for the same point, via the Pages Function.
   try{
@@ -1866,6 +1919,7 @@ async function lookup(){
   // question — you cannot drill without one. Run that instead and stop.
   if(state.region==="UT"){
     state.local=null; state.drillers=null; state.utLogs=null; list.innerHTML="";
+    state.utility=null; if($("powerBox")) $("powerBox").innerHTML="";
     msg.innerHTML='<div class="banner b-local">Querying Utah water rights…</div>';
     try{
       state.lastPoint = {lat:+lat.toFixed(6), lon:+lng.toFixed(6)};
@@ -1917,6 +1971,7 @@ async function lookup(){
       state.rights=null;
       msg.innerHTML='<div class="banner b-err">Water rights lookup failed: '+(e.message||e)+'</div>';
     }
+    await runPower(lat,lng);
     await runSoilAndRain(lat,lng);
     btn.disabled=false; btn.textContent="Look it up";
     render();
@@ -2091,6 +2146,7 @@ async function lookup(){
     msg.innerHTML='<div class="banner b-err">Could not reach the ADWR groundwater service ('+
       String(err.message||err)+'). Showing county figures instead.</div>';
   }
+  await runPower(lat,lng);
   await runSoilAndRain(lat,lng);
 
   // Who has actually drilled around here.
@@ -3013,6 +3069,14 @@ function renderStatusStrip(){
                   very_limited:"soil very limited",unknown:"soil not mapped"};
   chips.push(S ? chip("soil","Septic",SOIL_LVL[S.rating]||"none",SOIL_TXT[S.rating]||"unrated","assumptions")
                : chip("soil","Septic","none","not checked","assumptions"));
+
+  /* 6 — Electric service. Neutral on purpose: the line layer holds 69 kV and up
+         only, so a long distance to it does not mean a costly hook-up. */
+  const PU = state.utility;
+  chips.push(PU && PU.nearestLine
+    ? chip("power","Power","none","line "+PU.nearestLine.miles+" mi (mapped)","powerBox")
+    : PU ? chip("power","Power","none","no mapped line","powerBox")
+    : chip("power","Power","none","not checked","powerBox"));
 
   const bad = chips.filter(c=>c.includes("c-bad")).length;
   const lead = bad
