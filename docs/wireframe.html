@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cost to Livable — wireframe (sample data)</title>
+<style>
+  :root{
+    --bg:#f4f3ee; --paper:#fff; --ink:#1d1d1b; --muted:#6b6a64; --line:#d9d7cd;
+    --accent:#6f5412; --ok:#2f6b3a; --warn:#9a6a00; --bad:#9b2c1d; --none:#8a897f;
+    --note:#fff3b0; --noteline:#d8c45a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1b1b19; --paper:#242422; --ink:#ecebe4; --muted:#a3a198; --line:#3b3b37;
+      --accent:#d6b25a; --ok:#7fc08a; --warn:#e0b04a; --bad:#e58a7b; --none:#8f8e85;
+      --note:#4a4420; --noteline:#8a7d33;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:16px}
+  .banner{background:var(--note);border:1px dashed var(--noteline);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:14px}
+  .note{background:var(--note);border:1px dashed var(--noteline);padding:8px 12px;border-radius:6px;font-size:12.5px;margin:8px 0}
+  .note b{color:var(--accent)}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .brand{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12.5px;color:var(--accent)}
+  .stateSel{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .stateSel select{min-height:40px;padding:8px 34px 8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit;font-size:15px;font-weight:600;letter-spacing:0;text-transform:none}
+  h1{font-size:26px;line-height:1.2;margin:14px 0 4px}
+  .sub{color:var(--muted);margin:0 0 14px}
+  .box{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:16px;margin:12px 0}
+  .step{display:flex;align-items:center;gap:10px;margin:22px 0 6px}
+  .step i{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:13px}
+  .step h2{margin:0;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+  .ph{border:1px dashed var(--line);border-radius:6px;padding:10px 12px;color:var(--muted);font-size:13px;background:var(--bg)}
+  .parcel{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px}
+  .parcel b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+
+  /* the checklist */
+  .check{list-style:none;margin:0;padding:0}
+  .check li{border-top:1px solid var(--line)}
+  .check li:first-child{border-top:0}
+  .check a{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;padding:13px 4px;text-decoration:none;color:inherit;min-height:56px}
+  .check a:hover{background:var(--bg)}
+  .dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff}
+  .s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-bad{background:var(--bad)} .s-none{background:var(--none)}
+  .check b{display:block;font-size:15.5px}
+  .check span.one{color:var(--muted);font-size:13.5px}
+  .go{color:var(--accent);font-size:13px;white-space:nowrap}
+  .lead{font-weight:700;color:var(--bad);margin:0 0 4px}
+
+  /* sections */
+  section.need{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:18px;margin:16px 0;scroll-margin-top:10px}
+  section.need h3{margin:0 0 2px;font-size:20px;display:flex;align-items:center;gap:10px}
+  .answer{font-size:17px;font-weight:700;margin:8px 0 4px}
+  .range{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-weight:700;margin:2px 0 6px;background:var(--bg)}
+  .tag{font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-radius:4px;padding:2px 6px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:middle}
+  .tag.parcel{color:var(--ok);border-color:var(--ok)} .tag.typical{color:var(--warn);border-color:var(--warn)} .tag.none{color:var(--none)}
+  .why{color:var(--muted);font-size:13.5px;margin:6px 0}
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+  .fact{border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+  .fact b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;padding:0 8px 6px 0;border-bottom:1px solid var(--line)}
+  td{padding:9px 8px 9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  details{border-top:1px solid var(--line);margin-top:12px;padding-top:8px}
+  summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--accent);min-height:36px;display:flex;align-items:center}
+  .mapph{height:110px;display:grid;place-items:center;border:1px dashed var(--line);border-radius:6px;color:var(--muted);font-size:13px;margin:8px 0}
+  .ask{background:var(--bg);border-radius:6px;padding:10px 12px;font-size:13.5px;margin-top:10px}
+  .cta{display:inline-block;margin-top:6px;padding:11px 16px;border-radius:6px;background:var(--accent);color:#fff;font-weight:700;text-decoration:none;min-height:44px}
+  footer{color:var(--muted);font-size:12.5px;margin:26px 0 40px}
+  .ut-only{display:none} body.ut .ut-only{display:block} body.ut .az-only{display:none}
+  label.yr{font-size:13px;color:var(--muted)} label.yr input{width:64px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit}
+  @media (max-width:560px){ .check a{grid-template-columns:30px 1fr} .go{display:none} h1{font-size:22px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner"><b>Wireframe, sample data.</b> Nothing here is looked up. Yellow notes are open questions or decisions to react to. Use the State dropdown to see how one page changes shape. Tap a checklist row to jump to its section; tap "Records" lines to expand evidence.</div>
+
+  <header>
+    <div class="brand">Cost to Livable</div>
+    <label class="stateSel">State
+      <select id="stateSel" aria-label="State">
+        <option value="AZ" selected>Arizona</option>
+        <option value="UT">Utah</option>
+      </select>
+    </label>
+  </header>
+
+  <h1>What it costs to make a parcel livable.</h1>
+  <p class="sub">Water, wastewater, power, access and permits for rural land, from public records. Enter a parcel and see what we know, what is a range, and what you still need to ask.</p>
+
+  <!-- STEP 1 -->
+  <div class="step"><i>1</i><h2>Where is the parcel?</h2></div>
+  <div class="box">
+    <div class="ph">[ Pick on map · Parcel # · Address · Coordinates ] &nbsp; [ Look it up ]</div>
+    <div class="note"><b>Unchanged from today.</b> Step 1 is the same input block. Land price input is removed.</div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step"><i>2</i><h2>What it takes to make this parcel livable</h2></div>
+
+  <div class="box parcel" id="parcelBar">
+    <div><b>Parcel</b><span class="az-only">203-81-015 · Greenlee County, AZ</span><span class="ut-only">E-0209-0025-0001 · Iron County, UT</span></div>
+    <div><b>Size</b>4.8 acres</div>
+    <div><b>Point</b>33.10, -109.25</div>
+    <div><b>Zoning</b>not assessed</div>
+  </div>
+
+  <div class="box">
+    <p class="lead" id="lead">2 things to resolve before you buy</p>
+    <ul class="check">
+      <li><a href="#water"><span class="dot s-bad" id="dWater">✕</span><span><b>Water</b><span class="one" id="oWater">Wells here run deep: 40 ft median in a thin sample, but nearby wells disagree. Range $9,500–$29,000.</span></span><span class="go">detail ↓</span></a></li>
+      <li><a href="#waste"><span class="dot s-bad">✕</span><span><b>Wastewater</b><span class="one">Soil rated very limited for a standard septic field. Budget for an alternative system: $20,000–$40,000.</span></span><span class="go">detail ↓</span></a></li>
+      <li><a href="#power"><span class="dot s-none">–</span><span><b>Power</b><span class="one">Duncan Valley Electric Coop maps here. Nearest mapped high-voltage line: 6.1 mi. Extension cost unknown.</span></span><span class="go">detail ↓</span></a></li>
+      <li><a href="#access"><span class="dot s-none">?</span><span><b>Access</b><span class="one">Not assessed yet. Ask the county road department about legal access and driveway permits.</span></span><span class="go">detail ↓</span></a></li>
+      <li><a href="#permits"><span class="dot s-none">?</span><span><b>Permits and rules</b><span class="one">Not assessed yet. Septic, building and well permits come from the county.</span></span><span class="go">detail ↓</span></a></li>
+    </ul>
+    <div class="note"><b>Open:</b> the status vocabulary. Proposed: ✓ fine · ! watch · ✕ resolve before you buy · – data only, no verdict · ? not assessed. Is "–" vs "?" clear enough?</div>
+    <div class="note"><b>Open:</b> order. Proposed: Water, Wastewater, Power, Access, Permits (cost-weight order). Alternative: legal gates first (Permits, Water rights), then costs.</div>
+  </div>
+
+  <!-- WATER -->
+  <section class="need" id="water">
+    <h3><span class="dot s-bad">✕</span>Water</h3>
+    <div class="answer az-only">Wells here are shallow on paper but the sample is thin and nearby wells disagree.</div>
+    <div class="answer ut-only">No domestic water right nearby. Utah will not let you drill for a home without one.</div>
+    <div class="az-only"><span class="range">$9,500 – $29,000</span><span class="tag parcel">from wells near you</span></div>
+    <div class="ut-only"><span class="range">Cost not estimated for Utah yet</span><span class="tag none">no Utah rate</span></div>
+    <p class="why az-only">In Arizona you may drill an exempt domestic well without a water right, so the question is depth and yield, not permission.</p>
+    <p class="why ut-only">In Utah the binding question is whether you may drill at all. Check the right first, then get a driller quote.</p>
+
+    <div class="facts">
+      <div class="fact"><b>Median depth</b><span class="az-only">40 ft (3 wells, 2.2 mi away)</span><span class="ut-only">338 ft (9 logs)</span></div>
+      <div class="fact"><b>Depth to water</b><span class="az-only">no data</span><span class="ut-only">70 ft</span></div>
+      <div class="fact"><b>Dry holes nearby</b>none on record</div>
+      <div class="fact az-only"><b>Tested yield</b>15 gpm median</div>
+      <div class="fact ut-only"><b>Domestic rights nearby</b>0 of 10 rights</div>
+      <div class="fact az-only"><b>Water table</b>no trend data</div>
+    </div>
+
+    <div class="az-only">
+      <b>Three ways to get water</b>
+      <label class="yr">&nbsp; Years to compare: <input type="number" value="10" min="1" max="30" aria-label="Years to compare"></label>
+      <table>
+        <tr><th>Option</th><th>Upfront</th><th>Over 10 yrs</th><th>What it means here</th></tr>
+        <tr><td><b>Drill a well</b></td><td>$12,800</td><td>$12,800<br><small>$9,500–$29,475</small></td><td>Median 40 ft nearby</td></tr>
+        <tr><td><b>Cistern + hauling</b></td><td>$13,000</td><td>$58,000<br><small>$38,000–$85,000</small></td><td>No water right needed</td></tr>
+        <tr><td><b>Rainwater catchment</b></td><td>$18,000</td><td>$51,013<br><small>$32,509–$76,686</small></td><td>Covers ~27% of a dry year</td></tr>
+      </table>
+    </div>
+    <div class="ut-only"><div class="ask"><b>Cistern + hauling and catchment</b> are costed the same way in both states, so they can still show here. Well cost waits on a Utah per-foot rate.</div></div>
+
+    <details><summary>Records: wells, drillers, rights, map</summary>
+      <div class="mapph">[ map of nearby wells ]</div>
+      <div class="ph">[ well table · driller list <span class="ut-only">· water rights table</span> · water-table trend ]</div>
+    </details>
+    <div class="ask"><b>Who to ask:</b> a licensed local driller for depth and yield; <span class="az-only">ADWR for the well registry.</span><span class="ut-only">Utah Division of Water Rights for the right.</span></div>
+    <div class="note"><b>Biggest change:</b> today this content is split across the Water tab, the Full cost tab and The records tab. Here it is one section.</div>
+  </section>
+
+  <!-- WASTEWATER -->
+  <section class="need" id="waste">
+    <h3><span class="dot s-bad">✕</span>Wastewater</h3>
+    <div class="answer">Soil rated very limited for a standard septic field.</div>
+    <div><span class="range">$20,000 – $40,000</span><span class="tag parcel">from soil at your point</span></div>
+    <p class="why">Budget for an alternative or engineered system. Limiting features: flooding, slow water movement. A soil survey is a mapped estimate, not a test of your lot.</p>
+    <div class="facts">
+      <div class="fact"><b>Soil rating</b>very limited</div>
+      <div class="fact"><b>Soil map unit</b>Glenbar clay loam, 0–2% slopes</div>
+      <div class="fact"><b>Limiting features</b>flooding</div>
+    </div>
+    <details><summary>Records: soil profile</summary><div class="ph">[ drainage · Ksat · restrictive layer · source: USDA-NRCS SSURGO ]</div></details>
+    <div class="ask"><b>Who to ask:</b> the county environmental health office for a soil evaluation or percolation test.</div>
+    <div class="note"><b>Open:</b> the wastewater <i>choice</i> (conventional / ATU / composting) is gone as a picker. We show the range the soil implies. Do buyers need to compare options here like they do for water?</div>
+  </section>
+
+  <!-- POWER -->
+  <section class="need" id="power">
+    <h3><span class="dot s-none">–</span>Power</h3>
+    <div class="answer">Duncan Valley Electric Coop maps to this point.</div>
+    <div><span class="range">$8,000 – $45,000 grid · $12,000 – $35,000 solar</span><span class="tag typical">typical range, not local</span></div>
+    <p class="why">Only the territory and nearest mapped line are local. The dollar ranges are statewide figures: the local lines you would connect to are not in any public dataset, so we cannot compute an extension cost.</p>
+    <div class="facts">
+      <div class="fact"><b>Territories</b>Duncan Valley Elec Coop; Morenci Water and Electric</div>
+      <div class="fact"><b>Nearest mapped line</b>6.1 mi (69 kV and up only)</div>
+    </div>
+    <details><summary>Records: line and territory data</summary><div class="ph">[ owner · status · snapshot date Dec 2021 · source: HIFLD ]</div></details>
+    <div class="ask"><b>Who to ask:</b> the utility named above, for service availability and a line-extension quote.</div>
+    <div class="note"><b>Decision to react to:</b> the grid and solar ranges are shown here as "typical range". Previously they only appeared inside the total. OK to show raw statewide ranges, or hide until they are local?</div>
+  </section>
+
+  <!-- ACCESS -->
+  <section class="need" id="access">
+    <h3><span class="dot s-none">?</span>Access</h3>
+    <div class="answer">Not assessed yet.</div>
+    <p class="why">Legal access, driveway length and grade are not in this tool yet. A parcel with no legal access is unusable, whatever it costs.</p>
+    <div class="ask"><b>Who to ask:</b> the county road department and the title company about legal access and easements.</div>
+  </section>
+
+  <!-- PERMITS -->
+  <section class="need" id="permits">
+    <h3><span class="dot s-none">?</span>Permits and rules</h3>
+    <div class="answer">Not assessed yet.</div>
+    <p class="why">Septic, building and well permits are set by the county. We do not read permit records yet.</p>
+    <div class="ask"><b>Who to ask:</b> <span class="az-only">Greenlee County Community Development</span><span class="ut-only">Iron County Building Department</span> · [phone] · [link]<br>
+      <small>One line per county, filled from a list we maintain.</small></div>
+    <div class="note"><b>Open:</b> this section is a contact list per county. Worth a short rules note per state too (e.g. AZ exempt wells, UT water right)?</div>
+  </section>
+
+  <!-- CTA -->
+  <section class="need">
+    <h3>Next step</h3>
+    <p class="why">Want local help? Send these results to a driller or contractor.</p>
+    <a class="cta" href="#">Request a quote [form: county, APN, email]</a>
+    <div class="note"><b>Open:</b> keep the lead form at the bottom, unchanged? It currently reads the plan picks, which are removed; it would send the checklist statuses instead.</div>
+  </section>
+
+  <footer>Sources: ADWR, Utah Division of Water Rights, USDA-NRCS, HIFLD (snapshot). Planning figures, not a quote.</footer>
+</div>
+
+<script>
+  const sel=document.getElementById('stateSel');
+  function setState(s){
+    document.body.classList.toggle('ut', s==='UT');
+    document.getElementById('oWater').textContent = s==='UT'
+      ? 'No domestic water right nearby. Utah will not let you drill for a home without one. No cost estimate yet.'
+      : 'Wells here run deep: 40 ft median in a thin sample, but nearby wells disagree. Range $9,500–$29,000.';
+  }
+  sel.addEventListener('change', ()=>setState(sel.value));
+</script>
+</body>
+</html>

@@ -201,6 +201,34 @@ const PROBES = [
     }
   },
   {
+    name: "HIFLD transmission lines snapshot",
+    guards: "/api/power — nearest mapped line. A frozen copy of a dataset DHS shut down in Aug 2025, so a vanished host is the likely failure",
+    async run() {
+      const r = await get(esri("https://services2.arcgis.com/wdQEqhSQSuYA89VW/ArcGIS/rest/services/ElectricTransLines12012021/FeatureServer/0/query", {
+        geometry: "-109.42,34.55", geometryType: "esriGeometryPoint", inSR: "4326",
+        distance: "16000", units: "esriSRUnit_Meter", spatialRel: "esriSpatialRelIntersects",
+        returnCountOnly: "true"
+      }));
+      if (!r.ok) return r;
+      return { ...r, ok: r.body.count > 0, detail: `${r.body.count} lines within 10 miles of the Apache test point`,
+               why: r.body.count > 0 ? null : "no lines returned where there should be several" };
+    }
+  },
+  {
+    name: "Electric retail service territories",
+    guards: "/api/power — which utilities map to a point",
+    async run() {
+      const r = await get(esri("https://services6.arcgis.com/BAJNi3EgCdtQ1BCG/arcgis/rest/services/Electric_Retail_Service_Territories/FeatureServer/0/query", {
+        geometry: "-109.42,34.55", geometryType: "esriGeometryPoint", inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects", outFields: "NAME", returnGeometry: "false"
+      }));
+      if (!r.ok) return r;
+      const names = (r.body.features || []).map(f => f.attributes.NAME);
+      return { ...r, ok: names.length > 0, detail: names.join("; ") || "none",
+               why: names.length ? null : "no territory at the Apache test point" };
+    }
+  },
+  {
     name: "Open-Meteo rainfall archive",
     guards: "/api/rain — catchment sizing",
     async run() {
@@ -213,14 +241,17 @@ const PROBES = [
     }
   },
   {
-    name: "Wells55 copy used by the driller panel",
-    guards: "/api/drillers — NOTE: a static third-party upload, not ADWR's own",
+    name: "ADWR well registry used by the driller panel",
+    guards: "/api/drillers — ADWR's own registry, the same layer /api/wells reads",
     async run() {
-      const r = await get(esri("https://services1.arcgis.com/Ezk9fcjSUkeadg6u/arcgis/rest/services/Wells_55/FeatureServer/0/query", {
+      const r = await get(esri("https://services.arcgis.com/C34zQ7veRS0V1t04/ArcGIS/rest/services/Well_Registry_2024/FeatureServer/0/query", {
         where: "1=1", returnCountOnly: "true"
       }));
-      if (!r.ok) return { ...r, why: (r.why || "") + " — this is an unowned snapshot; move drillers to ADWR's registry" };
-      return { ...r, ok: r.body.count > 0, detail: `${r.body.count} records (frozen copy)` };
+      if (!r.ok) return r;
+      // The retired third-party copy held 9,679 records. Anything near that means
+      // the endpoint has been swapped back to a partial extract.
+      return { ...r, ok: r.body.count > 100000, detail: `${r.body.count} registrations`,
+               why: r.body.count > 100000 ? null : "far fewer records than ADWR's registry — partial copy?" };
     }
   }
 ];

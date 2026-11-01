@@ -40,6 +40,8 @@
 const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
 const WELLS55 = "https://services.arcgis.com/C34zQ7veRS0V1t04/ArcGIS/rest/services/Well_Registry_2024/FeatureServer/0/query";
 const TIMEOUT_MS = 20000;
+const PAGE_SIZE = 1200;
+const MAX_PAGES = 5;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
 
 /**
@@ -47,7 +49,8 @@ const CACHE_SECONDS = 60 * 60 * 24 * 30;   // well records change slowly
  * it, so old payloads are abandoned rather than served for another month.
  * v2 — added lat/lon/miles per well for the map.
  */
-const SCHEMA = "v4";   // v4 switches GWSI -> Wells55 registry; adds yield, registry id, AMA
+// v5 filters server-side and pages, so cached v4 counts (truncated samples) are abandoned.
+const SCHEMA = "v5";   // v4 switches GWSI -> Wells55 registry; adds yield, registry id, AMA
 
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 const sdev = a => {
@@ -109,6 +112,15 @@ export async function onRequestGet({ request }) {
     // The registry stores UTM 12N and carries no lat/lon columns, so the point
     // has to come from the geometry rather than from an attribute.
     outSR: "4326",
+    /* Filter on the server, before the record cap. With no WHERE the first 1,200
+       rows of ANY kind came back (monitoring wells, abandoned holes, cancelled
+       filings) and the production-well filter below ran after the cut. Around
+       Phoenix that left 134 of 908 real wells; at a Graham County point, 792 of
+       907. The cap is applied by ADWR in an arbitrary order, so the surviving
+       sample was an arbitrary slice, not the nearest wells. */
+    where: "(WELL_CANCELLED IS NULL OR WELL_CANCELLED <> 'Y') AND " +
+           "(SITE_USE IS NULL OR UPPER(SITE_USE) LIKE '%WATER PRODUCTION%')",
+    orderByFields: "OBJECTID",
     distance: String(radius),
     units: "esriSRUnit_Meter",
     spatialRel: "esriSpatialRelIntersects",
@@ -135,12 +147,23 @@ export async function onRequestGet({ request }) {
 
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  let recs, dedupedFrom = 0;
+  let recs, dedupedFrom = 0, truncated = false;
   try {
-    const r = await fetch(q.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
-    if (!r.ok) throw new Error("ADWR returned " + r.status);
-    const j = await r.json();
-    if (j.error) throw new Error(j.error.message || "ADWR query failed");
+    /* Page through the result. Yavapai at 5 miles holds 2,120 production wells,
+       more than one page, and a silent cut there changes the median. Stop after
+       MAX_PAGES and say so in the payload rather than pretend it is complete. */
+    const features = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      q.searchParams.set("resultOffset", String(page * PAGE_SIZE));
+      const r = await fetch(q.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
+      if (!r.ok) throw new Error("ADWR returned " + r.status);
+      const pj = await r.json();
+      if (pj.error) throw new Error(pj.error.message || "ADWR query failed");
+      features.push(...(pj.features || []));
+      if (!pj.exceededTransferLimit) break;
+      if (page === MAX_PAGES - 1) truncated = true;
+    }
+    const j = { features };
     /* Keep the point with the attributes — the registry has no DD_LAT column.
        Drop cancelled registrations and anything that is not a water-production
        well: the registry also holds monitoring, exploration and injection
@@ -203,6 +226,8 @@ export async function onRequestGet({ request }) {
     // How many rows collapsed, so the caller can say "19 filings, 14 wells"
     // rather than silently reporting a smaller number than the registry shows.
     registrations: dedupedFrom || recs.length,
+    // True only when the radius held more than MAX_PAGES * PAGE_SIZE wells.
+    truncated,
     withDepth: depths.length,
     stats: depths.length ? {
       avg: mean(depths),
