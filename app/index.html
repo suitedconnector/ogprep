@@ -722,14 +722,14 @@
        first, and it is the thing no land site offers. -->
   <div class="crossLink" id="crossLink">
     Haven't picked a parcel yet?
-    <a href="/find.html">Search Arizona by well depth →</a>
+    <a href="/find.html">Find shallow-water areas in Arizona →</a>
   </div>
-  <h1 id="headline">Will you hit water — and what will it cost?</h1>
+  <h1 id="headline">What would it take to make this parcel livable?</h1>
   <p class="sub" id="headIntro"></p>
   <!-- Background moved behind a toggle. It is worth reading once and never
        again, and at full height it pushed the actual controls below the fold. -->
   <details class="bg">
-    <summary>Why this is the question, and where the data comes from</summary>
+    <summary>Where the data comes from</summary>
     <p class="sub" id="headDetail" style="margin-top:10px;font-size:14px"></p>
     <div id="headGap"></div>
   </details>
@@ -936,6 +936,7 @@
   <span class="pill">County data: 174,782 ADWR well records</span>
   <span class="pill">Local lookup: ADWR Well Registry / Wells55 (live)</span>
   <span class="pill">Soil: USDA-NRCS SSURGO (live)</span>
+  <span class="pill">Power: HIFLD utility territories and lines (snapshot)</span>
   <span class="pill">Costs: 2026 published AZ ranges</span>
   <p><strong>Septic suitability</strong> comes from the Soil Survey Geographic Database (SSURGO), compiled by the
   National Cooperative Soil Survey over roughly a century of field mapping and laboratory analysis, at scales from
@@ -1105,11 +1106,12 @@ const STATES = {
   AZ: {
     name: "Arizona",
     kicker: "Cost to Livable · Arizona",
-    question: "Will you hit water — and what will it cost?",
-    intro: "Arizona lets you drill an exempt domestic well on your own land without buying a water right, "+
-           "so the question is cost, not permission. This shows the wells actually drilled near your parcel — "+
-           "depth, water level, tested yield — and prices drilling against hauling and rainwater catchment. "+
-           "Built on 174,782 filed well records from the Department of Water Resources.",
+    question: "What would it take to make this parcel livable?",
+    intro: "Water, wastewater and power, checked against public records for your parcel. In Arizona you may "+
+           "drill an exempt domestic well on your own land without buying a water right, so water comes down "+
+           "to depth and cost, not permission. We show the wells actually drilled nearby, what the soil says "+
+           "about septic, and which utility maps to the parcel — and we say plainly what we do not cover yet: "+
+           "legal access and permits.",
     detail: "Built on <strong>174,782 filed well records</strong>. Statewide medians run 105 ft in Graham to "+
             "490 ft in Pinal — but the county figure can be wildly wrong for one spot. Around Golden Valley in "+
             "Mohave, wells run three to six times the county median. That difference is tens of thousands of dollars.",
@@ -1125,20 +1127,22 @@ const STATES = {
            coords:"35.2178, -114.2225", radius:"3220",
            note:"12 wells nearby · median 1,196 ft · water at 986 ft · 30 gpm" }
     },
-    expect: ["How deep the wells around this parcel were drilled, and how far down they hit water",
+    expect: ["A checklist: what we found for water, wastewater and power, and what we do not cover yet",
+             "How deep the wells around this parcel were drilled, and how far down they hit water",
              "What a well should cost here — priced off those depths, not a county average",
              "Whether the soil will take a conventional septic field, from the USDA survey",
-             "Rainfall at this point, and whether catchment could realistically cover you",
+             "Which utility maps to the parcel, and the nearest mapped high-voltage line",
              "Which drillers have worked this ground, and how many wells each has filed"]
   },
   UT: {
     name: "Utah",
     kicker: "Cost to Livable · Utah",
-    question: "Are you allowed to drill here at all?",
+    question: "Can you get water here — and what else would this parcel need?",
     intro: "Utah requires an approved water right before you can drill, and in closed basins like Cedar Valley "+
-           "in Iron County the State Engineer has stopped issuing new ones. So the binding question isn't depth — "+
-           "it's whether a right already exists that you can use. This shows the points of diversion on record "+
-           "near your parcel, what they're approved for, and how senior they are.",
+           "in Iron County the State Engineer has stopped issuing new ones. So the first question isn't depth — "+
+           "it's whether a right already exists that you can use. We show the points of diversion on record "+
+           "near your parcel, what they're approved for and how senior they are, then the soil for septic and "+
+           "which utility maps here. Legal access and permits are not covered yet.",
     // Deliberately no longer asserts what is near any particular town — the
     // lookup answers that per point, and a static claim that contradicts the
     // live result destroys trust in both.
@@ -1165,7 +1169,8 @@ const STATES = {
              "Whether any are <strong>domestic</strong>, which is the one a home actually needs",
              "How deep nearby wells went, read from the drillers' own filed logs",
              "Dry holes on record — wells that were drilled here and found nothing",
-             "Which drillers have worked this ground, and soil suitability for septic"]
+             "Soil suitability for septic, and which utility maps to the parcel",
+             "What we do not cover yet — legal access and permits — and who to ask"]
   }
 };
 
@@ -1222,7 +1227,7 @@ function applyState(code){
   $("expect").style.display = $("wellList").children.length ? "none" : "";
   $("expect").innerHTML = "<div class='expectHd'>What you'll get back</div><ul>"+
     s.expect.map(x=>"<li>"+x+"</li>").join("")+"</ul>"+
-    "<div class='expectFoot'>All of it from public state records, in about ten seconds. "+
+    "<div class='expectFoot'>All of it from public state and federal records, in about ten seconds. "+
     "Nothing is emailed and nothing is stored.</div>";
 
   // Worked examples, rebuilt for the state on screen. Hidden once a real
@@ -1242,11 +1247,9 @@ function applyState(code){
   // The depth grid is Arizona-only until Utah's bulk well export is unlocked.
   $("crossLink").style.display = code==="AZ" ? "" : "none";
 
-  $("stateWhy").innerHTML = code==="AZ"
-    ? "In Arizona you may drill a domestic well on your own land without buying a water right, "+
-      "so the question is <strong>what it costs</strong>."
-    : "In Utah you may not drill without an approved water right, and in closed basins the state "+
-      "has stopped issuing them — so the question is <strong>whether you're allowed at all</strong>.";
+  // The state's legal rule is in the intro under the headline now; saying it twice
+  // above the fold pushed the parcel controls down.
+  $("stateWhy").innerHTML = "";
 
   $("kicker").textContent   = s.kicker;
   $("headline").textContent = s.question;
