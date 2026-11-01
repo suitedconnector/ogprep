@@ -42,9 +42,8 @@ const SEVERITY = { unknown: 0, not_limited: 1, somewhat_limited: 2, very_limited
 
 async function sdaQuery(sql, signal) {
   const r = await fetch(SDA, {
-    headers: { "User-Agent": UA },
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "User-Agent": UA, "Content-Type": "application/json" },
     body: JSON.stringify({ query: sql, format: "JSON" }),
     signal
   });
