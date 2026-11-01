@@ -244,6 +244,11 @@
   .cmpFoot{margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
   @media (max-width:620px){
     table.cmp td.n{text-align:left !important}
+    /* The stacked card makes each cell a flex row, so the range line sat beside
+       the figure, squeezed to a sliver and pushing the page 8px past a 375px
+       viewport. Give it its own line, aligned under the figure. */
+    table.cmp.stack td.n{flex-wrap:wrap}
+    table.cmp.stack .cmpRow .rng,.cmpRow .rng{flex:0 0 100%;padding-left:calc(42% + 10px);margin-top:0}
     .cmpRow.sel{outline:1px solid rgba(200,162,74,.35)}
   }
 
