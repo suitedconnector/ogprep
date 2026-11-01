@@ -3032,7 +3032,13 @@ document.addEventListener("click", e => {
   /* A target inside a tab that is not showing has no box to scroll to, so the
      click did nothing. Switch to its tab first, as the "Still needed" buttons do. */
   const pane = el.closest(".pane");
-  if(pane && pane.style.display === "none") setTab(pane.dataset.pane, true);
+  if(pane && pane.style.display === "none"){
+    setTab(pane.dataset.pane, true);
+    // setTab re-measures the maps 60ms later, which moves everything below them.
+    // Scrolling first lands short of the target; wait for the layout to settle.
+    setTimeout(() => el.scrollIntoView({behavior:"smooth", block:"start"}), 150);
+    return;
+  }
   el.scrollIntoView({behavior:"smooth", block:"start"});
 });
 
