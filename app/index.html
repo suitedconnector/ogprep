@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Arizona Water Cost Finder — What a Well Will Cost on That Parcel</title>
-<meta name="description" content="How deep is the water under that Arizona parcel, and what will a well cost? Built from 174,782 filed Arizona well records — depth, water level, tested yield — plus hauling and rainwater catchment compared.">
-<meta property="og:title" content="Will you hit water on that Arizona parcel?">
-<meta property="og:description" content="Will you hit water on that Arizona parcel? See the wells actually drilled nearby — depth, water level, yield — and what a well would cost. Built on 174,782 filed records.">
+<title>Cost to Livable — water, wastewater and power on a rural parcel</title>
+<meta name="description" content="What it takes to make a rural parcel livable in Arizona or Utah: water, wastewater and power from state and federal records, plus what to ask the county. Built on 174,782 filed Arizona well records.">
+<meta property="og:title" content="Cost to Livable — what it takes to make this parcel livable">
+<meta property="og:description" content="Water, wastewater and power for a rural parcel in Arizona or Utah, from public records — and what you still need to ask.">
 <meta property="og:type" content="website">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -682,7 +682,7 @@
   <button class="themeBtn" id="themeBtn" type="button" aria-label="Switch colour theme">
     <span id="themeIcon">☾</span><span id="themeLabel">Dark</span>
   </button>
-  <div class="kicker" id="kicker">Build Off Grid · Arizona Water Finder</div>
+  <div class="kicker" id="kicker">Cost to Livable · Arizona</div>
   <div class="seg headSeg" id="stateSeg">
     <button data-v="AZ" aria-pressed="true">Arizona</button>
     <button data-v="UT" aria-pressed="false">Utah</button>
@@ -1174,7 +1174,7 @@ const REPORT_OFFER = {
 const STATES = {
   AZ: {
     name: "Arizona",
-    kicker: "Build Off Grid · Arizona Water Cost Finder",
+    kicker: "Cost to Livable · Arizona",
     question: "Will you hit water — and what will it cost?",
     intro: "Arizona lets you drill an exempt domestic well on your own land without buying a water right, "+
            "so the question is cost, not permission. This shows the wells actually drilled near your parcel — "+
@@ -1203,7 +1203,7 @@ const STATES = {
   },
   UT: {
     name: "Utah",
-    kicker: "Build Off Grid · Utah Water Rights Finder",
+    kicker: "Cost to Livable · Utah",
     question: "Are you allowed to drill here at all?",
     intro: "Utah requires an approved water right before you can drill, and in closed basins like Cedar Valley "+
            "in Iron County the State Engineer has stopped issuing new ones. So the binding question isn't depth — "+
@@ -1323,7 +1323,7 @@ function applyState(code){
   $("headIntro").innerHTML  = s.intro;
   $("headDetail").innerHTML = s.detail;
   $("headGap").innerHTML    = s.missing ? "<div class='siGap'>"+s.missing+"</div>" : "";
-  document.title = s.kicker.replace("Build Off Grid · ","") + " — what water will cost on that parcel";
+  document.title = "Cost to Livable — " + s.name + " parcel";
 
   const az = code==="AZ";
 
