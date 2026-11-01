@@ -335,6 +335,19 @@
     background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow)}
   .stripLead{font-size:15px;font-weight:800;letter-spacing:-.01em;margin-bottom:11px}
   .stripBad{color:var(--bad)} .stripOk{color:var(--good)}
+  .needs{display:block;border-top:1px solid var(--line)}
+  .needRow{display:grid;grid-template-columns:30px 1fr auto;gap:12px;align-items:center;width:100%;
+    text-align:left;padding:12px 4px;border:0;border-bottom:1px solid var(--line);background:none;
+    color:inherit;font:inherit;min-height:56px}
+  button.needRow{cursor:pointer}
+  button.needRow:hover{background:var(--panel2)}
+  .needRow i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+    font-weight:800;font-size:14px}
+  .needRow span{display:block;font-size:13.5px;line-height:1.45;color:var(--muted)}
+  .needRow b{display:block;font-size:15px;color:var(--ink);font-weight:700}
+  .needRow .go{font-style:normal;font-size:12.5px;color:var(--accent);white-space:nowrap}
+  .c-ask i{background:var(--line);color:var(--muted)}
+  @media (max-width:560px){.needRow{grid-template-columns:30px 1fr}.needRow .go{display:none}}
   .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px}
   .chip{display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;
     padding:9px 11px;border-radius:var(--r);border:1px solid var(--line);
@@ -3004,7 +3017,7 @@ function trendBar(label, ft, max){
 
    Icons here are markers, not decoration. They exist because a colour alone
    fails for colour-blind readers and prints badly. */
-const CHIP_MARK = { good:"✓", warn:"!", bad:"✕", none:"–" };
+const CHIP_MARK = { good:"✓", warn:"!", bad:"✕", none:"–", ask:"?" };
 
 function chip(key, label, level, value, target){
   return "<button class='chip c-"+level+"' data-goto='"+target+"' "+
@@ -3013,83 +3026,110 @@ function chip(key, label, level, value, target){
     "<span><b>"+label+"</b>"+value+"</span></button>";
 }
 
+/* The checklist: one row per land need, in cost-weight order. A row's status is
+   the worst finding inside that need, and its line says what we know in words.
+   Needs we cannot assess yet say so instead of staying silent, because an absent
+   row reads as "nothing to worry about". */
+const LEVEL_RANK = { none:0, good:1, warn:2, bad:3 };
+const worstLevel = ls => ls.reduce((w,l)=>(LEVEL_RANK[l]||0)>(LEVEL_RANK[w]||0)?l:w, "none");
+
+function needRow(label, level, line, target){
+  const tag = target ? "button type='button'" : "div";
+  const close = target ? "button" : "div";
+  return "<"+tag+" class='needRow c-"+level+"'"+(target?" data-goto='"+target+"'":"")+">"+
+    "<i>"+CHIP_MARK[level]+"</i>"+
+    "<span><b>"+label+"</b>"+line+"</span>"+
+    (target?"<em class='go'>detail ↓</em>":"")+
+    "</"+close+">";
+}
+
 function renderStatusStrip(){
   const box = $("statusStrip"); if(!box) return;
-  const L=state.local, W=state.rights, D=state.utDepths, S=state.soil, T=state.trendCell;
+  const L=state.local, W=state.rights, D=state.utDepths, S=state.soil, T=state.trendCell, PU=state.utility;
   const ran = !!(L||W||D||S||state.parcel);
   if(!ran){ box.innerHTML=""; box.style.display="none"; return; }
   box.style.display="";
 
-  const chips=[];
+  const ut = state.region==="UT";
+  const rows=[];
 
-  /* 1 — Can you legally have water. The binding question in Utah; assumed in
-         Arizona, where an exempt domestic well needs no right. */
-  if(state.region==="UT"){
+  /* Water: legal right (Utah), depth, dry holes, water-table trend. */
+  const wl=[], wParts=[];
+  if(ut){
     const dom = W ? W.domesticCount : null;
-    chips.push(dom==null ? chip("legal","Legal","none","not checked","wellList")
-      : dom===0 ? chip("legal","Legal","bad","no domestic right","wellList")
-      : chip("legal","Legal","good",dom+" domestic rights","wellList"));
+    if(dom===0){ wl.push("bad"); wParts.push("No domestic water right nearby; Utah will not let you drill for a home without one."); }
+    else if(dom>0){ wl.push("good"); wParts.push(dom+" domestic water rights nearby."); }
   }else{
-    chips.push(chip("legal","Legal","good","exempt well allowed","headIntro"));
+    wl.push("good");
   }
-
-  /* 2 — Depth, and whether we have any. */
   if(L && (L.med||L.avg)){
     const d=Math.round(L.med||L.avg);
-    chips.push(chip("depth","Depth", d<=250?"good":d<=600?"warn":"bad", d+" ft typical","wellList"));
+    // Six wells is the point where the page itself stops calling a sample thin
+    // ("A handful of nearby records — directional, not definitive"). A green tick
+    // on three wells from a block two miles away would say more than we know.
+    const thin = L.n<6 || L.fromGrid;
+    const dLvl = d<=250?"good":d<=600?"warn":"bad";
+    wl.push(thin && dLvl==="good" ? "warn" : dLvl);
+    wParts.push("Median depth "+d.toLocaleString()+" ft ("+L.n+" well"+(L.n===1?"":"s")+
+      (L.fromGrid?", nearest block":"")+")"+(L.dtw?", water at about "+Math.round(L.dtw).toLocaleString()+" ft":"")+"."+
+      (thin?" Thin sample: treat as a rough guide.":""));
   }else{
-    chips.push(chip("depth","Depth","none","no local records","wellList"));
+    wParts.push("No local well records with a depth.");
   }
-
-  /* 3 — Did anyone drill here and fail. The single most consequential fact. */
   const dry = (D && D.dryHoleCount) || (L && L.dryHoleCount) || 0;
-  chips.push(dry ? chip("dry","Dry holes","bad",dry+" nearby","wellList")
-                 : chip("dry","Dry holes","good","none on record","wellList"));
-
-  /* 4 — Is the water table falling. Arizona only for now. */
-  if(state.region==="AZ"){
-    /* Same reconciliation as the trend panel. This chip counts toward "things to
-       resolve before you buy", so a cell describing ground three miles away must
-       not raise a red flag against a parcel whose own wells disagree. Demoted to
-       a warning and labelled as regional when they conflict. */
-    const lDtw = state.local && state.local.dtw != null ? Math.round(state.local.dtw) : null;
+  if(dry){ wl.push("bad"); wParts.push(dry+" dry hole"+(dry===1?"":"s")+" on record nearby."); }
+  if(!ut){
+    const lDtw = L && L.dtw != null ? Math.round(L.dtw) : null;
     const tAfter = T ? T[3] : null;
-    const tConflict = lDtw != null && tAfter != null &&
-                      Math.abs(tAfter - lDtw) > Math.max(60, lDtw);
-    chips.push(!T ? chip("trend","Water table","none","no trend data","trendBox")
-      : tConflict ? chip("trend","Water table","warn","down "+T[4]+" ft regionally","trendBox")
-      : T[4]>50 ? chip("trend","Water table","bad","down "+T[4]+" ft","trendBox")
-      : T[4]>0  ? chip("trend","Water table","warn","down "+T[4]+" ft","trendBox")
-      : chip("trend","Water table","good","holding","trendBox"));
+    const tConflict = lDtw != null && tAfter != null && Math.abs(tAfter - lDtw) > Math.max(60, lDtw);
+    if(T){
+      if(tConflict){ wl.push("warn"); wParts.push("Regional water table is down "+T[4]+" ft."); }
+      else if(T[4]>50){ wl.push("bad"); wParts.push("Water table down "+T[4]+" ft."); }
+      else if(T[4]>0){ wl.push("warn"); wParts.push("Water table down "+T[4]+" ft."); }
+    }
+  }
+  rows.push(needRow("Water", worstLevel(wl.filter(l=>l!=="none").length?wl:["none"]), wParts.join(" "), ut ? "wellList" : "statsCard"));
+
+  /* Wastewater: the soil's septic rating. */
+  const SOIL_LVL={not_limited:"good",somewhat_limited:"warn",very_limited:"bad",unknown:"none"};
+  const SOIL_LINE={
+    not_limited:"Soil rates not limited for a standard septic field.",
+    somewhat_limited:"Soil rates somewhat limited: expect design constraints, a larger field, or engineering.",
+    very_limited:"Soil rates very limited for a standard septic field. Budget for an alternative or engineered system.",
+    unknown:"No soil survey coverage at this point."
+  };
+  rows.push(S
+    ? needRow("Wastewater", SOIL_LVL[S.rating]||"none", SOIL_LINE[S.rating]||SOIL_LINE.unknown, "assumptions")
+    : needRow("Wastewater","none","Soil not checked.", null));
+
+  /* Power: facts only. The line layer is 69 kV and up, so no verdict. */
+  if(PU && !PU.utilitiesLookupFailed){
+    const names=(PU.utilities||[]).filter(u=>!u.wholesale).map(u=>u.name);
+    const who = names.length===0 ? "No utility territory maps here."
+      : PU.overlapping ? "Several service areas overlap here."
+      : names.slice(0,2).join(" and ")+" map"+(names.length===1?"s":"")+" here.";
+    const line = PU.nearestLine ? " Nearest mapped high-voltage line: "+PU.nearestLine.miles+" mi. Extension cost unknown." : "";
+    rows.push(needRow("Power","none",who+line,"powerBox"));
+  }else{
+    rows.push(needRow("Power","none","Not checked.",null));
   }
 
-  /* 5 — Septic, which is the second-biggest line after water. */
-  const SOIL_LVL={not_limited:"good",somewhat_limited:"warn",very_limited:"bad",unknown:"none"};
-  const SOIL_TXT={not_limited:"soil suitable",somewhat_limited:"soil limited",
-                  very_limited:"soil very limited",unknown:"soil not mapped"};
-  chips.push(S ? chip("soil","Septic",SOIL_LVL[S.rating]||"none",SOIL_TXT[S.rating]||"unrated","assumptions")
-               : chip("soil","Septic","none","not checked","assumptions"));
+  /* Not assessed yet: shown, not hidden. */
+  rows.push(needRow("Access","ask","Not assessed yet. Ask the county road department and your title company about legal access and easements.",null));
+  rows.push(needRow("Permits and rules","ask","Not assessed yet. Septic, building and well permits come from the county.",null));
 
-  /* 6 — Electric service. Neutral on purpose: the line layer holds 69 kV and up
-         only, so a long distance to it does not mean a costly hook-up. */
-  const PU = state.utility;
-  chips.push(PU && PU.nearestLine
-    ? chip("power","Power","none","line "+PU.nearestLine.miles+" mi (mapped)","powerBox")
-    : PU ? chip("power","Power","none","no mapped line","powerBox")
-    : chip("power","Power","none","not checked","powerBox"));
-
-  const bad = chips.filter(c=>c.includes("c-bad")).length;
+  const bad = rows.filter(r=>r.includes("c-bad")).length;
   const lead = bad
     ? "<div class='stripLead stripBad'>"+bad+" thing"+(bad===1?"":"s")+" to resolve before you buy</div>"
-    : "<div class='stripLead stripOk'>Nothing here disqualifies this parcel</div>";
+    : "<div class='stripLead stripOk'>No red flags in what we could check</div>";
 
-  box.innerHTML = lead + "<div class='chips'>"+chips.join("")+"</div>"+
-    "<div class='stripHint'>Tap any of these to jump to the detail.</div>";
+  box.innerHTML = lead + "<div class='needs'>"+rows.join("")+"</div>"+
+    "<div class='stripHint'>Access and permits are not assessed yet. Tap a row to jump to the detail.</div>";
 }
 
 // Jump to the section a chip names, and open it if it is collapsed.
 document.addEventListener("click", e => {
-  const b = e.target.closest(".chip"); if(!b) return;
+  const b = e.target.closest(".chip, .needRow"); if(!b) return;
   const el = $(b.dataset.goto); if(!el) return;
   const det = el.closest("details") || el.querySelector("details");
   if(det) det.open = true;
@@ -4157,7 +4197,7 @@ function render(){
     $("totalRange").textContent = "";
     $("bar").innerHTML = "";
     $("lines").innerHTML = "";
-    $("assumptions").innerHTML = "";
+    $("assumptions").innerHTML = soilNoteHtml();   // soil and rain are the same in both states
     $("swingNote").innerHTML = "";
     $("lines").closest("table").style.display = "none";
     document.querySelector(".colkey").style.display = "none";
