@@ -32,27 +32,12 @@ far more likely to be how a number is labelled than where it came from.
 
 ---
 
-## The one real data problem right now
+## The driller panel data problem — fixed
 
-**The driller panel is reading 5.5% of Arizona's wells.**
-
-There are two copies of Arizona's well registry on the internet:
-
-- **ADWR's own**, updated daily, ~174,782 wells. `/api/wells` reads this.
-- **A frozen copy** somebody uploaded to ArcGIS Online years ago with no owner
-  named and no update path. **9,679 wells.** `/api/drillers` reads this.
-
-That is why the Skull Valley lookup showed *"Balow's Windmill — 1 well nearby,
-one well at 375 ft, 1947–1947."* It is not a sparse area. The panel was
-searching one twentieth of the filings, so nearly every driller shows one old
-well.
-
-Practical effect: **driller rankings are currently close to meaningless.** A
-company with forty wells near a parcel and one with a single well look identical.
-
-**The fix is one endpoint swap.** ADWR's registry carries the driller licence
-number on every record, so the panel can read the same source the depths now
-come from. Roughly an hour. This is the highest-value thing outstanding.
+The driller panel used to read a frozen third-party upload (9,679 wells, about
+5.5% of Arizona's registry), which made driller rankings close to meaningless.
+`/api/drillers` now reads ADWR's own registry, the same layer `/api/wells` uses,
+and `tools/health-check.mjs` guards against a swap back to a partial copy.
 
 ---
 
@@ -146,8 +131,7 @@ this market has that, and it is not displayed anywhere yet.
 ## The next three, in order
 
 1. **Turn off Cloudflare Access.** Ten minutes, unblocks every plan.
-2. **Repoint the driller panel at ADWR's registry.** An hour, fixes the only
-   real data problem left.
+2. ~~Repoint the driller panel at ADWR's registry.~~ Done.
 3. **Show yield in the results.** An hour, and it is a number no competitor has.
 
 Then stop building. Find a post, leave a comment with real numbers in it, and
