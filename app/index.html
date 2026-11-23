@@ -1737,10 +1737,27 @@ async function runPower(lat,lng){
   if(box) box.innerHTML = h;
 }
 
+/* The parcel's largest ring, as [lat,lng] pairs, for the soil lookup. Holes and
+   detached slivers are left out; the largest ring is the land being bought. */
+function soilRing(P){
+  if(!P || !P.boundary || !P.boundary.length) return null;
+  let best=null, bestA=0;
+  for(const r of P.boundary){
+    if(!r || r.length<3 || r.length>400) continue;
+    let a=0;
+    for(let i=0;i<r.length;i++){ const p=r[i], q=r[(i+1)%r.length]; a+=p[1]*q[0]-q[1]*p[0]; }
+    if(Math.abs(a)>bestA){ bestA=Math.abs(a); best=r; }
+  }
+  return best;
+}
+
 async function runSoilAndRain(lat,lng){
   // Soil / septic suitability for the same point, via the Pages Function.
   try{
-    const sr=await fetch(SOIL_API+"?lat="+lat+"&lon="+lng);
+    // With a parcel outline, soil is checked across every map unit it touches.
+    const ring=soilRing(state.parcel);
+    const sr=await fetch(SOIL_API+"?lat="+lat+"&lon="+lng+
+      (ring?"&poly="+encodeURIComponent(ring.map(p=>(+p[1]).toFixed(5)+" "+(+p[0]).toFixed(5)).join(",")):""));
     const sj=await sr.json();
     if(sj.ok){
       state.soil=sj;
@@ -3646,6 +3663,42 @@ function districtHtml(p){
     "</div>";
 }
 
+/* A map unit is a mixture of soils, and a parcel can cross several map units.
+   Show how the septic rating splits across both, minor soils included. */
+const SOIL_SHARE_LABEL={very_limited:"very limited",somewhat_limited:"somewhat limited",
+  not_limited:"not limited",not_rated:"not rated"};
+function soilShareText(sh){
+  return Object.keys(SOIL_SHARE_LABEL).filter(k=>sh[k]>0)
+    .map(k=>"<b>"+Math.round(sh[k])+"%</b> "+SOIL_SHARE_LABEL[k]).join(" · ");
+}
+function soilBreakdownLine(s){
+  const B=s.breakdown, mus=(B&&B.mapunits)||[];
+  if(!mus.length) return "";
+  let h="";
+  if(mus.length===1){
+    h+=" Soil map unit: <em>"+escHtml(mus[0].name)+"</em> — "+soilShareText(mus[0].shares)+".";
+  }else{
+    if(B.overall) h+=" Across the parcel: "+soilShareText(B.overall)+".";
+    h+=" The parcel crosses "+mus.length+" soil map units: "+mus.map(m=>
+      "<em>"+escHtml(m.name)+"</em>"+(m.areaPct!=null?" (about "+Math.round(m.areaPct)+"% of the parcel)":""))
+      .join(", ")+".";
+  }
+  return h;
+}
+function soilBreakdownDetails(s){
+  const mus=(s.breakdown&&s.breakdown.mapunits)||[];
+  if(!mus.length) return "";
+  const rows=mus.map(m=>"<div class='soilcomp'><div class='soilname'>"+escHtml(m.name)+
+    (m.areaPct!=null&&mus.length>1?" <span class='soilpct'>about "+Math.round(m.areaPct)+"% of the parcel</span>":"")+"</div>"+
+    m.components.map(c=>"<div class='soilrow'><span>"+escHtml(c.name)+(c.percent?" · "+c.percent+"%":"")+
+      (c.major?"":" (minor)")+"</span><b>"+(c.class?escHtml(c.class):"Not rated")+"</b></div>").join("")+
+    "</div>").join("");
+  return "<details class='soildetails'><summary>Every soil in the map unit"+(mus.length>1?"s":"")+"</summary>"+rows+
+    "<div class='src'>Percentages are each soil's share of its map unit, from the soil survey. "+
+    "&ldquo;Not rated&rdquo; soils have no septic rating in the survey, often small inclusions such as rock outcrop. "+
+    "The survey maps soils in patches, not lot by lot, so this is a mapped estimate.</div></details>";
+}
+
 function soilProfileHtml(s){
   const p = s && s.profile;
   if(!p || !p.length) return "";
@@ -4163,11 +4216,18 @@ $("recWater").addEventListener("toggle", () => {
    chip in "What's true about this land" jumps there. */
 function soilNoteHtml(){
   if(!state.soil) return "";
+  const B = state.soil.breakdown;
   return "<div class='soilbox'>"+(SOIL_SEPTIC[state.soil.rating]||SOIL_SEPTIC.unknown).note+
-    (state.soil.mapunit?" Soil map unit: <em>"+state.soil.mapunit+"</em>.":"")+
+    (state.soil.rating!=="unknown"
+      ? " <span class='src'>This is the worst rating among the main soils "+
+        (state.soil.scope==="parcel"?"across the parcel":"at your point")+".</span>"
+      : "")+
+    (B ? soilBreakdownLine(state.soil)
+       : (state.soil.mapunit?" Soil map unit: <em>"+state.soil.mapunit+"</em>.":""))+
     (state.soil.reasons&&state.soil.reasons.length
       ? " Limiting features: "+state.soil.reasons.join(", ").toLowerCase()+"."
       : "")+
+    (B ? soilBreakdownDetails(state.soil) : "")+
     soilProfileHtml(state.soil)+
     " <span class='src'>Source: USDA-NRCS SSURGO, interpretation &ldquo;Septic Tank Absorption Fields.&rdquo;</span></div>";
 }
