@@ -1,6 +1,6 @@
 ---
 tags: [project, buildoffgrid, cost-to-livable, master]
-updated: 2026-09-07
+updated: 2026-09-12
 ---
 
 # Master Project Notes — Build Off Grid / Cost to Livable
@@ -21,11 +21,15 @@ people costs trust and possibly someone's money.
 
 ### Arizona
 - 174,782 filed well records → county medians (`data/az-well-stats-by-county.json`)
-- Live radius lookup via ADWR GWSI (`/api/wells`)
+- Live radius lookup via ADWR **Wells55 registry** (`/api/wells`) — was GWSI, the
+  voluntary monitoring network, which returned 19 wells where the registry returns 322
 - **Depth finder** (`find.html`) — 163,719 wells binned into 8,588 cells of ~1.4 miles.
   Search by depth you can afford to drill. 2,336 cells median under 200 ft.
 - Driller directory from Wells55 licence numbers joined to ADWR's licensed list
-- APN lookup for **Mohave** and **Yavapai** only (each assessor runs its own GIS)
+- **Parcel search in all 15 counties** via the AZGeo statewide layer, scoped to a county
+  envelope so the spatial index narrows before the APN scan. Acreage measured from the
+  parcel geometry. **Mohave** alone keeps its assessor adapter for zoning and valuation —
+  Yavapai's GIS returns 403 to Cloudflare's egress, so it routes to the state layer.
 
 ### Utah
 - Water rights near a point (`/api/waterrights`) — WRPOD, live/dead classification,
@@ -71,12 +75,68 @@ turns "cost to livable" from a water tool into a buildability tool:
 
 Caveat stays: planning-scale interpretations, not a geotech report or a perc test.
 
-### 2. Utah bulk well depth
+### 2. Water quality — never discussed until now ⭐
+
+The app answers *will you hit water* and *what will it cost*. It says nothing about
+whether the water is drinkable. In Arizona that is a serious omission: **arsenic** is
+widespread in rural groundwater, and a well that produces 20 gpm at 100 ft but needs a
+treatment system is a different purchase from one that doesn't.
+
+**The structural fact to carry into the UI:** domestic wells are not regulated. Roughly
+300,000 Arizonans drink from wells that fall outside the Safe Drinking Water Act, so
+nobody tests them systematically and **parcel-level quality data does not exist**. What
+exists is ambient monitoring points — exactly the same shape as well depth, and the same
+honest framing: here is what was measured near you, not a measurement of your parcel.
+
+| Source | Covers | Notes |
+| ------ | ------ | ----- |
+| **Water Quality Portal** (`waterqualitydata.us`) | Both states, one adapter | USGS + EPA + 400 agencies. Documented web services, `well` and `spring` site types. Start here — it is the AZGeo of water chemistry. |
+| **ADEQ Arizona Water Quality Database** | AZ | Groundwater and surface chemistry from ADEQ and 100+ reporting agencies. Ambient monitoring since 1995, 200+ constituents. |
+| **ADWR GWSI** | AZ | Already queried for depth; also carries water-quality monitoring sites. May be free. |
+| Utah DEQ Division of Drinking Water | UT | **Unverified.** Check whether ambient groundwater chemistry is published separately from public-system compliance. |
+
+**What to surface, in priority order:** arsenic, nitrate, fluoride, uranium, TDS/salinity,
+hardness. Arsenic first — it is the one that drives a treatment budget in Arizona.
+
+**Do not state a parcel is safe or unsafe.** Report what was found nearby, the distance,
+and the standard it is measured against. A water test costs about $150 and is the actual
+answer; the app's job is to tell someone whether to expect that bill.
+
+### 3. Hand off to Haulagua when a well is not the answer — PARKED
+
+The note below already said this; Skull Valley was the first real instance. A 1,315 ft
+domestic well 0.69 miles away, three records total, no trend data. That is not a well
+decision, it is a hauling decision, and this app is the only thing that knows it.
+
+Decided, so it does not get re-litigated:
+
+- **Trigger is a written rule, not a judgment.** Fewer than N wells with a depth, or a
+  median above X ft, or no legal path. It is our directory on the other end, so the
+  threshold has to be stated in code and not decided case by case.
+- **Disclose plainly.** "on **Haulagua**, our water hauling directory." Not "sister site" —
+  that hints at a relationship without stating one, which is the version a reader resents
+  discovering. "Our" is honest and costs nothing.
+- **Deep-link to results, not a search box.** We own both ends, so define the URL contract:
+  `haulagua.com/water-haulers/az/<county>`. The county is already in hand from the parcel
+  lookup. Someone who has just been told there is no well here should not be asked to
+  re-enter where they are.
+- **Arizona only for now.** Haulagua covers Texas and Arizona. Utah is where hauling matters
+  *most* — closed basins, no right, no legal path — so this gets much stronger once Utah is
+  listed there. A dead referral is worse than none.
+- **Do not land them on the homepage.** Its front door is pool fills and construction. A
+  rural buyer arriving from a $80,000 well problem should not see a backyard swimming pool.
+- **Fallback when the county has no haulers listed yet** — state page, or an honest "none
+  listed here yet, here is how to find one." An empty results page spends the credit twice.
+
+Open question: does Haulagua actually have haulers listed in Yavapai and Mohave? Check
+before wiring, not after.
+
+### 4. Utah bulk well depth
 Call **801-538-7240** (Technical Services) for access to the WELLDB export at
 `waterrights.utah.gov/gisinfo/dbtables.asp`. Currently returns Access Denied. Unblocks a Utah
-depth map and ends per-well scraping entirely. Draft in `agency-data-emails.md`.
+depth map and ends per-well scraping entirely. Draft in `docs/agency-data-requests.md`.
 
-### 3. Multi-state expansion
+### 5. Multi-state expansion
 Model travels; implementation doesn't. Three things vary:
 - **Water law** — prior appropriation (West) vs riparian (East). Different product, not a config flag.
   Realistically the ~11 Western states, which is also where the cheap land is.
@@ -87,15 +147,49 @@ Model travels; implementation doesn't. Three things vary:
 
 **Do a data-availability scan first**, then pick build order. Don't guess.
 
-### 4. Demand-side capture
+### 6. Demand-side capture
 Let someone post "I need 1 af, domestic, Area 73." Nobody has that list, and it's what owners
 who are holding would actually respond to.
 
-### 5. Verify the ADWR discrepancy ⚠️
-At Wikieup the finder says wells average **119 ft**; the three drillers listed there filed wells
-at **565, 700 and 935 ft**. GWSI monitoring sites vs the Wells55 drilling registry disagreeing
-about the same ground. The 119 ft figure is on the Arizona demo card and feeds the cost model.
-**Resolve before anyone relies on it.** Same shape as the county-median error caught earlier.
+### 7. Verify the ADWR discrepancy ⚠️
+**CAUSE FOUND, 12 Sept 2026.** Not a conflict — two different datasets. The live radius lookup
+read **GWSI**, which is the voluntary water-level monitoring network, while the driller panel and
+county figures read **Wells55**, the drilling registry. At a test point near St Johns, GWSI
+returned **19** wells and the registry returned **322** at the same radius.
+
+`/api/wells` now reads the registry. Re-check the Wikieup figures after deploying — the 119 ft
+number should move, and it feeds the Arizona demo card and the cost model.
+
+---
+
+## Parked — revisit only after someone has paid for the core app
+
+### Well pump affiliate page — PARKED 3 Oct 2026
+Google Trends shows strong national volume on `well pump pressure`, `submersible well pump`,
+`water pump for well`. **Rejected on intent, not volume.** Those are repair and replacement
+searches — the person already owns the well and it quit today. Our buyer doesn't have a well and
+is deciding whether to buy the land at all. No audience overlap. Amazon pays ~3% on hardware
+(~$18 on a $600 pump), most pump buyers go through a local supply house anyway, and the SERP is
+Home Depot / Lowe's / SupplyHouse / Amazon.
+
+**The adjacent play that *is* ours:** cisterns, tanks and haul-fill fittings — the page the app
+itself sends people to when the answer is "no well here, haul it." Tiny search volume, enormous
+intent, no competition, and we own the moment it happens. See item 3 (Haulagua handoff).
+
+### Well pump parts database — PARKED 3 Oct 2026
+Real product, different company. **The data doesn't exist for free.** Our Arizona edge is that
+ADWR publishes 174,782 records as an open API — nothing to assemble. Pump parts have no public
+registry: specs sit in Grundfos / Franklin Electric / Goulds / Pentair PDFs, each with its own
+numbering, and the cross-reference tables are the trade secret. Indefinite scraping and hand-
+mapping as models turn over. The people who already did it are distributors (SupplyHouse,
+PumpProducts, the Franklin dealer network) and they hold the catalog *and* the inventory, which
+is the part customers actually want. Serves installers and DIY repair — not pre-purchase buyers.
+Nothing transfers: not the data, not the audience, not the traffic.
+
+**Standing rule for this section:** three new builds were floated in a row while the core app
+still had no evidence anyone would pay. Each was interesting and each was a reason not to find
+out. Nothing leaves this section until ten manual parcel lookups have been done and at least one
+person has said what they would pay.
 
 ---
 
@@ -142,4 +236,4 @@ Currently doing both.
 ## Related
 
 - [[utah-water-cedar-valley]] — Cedar Valley closed basin, Spring Creek lead, tax deed warning
-- `agency-data-emails.md` — drafted requests for bulk data access
+- `docs/agency-data-requests.md` — drafted requests for bulk data access

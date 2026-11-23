@@ -195,6 +195,13 @@ const json = (body, status = 200) => {
   });
 };
 
+/* Identify ourselves. Yavapai's GIS returns 403 to a request with no
+   User-Agent — a Worker's fetch sends none by default — which surfaced as
+   "no parcel found in Yavapai County" for parcels that plainly exist. An
+   anonymous request also gives an administrator no way to contact us if we
+   are being a nuisance, which is reason enough on its own. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; parcel lookup; contact via site)";
+
 async function esri(base, params) {
   const u = new URL(base);
   Object.entries({ f: "json", returnGeometry: "false", ...params })
@@ -202,7 +209,10 @@ async function esri(base, params) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
-    const r = await fetch(u.toString(), { signal: ctl.signal });
+    const r = await fetch(u.toString(), {
+      signal: ctl.signal,
+      headers: { "User-Agent": UA, "Accept": "application/json" }
+    });
     if (!r.ok) throw new Error("GIS returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.error.message || "GIS query failed");

@@ -17,10 +17,24 @@
  * addresses, so contact is by phone.
  */
 
-const WELLS55 = "https://services1.arcgis.com/Ezk9fcjSUkeadg6u/arcgis/rest/services/Wells_55/FeatureServer/0/query";
+/* Identify ourselves to the agencies we query. A Worker's fetch sends no
+   User-Agent by default, and at least one Arizona county GIS answers an
+   anonymous request with 403 — a failure that reads as "no data" rather than
+   "you were refused". It also gives an administrator someone to contact if we
+   are ever a nuisance. */
+const UA = "BuildOffGrid/1.0 (+https://buildoffgrid.ogprep.com; contact via site)";
+/* ADWR's own well registry, not a copy of it.
+   This previously read services1.arcgis.com/Ezk9fcjSUkeadg6u — an ArcGIS Online
+   upload with no owner named, no description and hasStaticData: true. The health
+   check measured it at 9,679 records against the state's 174,782, so the driller
+   panel was working from about 5.5% of Arizona's wells.
+   The visible symptom: at Skull Valley it reported "BALOW'S WINDMILL — 1 well
+   nearby, one well at 375 ft, 1947-1947". Not a sparse area. A sparse copy.
+   Field names are identical between the two, so this is only a change of source. */
+const WELLS55 = "https://services.arcgis.com/C34zQ7veRS0V1t04/ArcGIS/rest/services/Well_Registry_2024/FeatureServer/0/query";
 const TIMEOUT_MS = 20000;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;
-const SCHEMA = "v2";   // v2 — flattened name/city/phone, licensed flag
+const SCHEMA = "v3";   // v3 — reads ADWR's registry, not a 5.5% static copy
 
 /** ADWR licensed well drillers, licence number → company. 168 active licences. */
 const NAMES = {
@@ -211,7 +225,7 @@ async function esri(params) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
-    const r = await fetch(u.toString(), { signal: ctl.signal });
+    const r = await fetch(u.toString(), { signal: ctl.signal, headers: { "User-Agent": UA } });
     if (!r.ok) throw new Error("ADWR returned " + r.status);
     const j = await r.json();
     if (j.error) throw new Error(j.error.message || "query failed");
@@ -244,7 +258,19 @@ export async function onRequestGet({ request }) {
   // Pull the individual records rather than server-side grouping: we need the
   // depth distribution per driller, not just a count.
   const params = {
-    where: "WELL_DEPTH > 20 AND WELL_DEPTH < 5000 AND DLIC_NUM IS NOT NULL",
+    // Exclude cancelled registrations and holes that were never water wells —
+    // monitoring, exploration and injection bores are in this registry too, and
+    // crediting a driller with them overstates their domestic-well experience.
+    // DLIC_NUM '0' is the registry's placeholder for "driller not recorded", not
+    // a company. At Wikieup it holds 67 of 113 wells — left in, it would top the
+    // panel as the most prolific driller in the area. Same shape as the NAP
+    // parcel numbers in the AZGeo layer.
+    where: "WELL_DEPTH > 20 AND WELL_DEPTH < 5000" +
+           " AND DLIC_NUM IS NOT NULL AND DLIC_NUM <> '0' AND DLIC_NUM <> ''" +
+           " AND (WELL_CANCELLED IS NULL OR WELL_CANCELLED <> 'Y')" +
+           // Null SITE_USE passes: older filings often carry no value, and
+           // excluding them would quietly drop decades of a driller's record.
+           " AND (SITE_USE IS NULL OR SITE_USE = 'WATER PRODUCTION')",
     outFields: "DLIC_NUM,WELL_DEPTH,INSTALLED,COUNTY,PUMPRATE,TESTEDRATE",
     resultRecordCount: "2000"
   };
