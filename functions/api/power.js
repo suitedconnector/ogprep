@@ -156,14 +156,15 @@ export async function onRequestGet({ request }) {
   const lat = parseFloat(url.searchParams.get("lat"));
   const lon = parseFloat(url.searchParams.get("lon"));
   if (!isFinite(lat) || !isFinite(lon)) return json({ ok: false, error: "lat and lon are required" }, 400);
-  // The same two boxes the rest of the app uses. Arizona reaches -114.82 (Yuma,
+  // The same boxes the rest of the app uses. Arizona reaches -114.82 (Yuma,
   // Bullhead City) while Utah's western edge is -114.05; an earlier single box
   // with Utah's -114.1 limit rejected all of western Arizona, including the
   // Mohave demo parcel.
   const inAZ = lat >= 31 && lat <= 37.1 && lon >= -115 && lon <= -108.9;
   const inUT = lat >= 36.9 && lat <= 42.1 && lon >= -114.1 && lon <= -108.9;
-  if (!inAZ && !inUT) {
-    return json({ ok: false, outsideCoverage: true, error: "That point is outside Arizona and Utah." }, 400);
+  const inWA = lat >= 45.5 && lat <= 49.05 && lon >= -124.85 && lon <= -116.9;
+  if (!inAZ && !inUT && !inWA) {
+    return json({ ok: false, outsideCoverage: true, error: "That point is outside Arizona, Utah and Washington." }, 400);
   }
 
   const key = `https://power-cache/${SCHEMA}/${lat.toFixed(4)},${lon.toFixed(4)}`;

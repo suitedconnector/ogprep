@@ -14,6 +14,7 @@
  * added as adapters below.
  */
 
+import { parcelsByApn, parcelsByAddress, WA_PARCEL_SOURCE } from "./_wa.js";
 const NEIGHBOUR_RADIUS_M = 805;   // half a mile
 const TIMEOUT_MS = 15000;
 const CACHE_SECONDS = 60 * 60 * 24 * 7;
@@ -277,6 +278,33 @@ function pointOf(cfg, feat) {
   return bboxCentre(feat.geometry);
 }
 
+/* Washington: one statewide layer, so no per-county adapters. Answers in the
+   same shape as the Utah branch so the app treats both alike. */
+async function waLookup(url) {
+  const county = url.searchParams.get("county") || "";
+  const rawApn = url.searchParams.get("apn"), rawAddr = url.searchParams.get("address");
+  const r = rawAddr ? await parcelsByAddress(county, rawAddr) : await parcelsByApn(county, rawApn);
+  if (r.unsupported) {
+    return json({ ok: false, unsupportedCounty: true, error: "That isn't a Washington county we recognise." }, 400);
+  }
+  const ps = r.parcels.filter(p => p.centroid);
+  if (ps.length > 1) {
+    return json({ ok: true, multiple: true, county: r.county,
+      matches: ps.slice(0, 12).map(p => ({ apn: p.apn, address: p.address || p.apn, acres: p.acres, improved: null })) });
+  }
+  if (!ps.length) {
+    return json({ ok: false, notFound: true,
+      error: rawAddr
+        ? `No parcel with an address starting "${rawAddr}" in ${r.county} County. Rural addresses are often missing ` +
+          `from the statewide layer: try the parcel number, or pick the parcel on the map.`
+        : `No parcel numbered ${rawApn} in ${r.county} County. Check the number, or pick the parcel on the map.` }, 404);
+  }
+  const p = ps[0];
+  return json({ ok: true, ...p, lat: p.centroid.lat, lon: p.centroid.lon, owner: null,
+    note: "Washington's statewide parcel layer: boundary, address and parcel number. Owner and valuation stay with the county assessor.",
+    source: WA_PARCEL_SOURCE });
+}
+
 export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   const rawApn = url.searchParams.get("apn");
@@ -284,6 +312,11 @@ export async function onRequestGet({ request }) {
   const lat = parseFloat(url.searchParams.get("lat"));
   const lon = parseFloat(url.searchParams.get("lon"));
   const wantCounty = (url.searchParams.get("county") || "").toLowerCase();
+
+  if ((url.searchParams.get("state") || "").toUpperCase() === "WA") {
+    try { return await waLookup(url); }
+    catch (e) { return json({ ok: false, error: "Washington parcel lookup failed: " + (e.message || e) }, 502); }
+  }
 
   const hasPoint = isFinite(lat) && isFinite(lon);
   if (!rawApn && !rawAddr && !hasPoint) {
