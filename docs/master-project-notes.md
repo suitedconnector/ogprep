@@ -186,6 +186,16 @@ PumpProducts, the Franklin dealer network) and they hold the catalog *and* the i
 is the part customers actually want. Serves installers and DIY repair — not pre-purchase buyers.
 Nothing transfers: not the data, not the audience, not the traffic.
 
+### Geotech report leads — PARKED 23 Nov 2026
+**Fits our buyer, unlike the two above.** Skamania County (SCC 19.07) requires a geotechnical
+letter for work in, or within 100 ft of, a mapped landslide, and a full report if the letter
+can't clear it. The Washington test parcel (281 Stewart Rd, Stevenson) sits on three mapped
+landslides; see `docs/wa-test-parcel-stewart-rd.md`. The app is what tells a pre-purchase buyer
+the letter is required, so "get quotes" is the natural next step, and geotech firms would pay for
+that lead. No public price data exists, so the plan is to collect 3–5 fixed-fee quotes per region
+before showing any range; those calls double as the first conversation with the firms. Check the
+same triggers in Arizona and Utah counties (expansive clay, steep slopes) before generalising.
+
 **Standing rule for this section:** three new builds were floated in a row while the core app
 still had no evidence anyone would pay. Each was interesting and each was a reason not to find
 out. Nothing leaves this section until ten manual parcel lookups have been done and at least one
