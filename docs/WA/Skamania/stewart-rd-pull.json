@@ -1,0 +1,63 @@
+{
+ "date": "2026-11-23",
+ "values": {
+  "parcel": [
+   "059-03072520150100",
+   "1.331"
+  ],
+  "soil": [
+   [
+    "1385490",
+    "Steever",
+    100,
+    "Very limited"
+   ]
+  ],
+  "slope": [
+   [
+    1,
+    15.9,
+    19,
+    100,
+    39
+   ],
+   [
+    10,
+    16.1,
+    19,
+    100,
+    46
+   ]
+  ],
+  "waterService": [
+   "84250"
+  ],
+  "waterRights": [
+   299,
+   2
+  ],
+  "wells": [
+   493,
+   191,
+   350
+  ],
+  "landslides": [
+   3862,
+   3869,
+   3924
+  ],
+  "planning": [
+   [
+    "R2"
+   ],
+   0,
+   [
+    "Stevenson"
+   ]
+  ],
+  "power": [
+   "BONNEVILLE POWER ADMINISTRATION",
+   "PUD NO 1 OF SKAMANIA CO"
+  ]
+ }
+}
