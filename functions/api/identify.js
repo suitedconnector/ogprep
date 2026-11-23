@@ -15,7 +15,8 @@
  * this APN", and that is the direction the map picker needs anyway.
  *
  * Utah is served by its own statewide layer, which does index attributes, so
- * this covers both states through different services.
+ * this covers both states through different services. Washington has a
+ * statewide layer too (see _wa.js).
  */
 
 const AZ_PARCELS =
@@ -25,7 +26,7 @@ const UT_ROOT =
 
 const TIMEOUT_MS = 8000;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;
-const SCHEMA = "v2";   // v2 adds acreage, centroid and boundary to the Arizona branch
+const SCHEMA = "v3";   // v2 adds acreage, centroid and boundary to the Arizona branch; v3 adds Washington
 
 const UT_COUNTIES = ["Beaver","Box Elder","Cache","Carbon","Daggett","Davis","Duchesne",
   "Emery","Garfield","Grand","Iron","Juab","Kane","Millard","Morgan","Piute","Rich","Salt Lake",
@@ -60,6 +61,7 @@ function prettyApn(raw) {
    Shared with /api/apn so the two cannot drift apart. See _geom.js for why we
    measure instead of reading the layer’s own area field. */
 import { measure } from "./_geom.js";
+import { inWA as inWAbox, parcelAtPoint as waParcelAt, WA_PARCEL_SOURCE } from "./_wa.js";
 
 /* Identify ourselves to the agencies we query. A Worker's fetch sends no
    User-Agent by default, and at least one Arizona county GIS answers an
@@ -124,9 +126,10 @@ export async function onRequestGet({ request }) {
 
   const inAZ = lat >= 31 && lat <= 37.1 && lon >= -115 && lon <= -108.9;
   const inUT = lat >= 36.9 && lat <= 42.1 && lon >= -114.1 && lon <= -108.9;
-  if (!inAZ && !inUT) {
+  const inWA = inWAbox(lat, lon);
+  if (!inAZ && !inUT && !inWA) {
     return json({ ok: false, outsideCoverage: true,
-      error: "That point is outside Arizona and Utah." }, 200);
+      error: "That point is outside Arizona, Utah and Washington." }, 200);
   }
 
   const key = `https://identify/${SCHEMA}/${lat.toFixed(5)},${lon.toFixed(5)}/${county}`;
@@ -139,7 +142,8 @@ export async function onRequestGet({ request }) {
   let parcel = null, err = null;
 
   try {
-    if (inUT) parcel = await utahParcel(lat, lon, county, ctl.signal);
+    if (inWA) parcel = await waParcelAt(lat, lon, ctl.signal);
+    if (!parcel && inUT) parcel = await utahParcel(lat, lon, county, ctl.signal);
 
     if (!parcel && inAZ) {
       const feats = await esri(AZ_PARCELS, {
@@ -184,7 +188,8 @@ export async function onRequestGet({ request }) {
 
   const payload = {
     ok: true, lat, lon, ...parcel,
-    source: parcel.state === "AZ"
+    source: parcel.state === "WA" ? WA_PARCEL_SOURCE
+      : parcel.state === "AZ"
       ? { dataset: "AZGeo statewide parcel cache", publisher: "Arizona State Land Department / county assessors",
           note: "Aggregated from county assessors. The layer carries only parcel number and address, so " +
                 "acreage here is measured from the mapped boundary — the assessor's drawing, not a survey. " +

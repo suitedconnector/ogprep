@@ -665,6 +665,21 @@
   .qok{font-size:13px;font-weight:700;color:#4d6b2f;padding:4px 0}
   .drillers .src{color:var(--paper-muted);margin-top:10px}
   .src{font-size:11.5px;color:var(--muted);margin-top:6px}
+  /* Uncertainty labels, one per fact. Same five words in every state. */
+  .lbl{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:999px;
+       vertical-align:1px;margin-left:6px;border:1px solid var(--line);color:var(--muted);background:var(--panel2);white-space:nowrap}
+  .lbl.l-rec{color:var(--good,#2e7d4f);border-color:currentColor;background:transparent}
+  .lbl.l-claim{color:var(--warn,#b26a00);border-color:currentColor;background:transparent}
+  .lbl.l-ask{color:var(--info,#2f6fae);border-color:currentColor;background:transparent}
+  .waBlock{margin:14px 0;padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r)}
+  .waBlock h4{margin:0 0 6px;font-size:16px}
+  .waBlock h4:not(:first-child){margin-top:16px}
+  .waBlock p{margin:6px 0;font-size:14px;line-height:1.5}
+  .waBlock ul{margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.5}
+  .waFacts .soilrow b{text-align:right}
+  .feeTable{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+  .feeTable td{padding:5px 0;border-top:1px solid var(--line)}
+  .feeTable td.n{text-align:right;font-weight:700;white-space:nowrap;padding-left:12px}
   .tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
     padding:2px 7px;border-radius:var(--r);margin-top:5px;cursor:help}
   .t-parcel{background:rgba(91,143,185,.22);color:#9cc6e6;border:1px solid var(--info)}
@@ -674,7 +689,8 @@
   .honesty{background:rgba(211,116,47,.11);border:1px solid var(--warn);border-radius:var(--r);
     padding:12px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
   .keymap{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
-  .headSeg{max-width:280px;margin:12px 0 4px}
+  .headSeg{max-width:420px;margin:12px 0 4px}
+  .headSeg button{min-width:0}
   .siGap{margin-top:12px;max-width:62ch;padding:8px 10px;border-radius:var(--r);font-size:12.5px;
     background:rgba(211,116,47,.13);border:1px solid var(--warn);color:var(--ink)}
   .soilbox{margin-top:10px;padding:12px 14px;border-radius:var(--r);font-size:13px;line-height:1.55;
@@ -724,6 +740,7 @@
   <div class="seg headSeg" id="stateSeg">
     <button data-v="AZ" aria-pressed="true">Arizona</button>
     <button data-v="UT" aria-pressed="false">Utah</button>
+    <button data-v="WA" aria-pressed="false">Washington</button>
   </div>
   <!-- The toggle changes the question, not just the dataset. Worth one line. -->
   <div class="stateWhy" id="stateWhy"></div>
@@ -901,6 +918,11 @@
   <div id="powerRange"></div>
 </section>
 
+<section class="need" id="secLand" style="display:none">
+  <h3>Slope and hazards</h3>
+  <div id="landBox"></div>
+</section>
+
 <section class="need" id="secAccess">
   <h3>Access</h3>
   <div class="answer">Not assessed yet.</div>
@@ -912,6 +934,7 @@
   <h3>Permits and rules</h3>
   <div class="answer">Not assessed yet.</div>
   <p class="why">Septic, building and well permits are set locally. We do not read permit records yet.</p>
+  <div id="permitsFacts"></div>
   <div class="askBox" id="permitsAsk"><b>Who to ask:</b> your county building or planning department, and the local health or environmental office for septic.</div>
 </section>
 
@@ -1079,6 +1102,36 @@ const UT_COUNTIES=["Beaver","Box Elder","Cache","Carbon","Daggett","Davis","Duch
   "Grand","Iron","Juab","Kane","Millard","Morgan","Piute","Rich","Salt Lake","San Juan","Sanpete","Sevier",
   "Summit","Tooele","Uintah","Utah","Wasatch","Washington","Wayne","Weber"];
 
+// Washington: every county publishes to one statewide parcel layer (WaTech),
+// whose address field is usable, so parcel, address and map search all work.
+const WA_COUNTIES=["Adams","Asotin","Benton","Chelan","Clallam","Clark","Columbia","Cowlitz","Douglas",
+  "Ferry","Franklin","Garfield","Grant","Grays Harbor","Island","Jefferson","King","Kitsap","Kittitas",
+  "Klickitat","Lewis","Lincoln","Mason","Okanogan","Pacific","Pend Oreille","Pierce","San Juan","Skagit",
+  "Skamania","Snohomish","Spokane","Stevens","Thurston","Wahkiakum","Walla Walla","Whatcom","Whitman","Yakima"];
+const countiesFor = code => code==="UT" ? UT_COUNTIES : code==="WA" ? WA_COUNTIES : Object.keys(COUNTIES);
+
+/* County fees, read from the county's own published schedule. Shown as
+   separate Record lines and never added up: they are the county's charges,
+   not an estimate of what the work costs. Washington only so far. */
+const WA_COUNTY_INFO = {
+  Skamania: {
+    feeSource: "Skamania County Building / Environmental Health fee schedule, dated 2023 — check the current one",
+    septicFees: [
+      ["Soil and site evaluation by the county", 335],
+      ["County review of a private designer's soil and site evaluation", 245],
+      ["Winter evaluation (weekly visits for three months)", 650],
+      ["Septic design review and permit, under 1,000 gal/day", 195],
+      ["Waiver (required before the permit is released)", 105]
+    ],
+    wavFee: ["Water Adequacy Verification, self-sampled (individual or shared well, or a spring)", 265],
+    eh: "Skamania County Environmental Health (Community Development)",
+    ehPhone: "509-427-3903",
+    septicRecords: "Email the Permit Center at <b>permitcenter@skamaniacounty.gov</b> with the subject "+
+      "&ldquo;Septic Records Request&rdquo; and the parcel number or address. Nothing is searchable online.",
+    planning: "Skamania County Community Development, (509) 427-3900"
+  }
+};
+
 // What the parcel report can actually contain, per state. The offer has to
 // match the data or it is a promise we cannot keep.
 /* The page already gives away every number it has, so the offer cannot be the
@@ -1103,6 +1156,15 @@ const REPORT_OFFER = {
     apnLabel: "Parcel number",
     apnHint: "Utah parcel numbers vary by county — Iron County looks like E-0209-0025-0001. A listing link works too.",
     apnPlaceholder: "e.g. E-0209-0025-0001"
+  },
+  WA: {
+    heading: "Get quotes from drillers who have worked this ground",
+    blurb: "Tell us about the parcel and we will look for licensed Washington drillers working in your county, "+
+           "with your location and the nearby well depths on file attached. If a public water system serves "+
+           "the parcel, ask it first: a connection can make the well question moot. No charge, no obligation.",
+    apnLabel: "Parcel number",
+    apnHint: "The county's own parcel number, e.g. 03072520150100 in Skamania. A listing link works too.",
+    apnPlaceholder: "e.g. 03072520150100"
   }
 };
 
@@ -1181,6 +1243,28 @@ const STATES = {
              "Dry holes on record — wells that were drilled here and found nothing",
              "Soil suitability for septic, and which utility maps to the parcel",
              "What we do not cover yet — legal access and permits — and who to ask"]
+  },
+  WA: {
+    name: "Washington",
+    kicker: "Cost to Livable · Washington",
+    question: "What would it take to make this parcel livable?",
+    intro: "Water, wastewater, power, slope and mapped hazards, checked against public records for your parcel. "+
+           "In much of Washington the first water question is whether a public system already serves the "+
+           "land; if not, a household well is usually exempt from a water-right permit. We show which system "+
+           "maps to the parcel, the water rights and well reports on file nearby, what the soil says about "+
+           "septic, how steep the ground is, and mapped landslides where the county publishes them.",
+    detail: "Every figure is labelled for what it is: a <strong>record</strong> about this parcel, a "+
+            "<strong>mapped estimate</strong>, a <strong>claim</strong> that has never been confirmed, or a "+
+            "fact about land <strong>nearby, not this parcel</strong>. No dollar estimates yet, only fees the "+
+            "county itself publishes.",
+    missing: "Hazard layers and county fees are wired for Skamania County so far. Elsewhere in Washington "+
+             "those rows say who to ask.",
+    expect: ["Whether a public water system maps to the parcel, and who to call",
+             "Water rights on file nearby, with claims kept separate from confirmed rights",
+             "How deep nearby wells went, from Ecology's well reports",
+             "Whether the soil will take a conventional septic field, across the whole parcel",
+             "How steep the parcel is, and mapped landslides where the county publishes them",
+             "Which utility maps to the parcel, and what we do not cover yet"]
   }
 };
 
@@ -1226,11 +1310,11 @@ function applyState(code){
   $("leadApnLabel").textContent = off.apnLabel;
   $("leadApn").placeholder    = off.apnPlaceholder;
   $("leadApnHint").textContent = off.apnHint;
-  const counties = code==="UT" ? UT_COUNTIES : Object.keys(COUNTIES);
+  const counties = countiesFor(code);
   leadSel.innerHTML = counties.map(c=>"<option>"+c+"</option>").join("");
   // The lead form keeps its own default; blanking it would leave that select
   // showing nothing, since it has no placeholder of its own.
-  leadSel.value = code==="UT" ? "Iron" : (state.county || "Mohave");
+  leadSel.value = code==="UT" ? "Iron" : code==="WA" ? "Skamania" : (state.county || "Mohave");
 
   // Rebuilt on every state switch, and shown again — switching states changes
   // the question the tool answers, so the promise has to be re-read.
@@ -1242,8 +1326,9 @@ function applyState(code){
 
   // Worked examples, rebuilt for the state on screen. Hidden once a real
   // lookup has run — it has taught what it can by then.
-  const d=s.demo;
-  $("demoStrip").innerHTML =
+  // Washington has no worked examples yet; the strip hides rather than show another state's.
+  const d=s.demo || null;
+  $("demoStrip").innerHTML = !d ? "" :
     "<div class='demoHd'>"+d.head+"</div><p class='demoSub'>"+d.sub+"</p>"+
     "<div class='demoBtns'>"+
     [["ok",d.a],["bad",d.b]].map(([cls,x])=>
@@ -1252,7 +1337,7 @@ function applyState(code){
       "<b>"+x.label+"</b><span>"+x.note+"</span></button>").join("")+
     "</div><p class='demoFoot'>Both are real coordinates and every figure is pulled live from "+
     "state records. Neither is a recommendation — and neither is a quote.</p>";
-  $("demoStrip").style.display = $("wellList").children.length ? "none" : "";
+  $("demoStrip").style.display = ($("wellList").children.length || !d) ? "none" : "";
 
   // The depth grid is Arizona-only until Utah's bulk well export is unlocked.
   $("crossLink").style.display = code==="AZ" ? "" : "none";
@@ -1296,11 +1381,15 @@ function applyState(code){
   // statewide layer — but not address search, because the state layer's address
   // field is sparse on rural parcels.
   [...$("modeSeg").children].forEach(b=>{
-    const off = !az && b.dataset.v==="address";
+    const off = code==="UT" && b.dataset.v==="address";
     b.disabled=off; b.style.opacity=off?".4":"";
     b.title = off ? "Utah's statewide parcel layer has sparse addresses on rural land — use the parcel number or coordinates" : "";
   });
-  if(!az){
+  if(code==="WA"){
+    $("coords").placeholder = WA_MODES[mode] ? WA_MODES[mode].ph : MODES[mode].ph;
+    $("modeHint").textContent = WA_MODES[mode] ? WA_MODES[mode].hint : MODES[mode].hint;
+    syncModeAvailability();
+  }else if(!az){
     if(mode==="address") mode="apn";
     [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===mode));
     $("coords").placeholder = mode==="apn" ? "e.g. E-0209-0025-0001" : "37.6800, -113.0600";
@@ -1321,7 +1410,8 @@ function applyState(code){
   // Clear anything from the other state.
   state.local=null; state.rights=null; state.parcel=null; state.soil=null; state.service=null; state.drillers=null;
   state.utility=null; if($("powerBox")) $("powerBox").innerHTML="";
-  state.utLogs=null; state.utDepths=null;
+  state.utLogs=null; state.utDepths=null; state.wa=null;
+  if($("secLand")) $("secLand").style.display = code==="WA" ? "" : "none";
   $("coords").value=""; $("lookupMsg").innerHTML=""; $("wellList").innerHTML="";
   $("parcelBox").innerHTML=""; $("drillersBox").innerHTML="";
   applyPickMode();
@@ -1413,6 +1503,13 @@ function syncModeAvailability(){
       $("modeHint").textContent="Choose a county above to search by parcel number, "+
         "or pick the parcel on the map and we'll work out the county for you.";
     }
+    return;
+  }
+
+  // Washington: one statewide layer with usable addresses, so every mode works.
+  if(state.region==="WA"){
+    [...$("modeSeg").children].forEach(b=>{ b.disabled=false; b.style.opacity=""; b.title=""; });
+    if(WA_MODES[mode]){ $("coords").placeholder=WA_MODES[mode].ph; $("modeHint").textContent=WA_MODES[mode].hint; }
     return;
   }
 
@@ -1511,13 +1608,21 @@ const MODES={
   coords:  {ph:"35.2140, -114.2230", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them. Arizona returns well depths and costs; Utah returns water rights."},
   map:     {ph:"", hint:"Find your parcel on the satellite view and tap it. Drag the pin to fine-tune — you can see the tracks, washes and neighbouring buildings while you place it."}
 };
+// Washington's wording: one statewide layer, so no county caveats about address search.
+const WA_MODES={
+  apn:     {ph:"03072520150100", hint:"The county's parcel number, in the county selected above. Punctuation is optional."},
+  address: {ph:"281 Stewart Rd", hint:"Street address as the county has it. Rural addresses are sometimes missing from the statewide layer — use the parcel number or the map if this comes up empty."},
+  coords:  {ph:"45.7172, -121.8967", hint:"Enter the parcel's GPS coordinates. In Google Maps, right-click the parcel and click the coordinates that appear to copy them."},
+  map:     MODES.map
+};
 let mode="apn";
 $("modeSeg").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   [...$("modeSeg").children].forEach(x=>x.setAttribute("aria-pressed",x===b));
   mode=b.dataset.v;
-  $("coords").placeholder=MODES[mode].ph;
-  $("modeHint").textContent=MODES[mode].hint;
+  const M = state.region==="WA" ? WA_MODES : MODES;
+  $("coords").placeholder=M[mode].ph;
+  $("modeHint").textContent=M[mode].hint;
   $("coords").value=""; $("parcelBox").innerHTML="";
   applyPickMode();
 });
@@ -1624,7 +1729,7 @@ async function resolveParcel(qs,label){
     return sj;
   }
 
-  const pr=await fetch("/api/parcel?"+qs);
+  const pr=await fetch("/api/parcel?"+qs+(state.region==="WA"?"&state=WA":""));
   let pj=await pr.json();
 
   /* Mohave and Yavapai go to their own assessors, which is where the rich
@@ -1829,10 +1934,11 @@ async function lookup(){
   // Soil and rainfall work anywhere, so they run regardless.
   const inAZ = lat>=31 && lat<=37.1 && lng>=-115 && lng<=-108.9;
   const inUT = lat>=36.9 && lat<=42.1 && lng>=-114.1 && lng<=-108.9;
+  const inWA = lat>=45.5 && lat<=49.05 && lng>=-124.85 && lng<=-116.9;
   // The strip near 37N is in both boxes, so prefer whichever state is selected.
   const detected = (state.region==="UT" && inUT) ? "UT"
                  : (state.region==="AZ" && inAZ) ? "AZ"
-                 : inAZ ? "AZ" : inUT ? "UT" : null;
+                 : inWA ? "WA" : inAZ ? "AZ" : inUT ? "UT" : null;
   if(detected && detected!==state.region){
     applyStateQuiet(detected);
     msg.innerHTML='<div class="banner b-thin">Those coordinates are in '+STATES[detected].name+
@@ -1840,7 +1946,7 @@ async function lookup(){
   }
   state.region = detected;
   if(!state.region){
-    msg.innerHTML='<div class="banner b-err">That point is outside Arizona and Utah — the two states this tool has data for.</div>';
+    msg.innerHTML='<div class="banner b-err">That point is outside Arizona, Utah and Washington — the three states this tool has data for.</div>';
     return;
   }
 
@@ -1853,6 +1959,50 @@ async function lookup(){
 
   const dist=$("radius").value;
   const btn=$("goBtn");btn.disabled=true;btn.textContent="Looking…";
+
+  /* Washington: water system first, then rights and well reports, plus slope
+     and mapped hazards. Everything that measures the land wants the parcel
+     outline, so a pin or typed coordinates look the parcel up first. */
+  if(state.region==="WA"){
+    state.local=null; state.localTrace=null; state.drillers=null; state.utLogs=null; state.utDepths=null; state.rights=null;
+    list.innerHTML=""; state.utility=null; if($("powerBox")) $("powerBox").innerHTML="";
+    state.lastPoint = {lat:+lat.toFixed(6), lon:+lng.toFixed(6)};
+    msg.innerHTML='<div class="banner b-local">Querying Washington records…</div>';
+    if(!state.parcel || !state.parcel.boundary){
+      try{
+        const ij=await (await fetch("/api/identify?lat="+lat+"&lon="+lng)).json();
+        if(ij.ok && ij.state==="WA"){
+          state.parcel = Object.assign({}, ij, {fromPin:true});
+          pbox.innerHTML = parcelHtml(state.parcel);
+          if(ij.county && !state.county && [...sel.options].some(o=>o.value===ij.county)){
+            sel.value=ij.county; state.county=ij.county;
+          }
+        }
+      }catch(_){}
+    }
+    const ring = soilRing(state.parcel);
+    const polyQ = ring ? "&poly="+encodeURIComponent(ring.map(p=>(+p[1]).toFixed(5)+" "+(+p[0]).toFixed(5)).join(",")) : "";
+    const county = (state.parcel && state.parcel.county) || state.county || "";
+    const get = u => fetch(u).then(r=>r.json()).catch(e=>({ok:false,error:String(e.message||e)}));
+    const pt = "lat="+lat+"&lon="+lng;
+    const [water, wells, slope, hazards] = await Promise.all([
+      get("/api/wawater?"+pt+polyQ),
+      get("/api/wawells?"+pt),
+      get("/api/slope?"+pt+polyQ),
+      get("/api/hazards?county="+encodeURIComponent(county)+"&"+pt+polyQ)
+    ]);
+    state.wa = { water, wells, slope, hazards, county, scope: ring ? "parcel" : "point" };
+    msg.innerHTML = '<div class="banner b-local"><strong>Washington — water system first.</strong> '+
+      'If a public system serves the parcel, a connection may make a well unnecessary. '+
+      (ring ? 'Slope, soil and hazards are checked across the parcel outline.'
+            : 'No parcel outline was found here, so slope and hazards cover the area around the point.')+'</div>';
+    list.innerHTML = waRecordsHtml();
+    await runPower(lat,lng);
+    await runSoilAndRain(lat,lng);
+    btn.disabled=false; btn.textContent="Look it up";
+    render();
+    return;
+  }
 
   // Utah: no well-depth registry here, but water rights are the binding
   // question — you cannot drill without one. Run that instead and stop.
@@ -2980,7 +3130,7 @@ function needRow(label, level, line, target){
 function renderStatusStrip(){
   const box = $("statusStrip"); if(!box) return;
   const L=state.local, W=state.rights, D=state.utDepths, S=state.soil, T=state.trendCell, PU=state.utility;
-  const ran = !!(L||W||D||S||state.parcel);
+  const ran = !!(L||W||D||S||state.parcel||state.wa);
   if(!ran){ box.innerHTML=""; box.style.display="none"; return; }
   box.style.display="";
 
@@ -2989,6 +3139,8 @@ function renderStatusStrip(){
   const need=(label,level,line,target)=>({label,level,line,target});
 
   /* Water: legal right (Utah), depth, dry holes, water-table trend. */
+  if(state.region==="WA") rows.push(waWaterNeed(need));
+  else {
   const wl=[], wParts=[];
   if(ut){
     const dom = W ? W.domesticCount : null;
@@ -3024,6 +3176,7 @@ function renderStatusStrip(){
     }
   }
   rows.push(need("Water", worstLevel(wl.filter(l=>l!=="none").length?wl:["none"]), wParts.join(" "), "secWater"));
+  }
 
   /* Wastewater: the soil's septic rating. */
   rows.push(S
@@ -3042,9 +3195,13 @@ function renderStatusStrip(){
     rows.push(need("Power","none","Not checked.","secPower"));
   }
 
+  /* Slope and hazards: Washington only so far. */
+  if(state.region==="WA") rows.push(waLandNeed(need));
+
   /* Not assessed yet: shown, not hidden. */
   rows.push(need("Access","ask","Not assessed yet. Ask the county road department and your title company about legal access and easements.","secAccess"));
-  rows.push(need("Permits and rules","ask","Not assessed yet. Septic, building and well permits come from the county.","secPermits"));
+  rows.push(need("Permits and rules","ask", state.region==="WA" ? waPermitsLine()
+    : "Not assessed yet. Septic, building and well permits come from the county.","secPermits"));
 
   state.needs = rows;
   const bad = rows.filter(r=>r.level==="bad").length;
@@ -3099,7 +3256,8 @@ const PICK_BASEMAPS = {
 // Sensible opening view per state, so nobody starts at the whole country.
 const PICK_HOME = {
   AZ: [[31.30,-114.85],[37.05,-109.00]],
-  UT: [[36.95,-114.10],[42.05,-109.00]]
+  UT: [[36.95,-114.10],[42.05,-109.00]],
+  WA: [[45.54,-124.80],[49.00,-116.92]]
 };
 
 function pickSetBase(k){
@@ -3118,12 +3276,13 @@ function pickDrop(lat, lon, zoom){
 
   const inUT = lat>=36.9 && lat<=42.1 && lon>=-114.1 && lon<=-108.9;
   const inAZ = lat>=31 && lat<=37.1 && lon>=-115 && lon<=-108.9;
-  const ok = inUT || inAZ;
+  const inWA = lat>=45.5 && lat<=49.05 && lon>=-124.85 && lon<=-116.9;
+  const ok = inUT || inAZ || inWA;
 
   $("pickGo").disabled = !ok;
   $("pickReadout").innerHTML = ok
     ? "<b>"+PICKAT.lat+", "+PICKAT.lon+"</b> · drag the pin to fine-tune"
-    : "<span class='pickOut'>That point is outside Arizona and Utah — the only states covered so far.</span>";
+    : "<span class='pickOut'>That point is outside Arizona, Utah and Washington — the only states covered so far.</span>";
   if(ok) identifyPin(lat, lon);
 }
 
@@ -3196,7 +3355,7 @@ async function pickSearch(){
   $("pickReadout").textContent = "Looking for “"+q+"”…";
   try{
     const u="https://nominatim.openstreetmap.org/search?format=json&limit=1"+
-      "&countrycodes=us&q="+encodeURIComponent(q+", "+(state.region==="UT"?"Utah":"Arizona"));
+      "&countrycodes=us&q="+encodeURIComponent(q+", "+STATES[state.region].name);
     const r=await fetch(u,{headers:{"Accept":"application/json"}});
     const j=await r.json();
     if(!j.length){ $("pickReadout").textContent = "Couldn't find that. Try a town name, or tap the map."; return; }
@@ -3291,7 +3450,7 @@ function writeUrl(){
 async function readUrl(){
   const q = new URLSearchParams(location.search);
   const lat = parseFloat(q.get("lat")), lon = parseFloat(q.get("lon"));
-  if(q.get("state") === "UT") [...$("stateSeg").children].find(b=>b.dataset.v==="UT")?.click();
+  if(["UT","WA"].includes(q.get("state"))) [...$("stateSeg").children].find(b=>b.dataset.v===q.get("state"))?.click();
   await new Promise(r => setTimeout(r, 60));
 
   if(q.get("county") && [...$("county").options].some(o=>o.value===q.get("county"))){
@@ -3813,9 +3972,17 @@ function makeCollapsible(host){
 function renderTopVerdict(){
   const box=$("topVerdict");
   if(!box) return;
-  const L=state.local, W=state.rights, D=state.utDepths, ran=!!(L||W||D||state.parcel);
+  const L=state.local, W=state.rights, D=state.utDepths, ran=!!(L||W||D||state.parcel||state.wa);
   if(!ran){ box.style.display="none"; return; }
   box.style.display="";
+
+  if(state.region==="WA"){
+    const v = waVerdict();
+    box.className="topv "+v.tone;
+    box.innerHTML="<h3>"+v.head+"</h3><p>"+v.body+"</p>"+
+      (v.risks.length?"<ul class='risks'><li>"+v.risks.join("</li><li>")+"</li></ul>":"");
+    return;
+  }
 
   const risks=[];
   let tone="tv-ok", head, body;
@@ -4087,7 +4254,9 @@ function render(){
     };
   }
 
-  const ut = state.region==="UT";
+  const ut = state.region==="UT", wa = state.region==="WA";
+  // Utah and Washington show no dollar estimates: every price in C is an Arizona range.
+  const noDollars = ut || wa;
   const money = v => v==null ? "—" : "$"+Math.round(v).toLocaleString();
 
   /* Utah shows no dollar figures. The depths are Utah's own, but every price in
@@ -4095,10 +4264,10 @@ function render(){
      so any figure would read as sourced while resting on the wrong state's rates.
      Depth, water-right status and the legal gates still render; dollars return
      once a Utah driller supplies a real per-foot rate. */
-  if(ut){
+  if(noDollars){
     $("compare").innerHTML = "";
     $("rainBox").innerHTML = "";
-    $("rightsBox").innerHTML = rightsBlockHtml();
+    $("rightsBox").innerHTML = ut ? rightsBlockHtml() : waWaterBlockHtml();
     $("yearsRow").style.display = "none";
   }else{
     $("rightsBox").innerHTML = "";
@@ -4108,9 +4277,12 @@ function render(){
     $("rainBox").innerHTML = rainPanelHtml();
   }
 
-  $("wasteBox").innerHTML = wasteHtml(ut, money);
-  $("powerRange").innerHTML = powerRangeHtml(ut, money);
-  $("permitsAsk").innerHTML = permitsAskHtml(ut);
+  $("wasteBox").innerHTML = wasteHtml(noDollars, money);
+  $("powerRange").innerHTML = powerRangeHtml(noDollars, money);
+  $("permitsAsk").innerHTML = permitsAskHtml(state.region);
+  $("permitsFacts").innerHTML = wa ? waPermitsHtml() : "";
+  $("secLand").style.display = wa ? "" : "none";
+  $("landBox").innerHTML = wa ? waLandHtml() : "";
 
   if(state.lastPoint){
     $("needSections").style.display = "";
@@ -4124,6 +4296,248 @@ function render(){
   makeCollapsible($("wellList"));
   renderCtaDrillers();
   flushWellMap();
+}
+
+/* ---- Washington ---------------------------------------------------------
+
+   Every fact carries one of five labels, the same words in every state:
+   Record · Mapped estimate · Claim only — not a confirmed right ·
+   Nearby, not this parcel · Not assessed yet. */
+const LBL_TEXT = { rec:"Record", est:"Mapped estimate", claim:"Claim only — not a confirmed right",
+                   near:"Nearby, not this parcel", ask:"Not assessed yet" };
+const LBL = k => "<span class='lbl l-"+k+"'>"+LBL_TEXT[k]+"</span>";
+const waInfo = () => WA_COUNTY_INFO[(state.wa && state.wa.county) || state.county] || null;
+const nf = v => v==null ? "—" : Math.round(v).toLocaleString();
+
+function waSystems(){ const w=state.wa && state.wa.water; return w && w.ok && w.systems ? w.systems : null; }
+
+/* Water, on the page: system first; if none, wells come first and rights after. */
+function waWaterBlockHtml(){
+  const W = state.wa; if(!W) return "";
+  const sys = waSystems(), wr = W.water && W.water.ok ? W.water.rights : null, wl = W.wells && W.wells.ok ? W.wells : null;
+  const info = waInfo();
+  let sysH, rightsH = "", wellsH = "";
+
+  if(sys && sys.length){
+    sysH = "<h4>Public water system "+LBL("est")+"</h4>"+
+      sys.map(x=>"<p>Inside the <b>"+escHtml(x.name)+"</b> service area"+
+        (x.group?" (Group "+escHtml(x.group)+" system"+(x.connections?", "+nf(x.connections)+" connections":"")+")":"")+
+        ". Ask whether it will serve this parcel and what a connection costs"+
+        (x.phone?": <b>"+escHtml(x.phone)+"</b>":"")+".</p>").join("")+
+      "<p class='fine'>Service areas are mapped by the Department of Health"+
+      (sys[0].sourceDate?" (source dated "+sys[0].sourceDate+")":"")+". Inside an area is not a promise of a hook-up.</p>";
+  }else if(sys){
+    sysH = "<h4>Public water system "+LBL("est")+"</h4><p>No public water system's service area is mapped here, "+
+      "so water would come from a well, a shared system, or hauling. A household well using under 5,000 gallons a "+
+      "day is usually exempt from a water-right permit, but some basins have rules that limit new exempt wells: "+
+      "ask Washington Ecology before you buy.</p>"+
+      (info && info.wavFee ? "<p>The county also requires a Water Adequacy Verification for a well before a building permit: "+
+        "<b>$"+info.wavFee[1]+"</b> "+LBL("rec")+" <span class='fine'>("+info.feeSource+")</span></p>" : "");
+  }else{
+    sysH = "<h4>Public water system "+LBL("ask")+"</h4><p>The Department of Health service-area map did not answer"+
+      (W.water && W.water.error?": "+escHtml(W.water.error):"")+".</p>";
+  }
+
+  if(wl){
+    const w = wl.water;
+    wellsH = "<h4>Wells nearby "+LBL("near")+"</h4>"+
+      (w.withDepth
+        ? "<p><b>"+w.count+"</b> water well report"+(w.count===1?"":"s")+" within a mile; depth ranges "+nf(w.minFt)+"–"+nf(w.maxFt)+
+          " ft, middle half <b>"+nf(w.p25Ft)+"–"+nf(w.p75Ft)+" ft</b>, median <b>"+nf(w.medianFt)+" ft</b>."+
+          (w.waterLevelCount?" Water level reported on "+w.waterLevelCount+", median "+nf(w.medianWaterLevelFt)+" ft.":"")+"</p>"
+        : "<p>No water well reports with a depth within a mile.</p>")+
+      "<p class='fine'>Locations are approximate to about a quarter mile: most reports are plotted at the centre of a "+
+      "40-acre survey square, so no distances are shown.</p>";
+  }
+
+  if(wr){
+    rightsH = "<h4>Water rights nearby "+LBL("near")+"</h4>"+
+      "<p><b>"+wr.total+"</b> water-right documents have a place of use within a mile: "+
+      wr.certificates+" certificate"+(wr.certificates===1?"":"s")+", "+wr.permits+" permit"+(wr.permits===1?"":"s")+
+      ", and <b>"+wr.claims+" claim"+(wr.claims===1?"":"s")+"</b> "+LBL("claim")+
+      " — claims were registered under the 1967 claims act and have never been confirmed.</p>"+
+      (wr.covering && wr.covering.length
+        ? "<p>"+wr.covering.length+" cover this parcel. A water system's right covering an area is the system's right, "+
+          "not one the parcel owns:</p><ul>"+wr.covering.map(c=>"<li>"+escHtml(c.number||"")+
+            " · "+escHtml(c.phase||"")+(c.claim?" "+LBL("claim"):"")+
+            (c.holder?" · "+escHtml(c.holder):"")+(c.priority?" · priority "+c.priority:"")+"</li>").join("")+"</ul>"
+        : "");
+  }
+
+  // Inside a system: system, then rights, then wells. Outside: wells before rights.
+  const body = (sys && sys.length) ? sysH + rightsH + wellsH : sysH + wellsH + rightsH;
+  return "<div class='waBlock'>"+body+
+    "<p class='src'>Sources: WA Department of Health; WA Department of Ecology water rights and well reports.</p></div>";
+}
+
+/* The Records panel: the parts of the evidence that do not belong up top. */
+function waRecordsHtml(){
+  const W = state.wa; if(!W) return "";
+  const wl = W.wells && W.wells.ok ? W.wells : null;
+  let h = "<div class='wells waFacts'><div class='maphdr'>Well reports in this parcel's quarter-section</div>";
+  if(wl && wl.quarterQuarter){
+    const q = wl.quarterQuarter;
+    h += "<p class='dintro'>The parcel's centre falls in <b>"+escHtml(q.qq)+" of Section "+q.sec+", T"+q.twp+q.twpDir+
+      " R"+q.rng+q.rngDir+"</b>. These reports were filed in that 40-acre square, not necessarily on this parcel. "+LBL("near")+"</p>";
+    h += wl.inQuarterQuarter.length
+      ? "<table><thead><tr><th>Type</th><th class='n'>Depth</th><th class='n'>Year</th><th>Report</th></tr></thead><tbody>"+
+        wl.inQuarterQuarter.map(r=>"<tr><td>"+escHtml(r.subtype||r.type||"—")+"</td><td class='n'>"+(r.depthFt!=null?nf(r.depthFt)+" ft":"—")+
+          "</td><td class='n'>"+(r.year||"—")+"</td><td>"+escHtml(r.file||"—")+"</td></tr>").join("")+"</tbody></table>"
+      : "<p class='dintro'>No reports are filed in this quarter-section.</p>";
+    h += "<p class='dintro'>Within a mile: "+wl.total+" reports of all kinds plotted at "+wl.distinctPoints+" distinct points"+
+      (wl.truncated?" (more than we read)":"")+".</p>";
+  }else{
+    h += "<p class='dintro'>"+(W.wells && W.wells.error ? escHtml(W.wells.error) : "Survey-grid position not found.")+"</p>";
+  }
+  return h + "<div class='src'>Source: Washington Department of Ecology well reports; BLM survey grid.</div></div>";
+}
+
+function waLandHtml(){
+  const W = state.wa; if(!W) return "";
+  const sl = W.slope, hz = W.hazards, info = waInfo();
+  let h = "";
+  if(sl && sl.ok){
+    h += "<div class='answer'>Mean slope "+sl.meanDeg+"° ("+sl.meanGrade+"% grade), steepest "+sl.maxDeg+"° ("+sl.maxGrade+"%) "+LBL("est")+"</div>"+
+      "<p class='why'><b>"+sl.over30+"%</b> of "+(sl.scope==="parcel"?"the parcel":"the area around the point")+
+      " is steeper than 30% grade, and <b>"+sl.over15+"%</b> steeper than 15%. "+escHtml(sl.note)+"</p>";
+    const soilSlope = state.soil && state.soil.profile && state.soil.profile[0] && state.soil.profile[0].slope;
+    if(soilSlope!=null) h += "<p class='why'>For comparison, the soil survey gives "+soilSlope+
+      "% as typical for the whole soil map unit — a figure for the area, not this lot.</p>";
+  }else{
+    h += "<div class='answer'>Slope not checked.</div><p class='why'>"+escHtml((sl && sl.error) || "The elevation service did not answer.")+"</p>";
+  }
+
+  if(hz && hz.ok && hz.supported){
+    const ls = hz.landslides, onP = ls.deposits.filter(d=>d.onParcel), near = ls.deposits.filter(d=>!d.onParcel);
+    if(ls.triggered){
+      h += "<div class='waBlock'><h4>Mapped landslides "+LBL("est")+"</h4>"+
+        "<p>"+(onP.length?"<b>"+onP.length+" mapped landslide deposit"+(onP.length===1?"":"s")+"</b> on the parcel":"")+
+        (onP.length&&near.length?", and ":"")+(near.length?"<b>"+near.length+"</b> within 100 ft":"")+
+        (ls.scarps?(onP.length||near.length?"; ":"")+ls.scarps+" scarp or flank within 100 ft":"")+".</p><ul>"+
+        ls.deposits.map(d=>"<li>"+escHtml(d.name || ("Landslide #"+d.id))+": "+escHtml((d.age||"age unknown").toLowerCase())+
+          ", "+escHtml((d.movement||"").toLowerCase())+(d.confidence?", "+escHtml(d.confidence.toLowerCase())+" confidence":"")+"</li>").join("")+"</ul>"+
+        "<p><b>A geotechnical letter is required before building.</b> "+escHtml(ls.rule.text)+
+        " <a href='"+ls.rule.url+"' target='_blank' rel='noopener'>"+escHtml(ls.rule.code)+"</a></p>"+
+        "<p>Get two or three fixed-fee quotes from geotechnical firms before you buy. We do not show a price: there is no public source for one yet.</p>"+
+        "<p class='src'>"+escHtml(ls.source)+". Prehistoric means older than 150 years, not active; mapped from lidar, not a site survey.</p></div>";
+    }else{
+      h += "<p class='why'>No mapped landslide on or within 100 ft of "+(hz.scope==="parcel"?"the parcel":"the point")+". "+LBL("est")+
+        " <span class='src'>"+escHtml(ls.source)+".</span></p>";
+    }
+  }else if(hz && hz.ok && !hz.supported){
+    h += "<p class='why'>Mapped landslides and other geologic hazards: "+LBL("ask")+
+      " We read hazard layers for Skamania County so far. Ask "+escHtml((hz.county||"the")+" County")+
+      " planning whether the parcel is in a mapped geologic hazard area.</p>";
+  }else{
+    h += "<p class='why'>Hazard layers did not answer"+(hz && hz.error?": "+escHtml(hz.error):"")+".</p>";
+  }
+  return h;
+}
+
+function waPermitsHtml(){
+  const hz = state.wa && state.wa.hazards;
+  if(!hz || !hz.ok || !hz.supported) return "";
+  const z = hz.zoning || [];
+  return "<div class='parcelbox waFacts'>"+
+    (z.length?"<div class='soilrow'><span>Zoning "+LBL("est")+"</span><b>"+z.map(x=>escHtml((x.name||x.code||"")+
+      (x.code&&x.name&&x.code!==x.name?" ("+x.code+")":"")+(x.compPlan?", comp plan "+x.compPlan:""))).join("; ")+"</b></div>":"")+
+    "<div class='soilrow'><span>City limits</span><b>"+(hz.cityLimits.length?escHtml(hz.cityLimits.join(", ")):"Outside")+"</b></div>"+
+    "<div class='soilrow'><span>Urban area</span><b>"+(hz.urbanArea.length?escHtml(hz.urbanArea.join(", ")):"None")+"</b></div>"+
+    (hz.landslides && hz.landslides.triggered ? "<div class='soilrow'><span>Critical area</span><b>Mapped landslide: geotechnical letter required ("+
+      escHtml(hz.landslides.rule.code)+")</b></div>" : "")+
+    "</div>";
+}
+
+function waWasteAskHtml(){
+  const info = waInfo();
+  if(!info) return "<div class='askBox'><b>Who to ask:</b> the county environmental health office for a soil and site "+
+    "evaluation, and for septic records on this parcel and its neighbours. "+LBL("ask")+"</div>";
+  return "<div class='waBlock'><h4>County septic fees "+LBL("rec")+"</h4>"+
+    "<table class='feeTable'>"+info.septicFees.map(([k,v])=>"<tr><td>"+k+"</td><td class='n'>$"+v+"</td></tr>").join("")+"</table>"+
+    "<p class='fine'>"+info.feeSource+". Separate fees, never a total: the system itself costs far more.</p></div>"+
+    "<div class='askBox'><b>Who to ask:</b> "+info.eh+", "+info.ehPhone+", for a soil and site evaluation. "+
+    "Septic records for this parcel and its neighbours (permits, site evaluations and soil logs, as-built drawings, "+
+    "Water Adequacy Verifications): "+info.septicRecords+" "+LBL("ask")+"</div>";
+}
+
+function waVerdict(){
+  const W = state.wa || {}, sys = waSystems(), wl = W.wells && W.wells.ok ? W.wells.water : null;
+  const sl = W.slope && W.slope.ok ? W.slope : null, hz = W.hazards && W.hazards.ok && W.hazards.supported ? W.hazards : null;
+  const risks = []; let tone = "tv-ok", head, body;
+  if(sys && sys.length){
+    head = "Inside "+escHtml(sys[0].name)+"'s service area.";
+    body = "A connection may make a well unnecessary. Ask the system whether it will serve this parcel and what a "+
+           "connection costs before you price a well.";
+  }else if(sys){
+    tone = "tv-warn";
+    head = "No public water system maps here.";
+    body = wl && wl.withDepth
+      ? "Water would likely be a well. Nearby well reports have a median depth of "+nf(wl.medianFt)+" ft (middle half "+
+        nf(wl.p25Ft)+"–"+nf(wl.p75Ft)+" ft), from wells nearby, not this parcel."
+      : "Water would be a well, a shared system or hauling, and there are few well reports nearby to go on.";
+  }else{
+    tone = "tv-warn"; head = "Water system unknown."; body = "The service-area lookup did not answer.";
+  }
+  if(hz && hz.landslides.triggered){
+    tone = "tv-bad";
+    const n = hz.landslides.deposits.filter(d=>d.onParcel).length;
+    risks.push("<b>"+(n?n+" mapped landslide"+(n===1?"":"s")+" on the parcel.":"Mapped landslide within 100 ft.")+"</b> "+
+      "The county requires a geotechnical letter before building.");
+  }
+  if(sl && sl.over30 >= 25){
+    if(tone==="tv-ok") tone="tv-warn";
+    risks.push("<b>"+sl.over30+"% of the "+(sl.scope==="parcel"?"parcel":"area")+" is steeper than 30% grade.</b> "+
+      "Expect engineering for the house site, driveway and septic field.");
+  }
+  if(state.soil && state.soil.rating==="very_limited"){
+    if(tone==="tv-ok") tone="tv-warn";
+    risks.push("<b>Soil rates very limited for a septic field.</b> Plan for an engineered system.");
+  }
+  return { tone, head, body, risks };
+}
+
+function waWaterNeed(need){
+  const W = state.wa || {}, sys = waSystems(), wl = W.wells && W.wells.ok ? W.wells.water : null;
+  if(sys && sys.length) return need("Water","good","Inside "+sys[0].name+"'s service area. Ask about a connection.","secWater");
+  if(sys) return need("Water", wl && wl.withDepth ? "warn" : "bad",
+    "No public water system maps here."+(wl && wl.withDepth ? " Nearby wells: median "+nf(wl.medianFt)+" ft." : " Few well reports nearby."),
+    "secWater");
+  return need("Water","none","Water system lookup did not answer.","secWater");
+}
+
+function waLandNeed(need){
+  const W = state.wa || {}, sl = W.slope && W.slope.ok ? W.slope : null;
+  const hz = W.hazards && W.hazards.ok ? W.hazards : null;
+  const parts = [], lv = [];
+  if(hz && hz.supported && hz.landslides.triggered){ lv.push("bad"); parts.push("Mapped landslide: geotechnical letter required."); }
+  else if(hz && hz.supported){ lv.push("good"); parts.push("No mapped landslide."); }
+  else { lv.push("ask"); parts.push("Hazards not assessed yet: ask county planning."); }
+  if(sl){
+    lv.push(sl.over30>=50 ? "bad" : sl.over30>=25 ? "warn" : "good");
+    parts.push("Mean slope "+sl.meanDeg+"°, "+sl.over30+"% steeper than 30% grade.");
+  }
+  const order = ["bad","warn","ask","good","none"];
+  return need("Slope and hazards", order.find(l=>lv.includes(l)) || "none", parts.join(" "), "secLand");
+}
+
+function waPermitsLine(){
+  const hz = state.wa && state.wa.hazards;
+  const z = hz && hz.ok && hz.supported && hz.zoning && hz.zoning[0];
+  return (z ? "Zoned "+(z.name||z.code)+". " : "")+"Not assessed yet. Septic, building and critical-area permits come from the county.";
+}
+
+function waLeadFields(put){
+  const W = state.wa; if(!W) return;
+  const sys = waSystems();
+  if(sys) put("Water system", sys.length ? sys.map(x=>x.name).join(", ") : "none mapped");
+  const wl = W.wells && W.wells.ok ? W.wells.water : null;
+  if(wl && wl.withDepth) put("Wells within 1 mile", wl.count+" reports, median "+wl.medianFt+" ft (middle half "+wl.p25Ft+"–"+wl.p75Ft+" ft)");
+  const wr = W.water && W.water.ok ? W.water.rights : null;
+  if(wr) put("Water rights within 1 mile", wr.total+" ("+wr.claims+" unconfirmed claims)");
+  if(W.slope && W.slope.ok) put("Slope", "mean "+W.slope.meanDeg+"°, "+W.slope.over30+"% steeper than 30% grade ("+W.slope.resolution+")");
+  const hz = W.hazards;
+  if(hz && hz.ok && hz.supported) put("Mapped landslides", hz.landslides.triggered
+    ? hz.landslides.deposits.length+" within 100 ft — geotechnical letter required ("+hz.landslides.rule.code+")" : "none within 100 ft");
 }
 
 /* Utah: buying a right is the way in when the parcel has none, so the route is
@@ -4165,7 +4579,8 @@ document.addEventListener("click", e => {
    everywhere else there. */
 function wasteHtml(ut, money){
   const S = state.soil;
-  const ask = "<div class='askBox'><b>Who to ask:</b> the county environmental health or planning office "+
+  const ask = state.region==="WA" ? waWasteAskHtml() :
+    "<div class='askBox'><b>Who to ask:</b> the county environmental health or planning office "+
     "for a soil evaluation or percolation test. Your county will require one regardless.</div>";
   if(!S) return "<div class='answer'>Soil not checked yet.</div>"+
     "<p class='why'>Look up a parcel to check its soil for a septic field.</p>"+ask;
@@ -4197,8 +4612,14 @@ function powerRangeHtml(ut, money){
     "and a line-extension quote.</div>";
 }
 
-function permitsAskHtml(ut){
-  return ut
+function permitsAskHtml(region){
+  if(region==="WA"){
+    const info = WA_COUNTY_INFO[(state.wa && state.wa.county) || state.county];
+    return "<b>Who to ask:</b> "+(info ? info.planning : "your county planning or community development department")+
+      " for zoning, critical areas and building permits; county environmental health for septic; and the "+
+      "water system or Washington Ecology for water.";
+  }
+  return region==="UT"
     ? "<b>Who to ask:</b> your county building department, the local health department for septic, "+
       "and the Utah Division of Water Rights for the water right."
     : "<b>Who to ask:</b> your county planning or building department, the county environmental or "+
@@ -4282,7 +4703,7 @@ $("leadForm").addEventListener("submit",async e=>{
 
   put("_subject","Parcel report — "+state.region+" — "+$("leadCounty").value+" — "+$("leadApn").value.trim());
   put("Email", $("leadEmail").value.trim());
-  put("State", state.region==="UT"?"Utah":"Arizona");
+  put("State", STATES[state.region] ? STATES[state.region].name : state.region);
   put("County", $("leadCounty").value);
   put("Parcel", $("leadApn").value.trim());
 
@@ -4304,6 +4725,8 @@ $("leadForm").addEventListener("submit",async e=>{
       put("Median depth nearby", Math.round(L.med||L.avg)+" ft");
       if(L.dtw) put("Depth to water", Math.round(L.dtw)+" ft");
     }
+  }else if(state.region==="WA"){
+    waLeadFields(put);
   }else{
     if(W){
       put("Water rights nearby", W.liveCount+" live of "+W.found+" on record");
